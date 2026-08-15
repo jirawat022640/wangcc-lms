@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { createClient } from '@supabase/supabase-js'
 
 export default function AdminDashboard({ session, handleLogout }) {
   const navigate = useNavigate()
@@ -14,6 +15,14 @@ export default function AdminDashboard({ session, handleLogout }) {
   const [editForm, setEditForm] = useState({
     full_name: '', nickname: '', phone: '', department: '', grade_level: '', avatar_url: ''
   })
+
+  // ---------------- STATE สำหรับฟอร์มเพิ่มครู ----------------
+  const [showAddTeacher, setShowAddTeacher] = useState(false) // ตัวเปิด/ปิดฟอร์ม
+  const [addTeacherForm, setAddTeacherForm] = useState({
+    teacherId: '', teacherName: '', department: '', password: ''
+  })
+  const [addStatus, setAddStatus] = useState({ type: '', message: '' })
+  const [isAdding, setIsAdding] = useState(false)
 
   useEffect(() => {
     if (session?.role === 'admin') {
@@ -41,6 +50,8 @@ export default function AdminDashboard({ session, handleLogout }) {
   const handleTabChange = (tab) => {
     setActiveTab(tab)
     setIsMenuOpen(false)
+    setShowAddTeacher(false) // ปิดฟอร์มเมื่อเปลี่ยนแท็บ
+    setAddStatus({ type: '', message: '' }) 
   }
 
   const handleChangeRole = async (userId, currentRole) => {
@@ -51,10 +62,8 @@ export default function AdminDashboard({ session, handleLogout }) {
     alert('ปรับเปลี่ยนสิทธิ์สำเร็จ!')
   }
 
-  // ---------------- ฟังก์ชันการลบผู้ใช้ ----------------
   const handleDeleteUser = async (userId, name) => {
     if (!window.confirm(`⚠️ คำเตือน: คุณต้องการลบผู้ใช้ "${name}" ออกจากระบบจริงหรือไม่? ข้อมูลการส่งงานจะหายไปด้วย`)) return
-    
     const { error } = await supabase.from('profiles').delete().eq('id', userId)
     if (error) {
       alert(`ลบไม่ได้: ${error.message} (อาจมีข้อมูลส่งงานค้างอยู่)`)
@@ -64,7 +73,6 @@ export default function AdminDashboard({ session, handleLogout }) {
     }
   }
 
-  // ---------------- ฟังก์ชันเปิดฟอร์มแก้ไข ----------------
   const openEditModal = (user) => {
     setEditingUser(user)
     setEditForm({
@@ -77,7 +85,6 @@ export default function AdminDashboard({ session, handleLogout }) {
     })
   }
 
-  // ---------------- ฟังก์ชันบันทึกการแก้ไข ----------------
   const handleSaveEdit = async (e) => {
     e.preventDefault()
     const { error } = await supabase.from('profiles').update({
@@ -98,6 +105,50 @@ export default function AdminDashboard({ session, handleLogout }) {
     }
   }
 
+  const handleCreateTeacher = async (e) => {
+    e.preventDefault()
+    setIsAdding(true)
+    setAddStatus({ type: 'info', message: 'กำลังสร้างบัญชี...' })
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+    const adminAuthClient = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+    const emailToUse = `${addTeacherForm.teacherId}@wnytc.ac.th`
+
+    const { data: authData, error: authError } = await adminAuthClient.auth.signUp({
+      email: emailToUse,
+      password: addTeacherForm.password,
+    })
+
+    if (authError) {
+      setAddStatus({ type: 'danger', message: `❌ เกิดข้อผิดพลาด: ${authError.message}` })
+      setIsAdding(false)
+      return
+    }
+
+    if (authData.user) {
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: authData.user.id,
+        student_code: addTeacherForm.teacherId,
+        full_name: addTeacherForm.teacherName,
+        department: addTeacherForm.department,
+        grade_level: 'บุคลากร',
+        role: 'teacher'
+      })
+
+      if (profileError) {
+         setAddStatus({ type: 'danger', message: `❌ บันทึกข้อมูลไม่สำเร็จ: ${profileError.message}` })
+      } else {
+         setAddStatus({ type: 'success', message: `🎉 สร้างบัญชีครู "${addTeacherForm.teacherName}" สำเร็จ!` })
+         setAddTeacherForm({ teacherId: '', teacherName: '', department: '', password: '' })
+         fetchProfiles() 
+         // หน่วงเวลา 2 วินาทีแล้วปิดฟอร์มอัตโนมัติ
+         setTimeout(() => { setShowAddTeacher(false); setAddStatus({ type: '', message: '' }) }, 2000)
+      }
+    }
+    setIsAdding(false)
+  }
+
   const teachers = profiles.filter(p => p.role === 'teacher')
   const students = profiles.filter(p => p.role === 'student')
 
@@ -106,7 +157,7 @@ export default function AdminDashboard({ session, handleLogout }) {
   return (
     <div className="bg-light min-vh-100 pb-5">
       
-      {/* ---------------- โมดอลสำหรับแก้ไขข้อมูล (จะแสดงเมื่อกดปุ่มแก้ไข) ---------------- */}
+      {/* ---------------- โมดอลสำหรับแก้ไขข้อมูล ---------------- */}
       {editingUser && (
         <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
           <div className="bg-white rounded-4 shadow-lg p-4 w-100" style={{ maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -118,7 +169,6 @@ export default function AdminDashboard({ session, handleLogout }) {
                 <label className="form-label small fw-bold text-muted">ชื่อ - นามสกุล</label>
                 <input type="text" className="form-control bg-light border-0" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
               </div>
-              
               <div className="row mb-3">
                 <div className="col-6">
                   <label className="form-label small fw-bold text-muted">ชื่อเล่น</label>
@@ -129,25 +179,20 @@ export default function AdminDashboard({ session, handleLogout }) {
                   <input type="text" className="form-control bg-light border-0" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                 </div>
               </div>
-
               <div className="mb-3">
                 <label className="form-label small fw-bold text-muted">แผนกวิชา</label>
                 <input type="text" className="form-control bg-light border-0" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} placeholder="เช่น ช่างยนต์, คอมพิวเตอร์ธุรกิจ" />
               </div>
-
-              {/* แสดงระดับชั้น เฉพาะถ้านักเรียน */}
               {editingUser.role === 'student' && (
                 <div className="mb-3">
                   <label className="form-label small fw-bold text-muted">ระดับชั้น</label>
                   <input type="text" className="form-control bg-light border-0" value={editForm.grade_level} onChange={e => setEditForm({...editForm, grade_level: e.target.value})} placeholder="เช่น ปวช.1, ปวส.2" />
                 </div>
               )}
-
               <div className="mb-4">
                 <label className="form-label small fw-bold text-muted">ลิงก์รูปโปรไฟล์ (URL)</label>
                 <input type="url" className="form-control bg-light border-0" value={editForm.avatar_url} onChange={e => setEditForm({...editForm, avatar_url: e.target.value})} placeholder="วางลิงก์รูปภาพที่นี่..." />
               </div>
-
               <div className="d-flex gap-2">
                 <button type="button" onClick={() => setEditingUser(null)} className="btn btn-light w-50 rounded-pill fw-bold">ยกเลิก</button>
                 <button type="submit" className="btn btn-primary w-50 rounded-pill fw-bold shadow-sm">บันทึกข้อมูล</button>
@@ -163,7 +208,7 @@ export default function AdminDashboard({ session, handleLogout }) {
         <h4 className="fw-bold text-dark m-0 flex-grow-1">Admin Portal</h4>
       </div>
 
-      {/* Hamburger Menu (Offcanvas) */}
+      {/* Hamburger Menu */}
       {isMenuOpen && (
         <>
           <div className="offcanvas-backdrop fade show" style={{ display: 'block', zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
@@ -192,7 +237,6 @@ export default function AdminDashboard({ session, handleLogout }) {
                 <h5 className="fw-bold mb-1">ยินดีต้อนรับ, ผู้ดูแลระบบ 🛡️</h5>
                 <p className="mb-0 small">จัดการข้อมูลครูและนักเรียนทั้งหมดได้จากเมนูด้านซ้ายครับ</p>
              </div>
-             {/* ส่วนตัวเลขสถิติเดิม (ซ่อนโค้ดยาวเพื่อความอ่านง่าย แต่ของจริงยังอยู่ครับ) */}
              <div className="row g-3">
                <div className="col-6 col-md-3"><div className="card bg-primary bg-opacity-10 border-0 shadow-sm rounded-4 p-4 text-center h-100"><h5 className="fw-bold text-dark mb-1">ครูผู้สอน</h5><h2 className="display-6 fw-bold text-primary mb-0">{teachers.length}</h2></div></div>
                <div className="col-6 col-md-3"><div className="card bg-info bg-opacity-10 border-0 shadow-sm rounded-4 p-4 text-center h-100"><h5 className="fw-bold text-dark mb-1">ผู้เรียน</h5><h2 className="display-6 fw-bold text-info mb-0">{students.length}</h2></div></div>
@@ -238,10 +282,63 @@ export default function AdminDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* TAB 3: 👨‍🏫 จัดการครูผู้สอน */}
+        {/* TAB 3: 👨‍🏫 จัดการครูผู้สอน + รวมฟอร์มเพิ่มครูไว้ที่นี่ */}
         {activeTab === 'teachers' && (
           <div className="fade-in">
-            <h5 className="fw-bold mb-4 px-2">รายชื่อครูผู้สอนในระบบ ({teachers.length})</h5>
+            {/* ส่วนหัวและปุ่มเปิดฟอร์ม */}
+            <div className="d-flex justify-content-between align-items-center mb-4 px-2">
+              <h5 className="fw-bold mb-0">รายชื่อครูผู้สอน ({teachers.length})</h5>
+              <button 
+                onClick={() => setShowAddTeacher(!showAddTeacher)}
+                className={`btn fw-bold rounded-pill shadow-sm ${showAddTeacher ? 'btn-secondary' : 'btn-primary'}`}
+              >
+                {showAddTeacher ? '✖ ปิดหน้าต่าง' : '➕ เพิ่มบัญชีครู'}
+              </button>
+            </div>
+
+            {/* ส่วนที่ซ่อน/แสดง ฟอร์มเพิ่มบัญชีครู */}
+            {showAddTeacher && (
+              <div className="card shadow-sm border-0 rounded-4 mb-5 slide-down">
+                <div className="card-header bg-white border-0 pt-4 pb-0">
+                  <h5 className="fw-bold text-primary mb-1">ฟอร์มสร้างบัญชีบุคลากรใหม่</h5>
+                  <p className="text-muted small">ระบบจะสร้างบัญชีและกำหนดสิทธิ์เป็นครูอัตโนมัติ</p>
+                </div>
+                <div className="card-body p-4 pt-2">
+                  {addStatus.message && (
+                    <div className={`alert alert-${addStatus.type} text-center`} role="alert">
+                      {addStatus.message}
+                    </div>
+                  )}
+                  <form onSubmit={handleCreateTeacher}>
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label text-secondary small fw-bold">รหัสบุคลากร</label>
+                        <input type="text" className="form-control bg-light" value={addTeacherForm.teacherId} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherId: e.target.value})} required placeholder="เช่น T001" />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label text-secondary small fw-bold">ชื่อ - นามสกุล</label>
+                        <input type="text" className="form-control bg-light" value={addTeacherForm.teacherName} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherName: e.target.value})} required placeholder="เช่น นายสอนดี มีความรู้" />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label text-secondary small fw-bold">หมวดวิชา / แผนก</label>
+                        <input type="text" className="form-control bg-light" value={addTeacherForm.department} onChange={(e) => setAddTeacherForm({...addTeacherForm, department: e.target.value})} required placeholder="เช่น หมวดวิชาสามัญ (ภาษาอังกฤษ)" />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label text-secondary small fw-bold">รหัสผ่าน (ตั้งต้น)</label>
+                        <input type="text" className="form-control bg-light" value={addTeacherForm.password} onChange={(e) => setAddTeacherForm({...addTeacherForm, password: e.target.value})} required minLength="6" placeholder="ความยาวอย่างน้อย 6 ตัวอักษร" />
+                      </div>
+                      <div className="col-12 mt-4 text-end">
+                        <button type="submit" className="btn btn-primary px-5 fw-bold rounded-pill" disabled={isAdding}>
+                          {isAdding ? '⏳ กำลังประมวลผล...' : 'ยืนยันการสร้างบัญชี'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* ส่วนแสดงรายชื่อครู */}
             <div className="row g-3">
               {teachers.map(user => (
                 <div key={user.id} className="col-md-6 col-xl-4">
@@ -275,7 +372,7 @@ export default function AdminDashboard({ session, handleLogout }) {
         )}
 
       </div>
-      <style>{`.fade-in { animation: fadeIn 0.3s ease-in-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <style>{`.fade-in { animation: fadeIn 0.3s ease-in-out; } .slide-down { animation: slideDown 0.3s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } @keyframes slideDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   )
 }

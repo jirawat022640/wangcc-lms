@@ -23,7 +23,7 @@ export default function Login({ setSession }) {
         password,
       })
       if (error) alert('เข้าสู่ระบบไม่สำเร็จ: รหัสผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง')
-      else setSession(data.session)
+      else window.location.reload()
     } else {
       // ----------------- สมัครสมาชิก (แบบดึงข้อมูลอัตโนมัติ) -----------------
       
