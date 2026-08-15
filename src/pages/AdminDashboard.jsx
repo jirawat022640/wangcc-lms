@@ -32,8 +32,17 @@ export default function AdminDashboard({ session, handleLogout }) {
   }, [session])
 
   const fetchProfiles = async () => {
-    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-    if (data) setProfiles(data)
+    // ลบคำสั่ง order จัดเรียงออกไปก่อน และเพิ่มตัวดักจับ error (error แจ้งเตือน)
+    const { data, error } = await supabase.from('profiles').select('*')
+    
+    if (error) {
+      alert('ดึงข้อมูลไม่ได้ สาเหตุ: ' + error.message)
+      console.error(error)
+    }
+    
+    if (data) {
+      setProfiles(data)
+    }
   }
 
   const fetchAnalytics = async () => {
