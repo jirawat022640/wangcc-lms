@@ -9,13 +9,12 @@ export default function Login({ setSession }) {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
 
-  // สร้าง State สำหรับระบบแจ้งเตือน (แทนการใช้ alert ธรรมดา)
   const [alertMsg, setAlertMsg] = useState({ type: '', text: '' })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setAlertMsg({ type: '', text: '' }) // เคลียร์ข้อความเก่า
+    setAlertMsg({ type: '', text: '' }) 
     
     const emailToUse = identifier.includes('@') ? identifier : `${identifier}@wnytc.ac.th`
     const sCode = identifier.includes('@') ? '' : identifier
@@ -51,12 +50,15 @@ export default function Login({ setSession }) {
         setAlertMsg({ type: 'danger', text: `❌ สมัครสมาชิกไม่สำเร็จ: ${error.message}` })
       } else {
         if (data.user) {
-           await supabase.from('profiles').update({
+           // 🌟 แก้ไขตรงนี้: ใช้ upsert เพื่อสร้างข้อมูลโปรไฟล์ใหม่ พร้อมผูก ID และ Role
+           await supabase.from('profiles').upsert({
+              id: data.user.id,
               student_code: sCode,
               full_name: masterData ? masterData.full_name : fullName,
               department: masterData ? masterData.department : '',
-              grade_level: masterData ? masterData.grade_level : ''
-           }).eq('id', data.user.id)
+              grade_level: masterData ? masterData.grade_level : '',
+              role: 'student'
+           })
         }
         
         setAlertMsg({ 
@@ -80,7 +82,6 @@ export default function Login({ setSession }) {
       
       <div className="card border-0 rounded-4 overflow-hidden fade-in glass-card" style={{ maxWidth: '420px', width: '90%', zIndex: 2 }}>
         
-        {/* Header Section */}
         <div className="p-5 text-center pb-4 position-relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)' }}>
           <div className="position-absolute top-0 start-0 w-100 h-100" style={{ background: 'url("https://www.transparenttextures.com/patterns/cubes.png")', opacity: 0.3 }}></div>
           <img 
@@ -93,16 +94,13 @@ export default function Login({ setSession }) {
           <p className="text-muted small mb-0 position-relative fw-bold">วิทยาลัยเทคนิควังน้ำเย็น</p>
         </div>
 
-        {/* Tab Switcher */}
         <div className="d-flex bg-light p-1 mx-4 rounded-pill mb-4 mt-n3 shadow-sm position-relative" style={{ zIndex: 10, transform: 'translateY(-15px)' }}>
           <button type="button" onClick={() => {setIsLogin(true); setAlertMsg({type:'',text:''})}} className={`btn rounded-pill flex-grow-1 fw-bold transition-all py-2 ${isLogin ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'}`}>เข้าสู่ระบบ</button>
           <button type="button" onClick={() => {setIsLogin(false); setAlertMsg({type:'',text:''})}} className={`btn rounded-pill flex-grow-1 fw-bold transition-all py-2 ${!isLogin ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'}`}>สมัครสมาชิก</button>
         </div>
 
-        {/* Form Section */}
         <div className="card-body px-4 pb-5 pt-0">
           
-          {/* แจ้งเตือน */}
           {alertMsg.text && (
             <div className={`alert alert-${alertMsg.type} border-0 shadow-sm rounded-4 text-center small fw-bold slide-down py-2 mb-4`} role="alert">
               {alertMsg.text}
@@ -135,7 +133,6 @@ export default function Login({ setSession }) {
         </div>
       </div>
 
-      {/* Background Decorators */}
       <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style={{ zIndex: 1 }}>
         <div className="blob blob-1"></div>
         <div className="blob blob-2"></div>
