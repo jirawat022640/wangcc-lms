@@ -6,6 +6,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("analytics");
   const [assignSubTab, setAssignSubTab] = useState("create");
+  const [quizSubTab, setQuizSubTab] = useState("create"); 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const [courses, setCourses] = useState([]);
@@ -13,6 +14,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [submissions, setSubmissions] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
+  const [quizSubmissions, setQuizSubmissions] = useState([]); 
   const [enrollments, setEnrollments] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [viewingCourseStudents, setViewingCourseStudents] = useState(null);
@@ -31,7 +33,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [materialForm, setMaterialForm] = useState({ course_id: "", title: "", file: null, link: "" });
   const [uploading, setUploading] = useState(false);
 
-  // 🌟 ฟังก์ชันใหม่: ตัวกรองและให้คะแนนแบบกลุ่ม
   const [gradeFilter, setGradeFilter] = useState("");
   const [selectedSubIds, setSelectedSubIds] = useState([]);
   const [batchScore, setBatchScore] = useState("");
@@ -59,17 +60,69 @@ export default function TeacherDashboard({ session, handleLogout }) {
       const { data: eData } = await supabase.from("enrollments").select("course_id, profiles(student_code, full_name)").in("course_id", myCourseIds);
       if (eData) setEnrollments(eData);
 
-      const { data: aData } = await supabase.from("assignments").select("*, courses!inner(course_name, section, teacher_id)").eq("courses.teacher_id", session.user.id).order("created_at", { ascending: false });
+      // 🌟 ดึงข้อมูลงาน (Assignments)
+      const { data: aData } = await supabase.from("assignments")
+        .select("*, courses!inner(id, course_code, course_name, section, semester, credits, teacher_id)")
+        .eq("courses.teacher_id", session.user.id)
+        .order("created_at", { ascending: false });
+      
       if (aData) setAssignments(aData);
 
-      const { data: sData } = await supabase.from("submissions").select("*, profiles!inner(student_code, full_name), assignments!inner(title, courses!inner(course_name, section, semester, credits, teacher_id))").eq("assignments.courses.teacher_id", session.user.id).order("created_at", { ascending: false });
-      if (sData) setSubmissions(sData);
+      // 🌟 แก้ไขระบบดึงการส่งงาน: ดึงขึ้นมาตรงๆ แล้วจับคู่เองเพื่อป้องกันฐานข้อมูล Block
+      const myAssignIds = aData ? aData.map(a => a.id) : [];
+      if (myAssignIds.length > 0) {
+        const { data: sData } = await supabase
+          .from("submissions")
+          .select("*, profiles(student_code, full_name)")
+          .in("assignment_id", myAssignIds)
+          .order("created_at", { ascending: false });
+          
+        if (sData) {
+          // นำข้อมูลงาน (aData) มาประกอบร่างเข้ากับการส่งงาน (sData) ด้วยตนเอง
+          const enrichedSubmissions = sData.map(sub => {
+            const assign = aData.find(a => a.id === sub.assignment_id);
+            return { ...sub, assignments: assign };
+          });
+          setSubmissions(enrichedSubmissions);
+        } else {
+          setSubmissions([]);
+        }
+      } else {
+        setSubmissions([]);
+      }
 
       const { data: mData } = await supabase.from("materials").select("*, courses!inner(course_name, section, teacher_id)").eq("courses.teacher_id", session.user.id).order("created_at", { ascending: false });
       if (mData) setMaterials(mData);
 
-      const { data: qData } = await supabase.from("quizzes").select("*, courses!inner(course_name, section, teacher_id)").eq("courses.teacher_id", session.user.id).order("created_at", { ascending: false });
+      // 🌟 ดึงข้อมูลแบบทดสอบ (Quizzes)
+      const { data: qData } = await supabase.from("quizzes")
+        .select("*, courses!inner(id, course_code, course_name, section, semester, teacher_id)")
+        .eq("courses.teacher_id", session.user.id)
+        .order("created_at", { ascending: false });
+      
       if (qData) setQuizzes(qData);
+
+      // 🌟 แก้ไขระบบดึงคะแนนสอบในวิธีเดียวกัน
+      const myQuizIds = qData ? qData.map(q => q.id) : [];
+      if (myQuizIds.length > 0) {
+        const { data: qsData } = await supabase
+          .from("quiz_submissions")
+          .select("*, profiles(student_code, full_name)")
+          .in("quiz_id", myQuizIds)
+          .order("created_at", { ascending: false });
+          
+        if (qsData) {
+          const enrichedQS = qsData.map(qs => {
+            const quiz = qData.find(q => q.id === qs.quiz_id);
+            return { ...qs, quizzes: quiz };
+          });
+          setQuizSubmissions(enrichedQS);
+        } else {
+          setQuizSubmissions([]);
+        }
+      } else {
+        setQuizSubmissions([]);
+      }
     }
   };
 
@@ -116,7 +169,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     alert("สั่งงานสำเร็จ"); 
   };
 
-  // 🌟 ฟังก์ชันใหม่: โคลนคำสั่งงานจากของเดิม
   const handleCloneAssignment = (e) => {
     const id = e.target.value;
     if (!id) {
@@ -150,7 +202,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     alert("สร้างแบบทดสอบสำเร็จ"); 
   };
 
-  // 🌟 ฟังก์ชันใหม่: โคลนชุดข้อสอบจากของเดิม
   const handleCloneQuiz = (e) => {
     const id = e.target.value;
     if (!id) {
@@ -161,7 +212,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
     const target = quizzes.find(q => q.id === id);
     if (target) {
       setQuizForm(prev => ({ ...prev, title: target.title }));
-      setQuestions(JSON.parse(JSON.stringify(target.questions))); // สำเนาข้อมูลชุดคำถามทั้งหมด
+      setQuestions(JSON.parse(JSON.stringify(target.questions))); 
     }
   };
 
@@ -221,7 +272,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     alert("บันทึกคะแนนสำเร็จ"); 
   };
 
-  // 🌟 ฟังก์ชันใหม่: บันทึกคะแนนแบบกลุ่ม (Batch Grading)
   const handleBatchGradeSubmit = async (e) => {
     e.preventDefault();
     if (selectedSubIds.length === 0) return alert("กรุณาเลือกงานที่ต้องการให้คะแนน");
@@ -284,33 +334,61 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const updateOption = (qIndex, optIndex, value) => { const newQs = [...questions]; newQs[qIndex].options[optIndex] = value; setQuestions(newQs); };
   
   const handleExportCSV = () => { 
-    if (submissions.length === 0) return alert("ยังไม่มีข้อมูล"); 
+    if (submissions.length === 0) return alert("ยังไม่มีข้อมูลส่งงาน"); 
     let csvContent = "\uFEFFภาคเรียน,รหัสวิชา,วิชา,หน่วยกิต,กลุ่มเรียน/แผนก,ชิ้นงาน,รหัสนักศึกษา,ชื่อ-นามสกุล,คะแนน,สถานะ\n"; 
     
     submissions.forEach((sub) => { 
-      const course = sub.assignments.courses; 
+      const course = sub.assignments?.courses || {}; 
       const status = sub.score !== null ? "ตรวจแล้ว" : "รอดำเนินการ"; 
-      csvContent += `"${course.semester || "-"}","${course.course_code || "-"}","${course.course_name}","${course.credits || "-"}","${course.section}","${sub.assignments.title}","${sub.profiles?.student_code || "ไม่มีรหัส"}","${sub.profiles?.full_name || "ไม่ระบุชื่อ"}","${sub.score !== null ? sub.score : "รอตรวจ"}","${status}"\n`; 
+      csvContent += `"${course.semester || "-"}","${course.course_code || "-"}","${course.course_name || "-"}","${course.credits || "-"}","${course.section || "-"}","${sub.assignments?.title || "-"}","${sub.profiles?.student_code || "ไม่มีรหัส"}","${sub.profiles?.full_name || "ไม่ระบุชื่อ"}","${sub.score !== null ? sub.score : "รอตรวจ"}","${status}"\n`; 
     }); 
     
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" }); 
     const link = document.createElement("a"); 
     link.setAttribute("href", URL.createObjectURL(blob)); 
-    link.setAttribute("download", `สรุปคะแนน_${new Date().toISOString().split("T")[0]}.csv`); 
+    link.setAttribute("download", `สรุปคะแนนงาน_${new Date().toISOString().split("T")[0]}.csv`); 
     document.body.appendChild(link); 
     link.click(); 
     document.body.removeChild(link); 
   };
 
+  const handleExportQuizCSV = () => {
+    if (quizSubmissions.length === 0) return alert("ยังไม่มีข้อมูลคะแนนสอบ");
+    let csvContent = "\uFEFFภาคเรียน,รหัสวิชา,วิชา,กลุ่มเรียน/แผนก,แบบทดสอบ,รหัสนักศึกษา,ชื่อ-นามสกุล,คะแนนที่ได้,คะแนนเต็ม\n";
+    
+    quizSubmissions.forEach((qs) => {
+      const course = qs.quizzes?.courses || {};
+      csvContent += `"${course.semester || "-"}","${course.course_code || "-"}","${course.course_name || "-"}","${course.section || "-"}","${qs.quizzes?.title || "-"}","${qs.profiles?.student_code || "-"}","${qs.profiles?.full_name || "-"}","${qs.score}","${qs.total_score}"\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.setAttribute("href", URL.createObjectURL(blob));
+    link.setAttribute("download", `สรุปคะแนนสอบ_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getFileIcon = (url) => {
+    if (!url) return '🔗';
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('.pdf')) return '📕';
+    if (lowerUrl.includes('.doc') || lowerUrl.includes('.docx')) return '📝';
+    if (lowerUrl.includes('.xls') || lowerUrl.includes('.xlsx')) return '📊';
+    if (lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx')) return '📽️';
+    if (lowerUrl.includes('.jpg') || lowerUrl.includes('.png') || lowerUrl.includes('.jpeg')) return '🖼️';
+    return '📎';
+  };
+
   const gradedCount = submissions.filter((s) => s.score !== null).length;
   const ungradedCount = submissions.filter((s) => s.score === null).length;
 
-  // 🌟 ประมวลผลตัวกรองวิชาและแผนกในหน้าตรวจงาน
   const filteredSubmissions = gradeFilter 
-    ? submissions.filter(s => `${s.assignments.courses.course_name} (${s.assignments.courses.section})` === gradeFilter)
+    ? submissions.filter(s => `${s.assignments?.courses?.course_name} (${s.assignments?.courses?.section})` === gradeFilter)
     : submissions;
   const ungradedFiltered = filteredSubmissions.filter((s) => s.score === null);
-  const gradeFilterOptions = Array.from(new Set(submissions.map(s => `${s.assignments.courses.course_name} (${s.assignments.courses.section})`)));
+  const gradeFilterOptions = Array.from(new Set(submissions.map(s => `${s.assignments?.courses?.course_name} (${s.assignments?.courses?.section})`)));
 
   const selectAllFiltered = () => {
     const allIds = ungradedFiltered.map(s => s.id);
@@ -350,9 +428,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
               {[
                 { id: 'analytics', icon: '📊', label: 'สถิติภาพรวม' }, 
                 { id: 'courses', icon: '📚', label: 'จัดการวิชาเรียน' }, 
-                { id: 'materials', icon: '📎', label: 'เอกสารประกอบ' }, 
+                { id: 'materials', icon: '📂', label: 'เอกสารประกอบ' }, 
                 { id: 'assignments', icon: '📝', label: 'งานและให้คะแนน' }, 
-                { id: 'quizzes', icon: '✍️', label: 'สร้างแบบทดสอบ' }, 
+                { id: 'quizzes', icon: '✍️', label: 'แบบทดสอบและคะแนน' }, 
                 { id: 'profile', icon: '👤', label: 'บัญชีของฉัน' }
               ].map(item => (
                 <button key={item.id} className={`btn text-start fw-bold py-3 px-4 rounded-4 transition-all ${activeTab === item.id ? "bg-success bg-opacity-10 text-success" : "bg-white text-muted border-0 hover-bg-light"}`} onClick={() => handleTabChange(item.id)}>
@@ -394,7 +472,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                   <p className="text-white-50 mb-0">ยินดีต้อนรับกลับสู่ระบบการจัดการเรียนการสอน</p>
                 </div>
                 <button onClick={handleExportCSV} className="btn btn-light text-success fw-bold rounded-pill px-4 py-3 shadow-sm d-flex align-items-center gap-2">
-                  <span>📥</span> โหลดคะแนน (CSV)
+                  <span>📥</span> โหลดคะแนนงาน (CSV)
                 </button>
               </div>
             </div>
@@ -565,7 +643,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* TAB 3: 📎 เอกสาร */}
+        {/* TAB 3: 📂 เอกสาร */}
         {activeTab === "materials" && (
           <div className="fade-in row g-4">
             <div className="col-lg-5">
@@ -583,7 +661,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                     </select>
                     <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="ชื่อเอกสาร" value={materialForm.title} onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })} required />
                     {uploadMode === "file" ? (
-                      <input type="file" className="form-control custom-input bg-light border-0 rounded-4 p-3" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" onChange={(e) => setMaterialForm({ ...materialForm, file: e.target.files[0] })} required />
+                      <input type="file" className="form-control custom-input bg-light border-0 rounded-4 p-3" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.png" onChange={(e) => setMaterialForm({ ...materialForm, file: e.target.files[0] })} required />
                     ) : (
                       <input type="url" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="https://..." value={materialForm.link} onChange={(e) => setMaterialForm({ ...materialForm, link: e.target.value })} required />
                     )}
@@ -601,7 +679,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
                 {materials.length === 0 && <p className="text-muted">ยังไม่มีเอกสาร</p>}
                 {materials.map((m) => (
                   <div key={m.id} className="bg-white shadow-sm rounded-4 p-3 d-flex flex-row align-items-center gap-3 hover-card">
-                    <div className="bg-success bg-opacity-10 text-success rounded-3 d-flex align-items-center justify-content-center fs-4 p-3" style={{ flexShrink: 0 }}>📎</div>
+                    <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="bg-success bg-opacity-10 text-success rounded-3 d-flex align-items-center justify-content-center fs-4 p-3 text-decoration-none" style={{ flexShrink: 0, transition: '0.2s' }}>
+                      {getFileIcon(m.file_url)}
+                    </a>
                     <div className="flex-grow-1 overflow-hidden">
                       {editingMaterial?.id === m.id ? (
                         <form onSubmit={handleUpdateMaterial} className="d-flex gap-2">
@@ -610,8 +690,10 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         </form>
                       ) : (
                         <>
-                          <h6 className="fw-bold mb-1 text-dark text-truncate">{m.title}</h6>
-                          <p className="text-muted small mb-0 text-truncate">{m.courses.course_name}</p>
+                          <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                            <h6 className="fw-bold mb-1 text-dark text-truncate hover-primary" style={{ transition: 'color 0.2s' }}>{m.title}</h6>
+                          </a>
+                          <p className="text-muted small mb-0 text-truncate">{m.courses?.course_name || "-"}</p>
                         </>
                       )}
                     </div>
@@ -646,13 +728,12 @@ export default function TeacherDashboard({ session, handleLogout }) {
                     <div className="card-body p-4">
                       <h5 className="fw-bold mb-4 text-dark">สร้างคำสั่งงาน</h5>
                       
-                      {/* 🌟 ฟังก์ชันใหม่: ดึงข้อมูลงานเก่ามาคัดลอก (Clone) */}
                       {assignments.length > 0 && (
                         <div className="mb-3 p-3 bg-light rounded-4 border">
                           <label className="form-label small fw-bold text-success mb-2">🔄 คัดลอกโจทย์จากงานเดิม</label>
                           <select className="form-select border-0 shadow-sm rounded-3" onChange={handleCloneAssignment}>
                             <option value="">-- เลือกงานที่เคยสร้างไว้ --</option>
-                            {assignments.map(a => <option key={a.id} value={a.id}>{a.courses.course_name} : {a.title}</option>)}
+                            {assignments.map(a => <option key={a.id} value={a.id}>{a.courses?.course_name} : {a.title}</option>)}
                           </select>
                         </div>
                       )}
@@ -677,7 +758,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         <div className="bg-success" style={{ width: "8px" }}></div>
                         <div className="p-4 flex-grow-1">
                           <div className="d-flex justify-content-between align-items-start mb-2">
-                            <span className="badge bg-light text-success border px-3 py-2 rounded-pill">{a.courses.course_name} ({a.courses.section})</span>
+                            <span className="badge bg-light text-success border px-3 py-2 rounded-pill">{a.courses?.course_name} ({a.courses?.section})</span>
                             <button onClick={() => handleDeleteAssignment(a.id)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
                           </div>
                           <h5 className="fw-bold mb-2 text-dark">{a.title}</h5>
@@ -699,14 +780,12 @@ export default function TeacherDashboard({ session, handleLogout }) {
                       <span className="badge bg-warning text-dark rounded-pill fs-6">{ungradedCount} งาน</span>
                     </h5>
                     
-                    {/* 🌟 ฟังก์ชันใหม่: ตัวกรองแผนกวิชา */}
                     <select className="form-select border-2 border-light bg-light rounded-pill fw-bold text-dark shadow-sm" style={{ maxWidth: '300px' }} value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
                       <option value="">ทั้งหมด ({submissions.length} รายการ)</option>
                       {gradeFilterOptions.map((opt, idx) => <option key={idx} value={opt}>{opt}</option>)}
                     </select>
                   </div>
 
-                  {/* 🌟 ฟังก์ชันใหม่: แถบเครื่องมือตรวจงานแบบกลุ่ม (Batch Grade Bar) */}
                   {gradeFilter && ungradedFiltered.length > 0 && (
                     <div className="bg-success bg-opacity-10 border border-success border-opacity-25 rounded-4 p-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 slide-down">
                       <div className="d-flex align-items-center gap-2">
@@ -731,7 +810,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         <div key={sub.id} className="col-12 col-xl-6">
                           <div className={`border rounded-4 p-4 h-100 d-flex flex-column transition-all position-relative ${sub.score !== null ? 'border-success bg-success bg-opacity-10' : 'border-warning bg-white shadow-sm hover-card'} ${selectedSubIds.includes(sub.id) ? 'border-2 border-primary shadow-lg' : ''}`}>
                             
-                            {/* 🌟 ฟังก์ชันใหม่: Checkbox สำหรับเลือกตรวจงานแบบกลุ่ม */}
                             {sub.score === null && (
                                <div className="position-absolute top-0 end-0 p-3 z-2">
                                   <input type="checkbox" className="form-check-input shadow-sm" style={{ width: '25px', height: '25px', cursor: 'pointer' }} checked={selectedSubIds.includes(sub.id)} onChange={() => toggleSubSelection(sub.id)} />
@@ -740,7 +818,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
                             <div className="d-flex justify-content-between align-items-start mb-3 pe-4">
                               <div>
-                                <span className="badge bg-dark text-white rounded-pill px-3 py-2 me-2">{sub.assignments.courses.section}</span>
+                                <span className="badge bg-dark text-white rounded-pill px-3 py-2 me-2">{sub.assignments?.courses?.section || "-"}</span>
                                 <span className="badge bg-light text-dark border rounded-pill px-3 py-2">{sub.profiles?.student_code || "-"}</span>
                                 <div className="fw-bold text-dark mt-2 fs-5">{sub.profiles?.full_name || "ไม่ระบุชื่อ"}</div>
                               </div>
@@ -751,7 +829,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                               )}
                             </div>
                             <div className="bg-light rounded-4 p-3 mb-4 flex-grow-1">
-                              <strong className="text-success small d-block mb-2 border-bottom pb-2">{sub.assignments.courses.course_name} : {sub.assignments.title}</strong>
+                              <strong className="text-success small d-block mb-2 border-bottom pb-2">{sub.assignments?.courses?.course_name || "-"} : {sub.assignments?.title || "-"}</strong>
                               <p className="mb-0 text-dark lh-base">"{sub.submitted_text}"</p>
                             </div>
                             {sub.score === null && !selectedSubIds.includes(sub.id) && (
@@ -771,81 +849,135 @@ export default function TeacherDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* TAB 5: 📝 สร้างแบบทดสอบ */}
+        {/* TAB 5: 📝 สร้างแบบทดสอบ และ 📊 ดูคะแนนสอบ */}
         {activeTab === "quizzes" && (
           <div className="fade-in">
-            <div className="card border-0 shadow-sm rounded-4 mb-5 bg-white">
-              <div className="card-body p-4 p-md-5">
-                <h5 className="fw-bold mb-4 text-dark">✨ สร้างแบบทดสอบใหม่</h5>
-                
-                {/* 🌟 ฟังก์ชันใหม่: ดึงข้อสอบเก่ามาคัดลอก (Clone) */}
-                {quizzes.length > 0 && (
-                  <div className="mb-4 p-3 bg-light rounded-4 border">
-                    <label className="form-label small fw-bold text-success mb-2">🔄 คัดลอกชุดคำถามจากข้อสอบเดิม</label>
-                    <select className="form-select border-0 shadow-sm rounded-3" onChange={handleCloneQuiz}>
-                      <option value="">-- เลือกข้อสอบที่เคยสร้างไว้ --</option>
-                      {quizzes.map(q => <option key={q.id} value={q.id}>{q.courses.course_name} : {q.title}</option>)}
-                    </select>
-                  </div>
-                )}
+            <div className="d-flex bg-white p-1 rounded-pill shadow-sm mb-4 mx-auto" style={{ maxWidth: "400px" }}>
+              <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "create" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => setQuizSubTab("create")}>➕ สร้างข้อสอบ</button>
+              <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "scores" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => setQuizSubTab("scores")}>📊 ดูคะแนนสอบ</button>
+            </div>
 
-                <form onSubmit={handleCreateQuiz}>
-                  <div className="row g-3 mb-4">
-                    <div className="col-md-6">
-                      <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary fw-bold" value={quizForm.course_id} onChange={(e) => setQuizForm({ ...quizForm, course_id: e.target.value })} required>
-                        <option value="">-- เลือกรายวิชา --</option>
-                        {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="หัวข้อแบบทดสอบ" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} required />
-                    </div>
-                  </div>
-                  
-                  <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2"><span>📋</span> ชุดคำถาม</h6>
-                  {questions.map((q, qIndex) => (
-                    <div key={qIndex} className="bg-light p-4 rounded-4 mb-4 position-relative border slide-down">
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <span className="fw-bold text-success bg-white px-3 py-1 rounded-pill shadow-sm">ข้อที่ {qIndex + 1}</span>
-                        {questions.length > 1 && (
-                          <button type="button" className="btn btn-white text-danger btn-sm rounded-pill shadow-sm px-3 fw-bold" onClick={() => setQuestions(questions.filter((_, i) => i !== qIndex))}>ลบข้อนี้</button>
-                        )}
+            {quizSubTab === "create" && (
+              <>
+                <div className="card border-0 shadow-sm rounded-4 mb-5 bg-white">
+                  <div className="card-body p-4 p-md-5">
+                    <h5 className="fw-bold mb-4 text-dark">✨ สร้างแบบทดสอบใหม่</h5>
+                    
+                    {quizzes.length > 0 && (
+                      <div className="mb-4 p-3 bg-light rounded-4 border">
+                        <label className="form-label small fw-bold text-success mb-2">🔄 คัดลอกชุดคำถามจากข้อสอบเดิม</label>
+                        <select className="form-select border-0 shadow-sm rounded-3" onChange={handleCloneQuiz}>
+                          <option value="">-- เลือกข้อสอบที่เคยสร้างไว้ --</option>
+                          {quizzes.map(q => <option key={q.id} value={q.id}>{q.courses?.course_name} : {q.title}</option>)}
+                        </select>
                       </div>
-                      <input type="text" className="form-control custom-input border-0 rounded-4 p-3 mb-4 shadow-sm" placeholder="พิมพ์โจทย์คำถาม..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
-                      <div className="row g-3">
-                        {q.options.map((opt, optIndex) => (
-                          <div key={optIndex} className="col-md-6">
-                            <div className={`d-flex align-items-center gap-3 border rounded-4 p-2 bg-white transition-all ${q.correctOption === optIndex ? "border-success border-2 shadow-sm bg-success bg-opacity-10" : "border-light"}`}>
-                              <input className="form-check-input mt-0 ms-2" type="radio" name={`correct-${qIndex}`} style={{ width: "24px", height: "24px" }} checked={q.correctOption === optIndex} onChange={() => updateQuestion(qIndex, "correctOption", optIndex)} />
-                              <input type="text" className="form-control border-0 bg-transparent fw-bold" placeholder={`ตัวเลือกที่ ${optIndex + 1}`} value={opt} onChange={(e) => updateOption(qIndex, optIndex, e.target.value)} required />
-                            </div>
+                    )}
+
+                    <form onSubmit={handleCreateQuiz}>
+                      <div className="row g-3 mb-4">
+                        <div className="col-md-6">
+                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary fw-bold" value={quizForm.course_id} onChange={(e) => setQuizForm({ ...quizForm, course_id: e.target.value })} required>
+                            <option value="">-- เลือกรายวิชา --</option>
+                            {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
+                          </select>
+                        </div>
+                        <div className="col-md-6">
+                          <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="หัวข้อแบบทดสอบ" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} required />
+                        </div>
+                      </div>
+                      
+                      <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2"><span>📋</span> ชุดคำถาม</h6>
+                      {questions.map((q, qIndex) => (
+                        <div key={qIndex} className="bg-light p-4 rounded-4 mb-4 position-relative border slide-down">
+                          <div className="d-flex justify-content-between align-items-center mb-3">
+                            <span className="fw-bold text-success bg-white px-3 py-1 rounded-pill shadow-sm">ข้อที่ {qIndex + 1}</span>
+                            {questions.length > 1 && (
+                              <button type="button" className="btn btn-white text-danger btn-sm rounded-pill shadow-sm px-3 fw-bold" onClick={() => setQuestions(questions.filter((_, i) => i !== qIndex))}>ลบข้อนี้</button>
+                            )}
                           </div>
-                        ))}
+                          <input type="text" className="form-control custom-input border-0 rounded-4 p-3 mb-4 shadow-sm" placeholder="พิมพ์โจทย์คำถาม..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
+                          <div className="row g-3">
+                            {q.options.map((opt, optIndex) => (
+                              <div key={optIndex} className="col-md-6">
+                                <div className={`d-flex align-items-center gap-3 border rounded-4 p-2 bg-white transition-all ${q.correctOption === optIndex ? "border-success border-2 shadow-sm bg-success bg-opacity-10" : "border-light"}`}>
+                                  <input className="form-check-input mt-0 ms-2" type="radio" name={`correct-${qIndex}`} style={{ width: "24px", height: "24px" }} checked={q.correctOption === optIndex} onChange={() => updateQuestion(qIndex, "correctOption", optIndex)} />
+                                  <input type="text" className="form-control border-0 bg-transparent fw-bold" placeholder={`ตัวเลือกที่ ${optIndex + 1}`} value={opt} onChange={(e) => updateOption(qIndex, optIndex, e.target.value)} required />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="d-flex flex-column flex-md-row gap-3 mt-4">
+                        <button type="button" className="btn btn-light text-success border border-success rounded-pill fw-bold py-3 px-5 custom-btn-outline" onClick={addQuestion}>+ เพิ่มโจทย์ข้อต่อไป</button>
+                        <button type="submit" className="btn btn-success rounded-pill fw-bold flex-grow-1 py-3 shadow-sm custom-btn">💾 บันทึกแบบทดสอบ</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+                
+                <h5 className="fw-bold mb-3 text-dark">แบบทดสอบที่สร้างไว้แล้ว</h5>
+                <div className="row g-3">
+                  {quizzes.length === 0 && <p className="text-muted">ยังไม่มีแบบทดสอบ</p>}
+                  {quizzes.map((q) => (
+                    <div key={q.id} className="col-md-6 col-lg-4">
+                      <div className="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white hover-card">
+                        <strong className="text-success small mb-3 bg-success bg-opacity-10 d-inline-block px-3 py-2 rounded-pill align-self-start">{q.courses?.course_name || "-"} ({q.courses?.section || "-"})</strong>
+                        <span className="fw-bold fs-5 mb-2 text-dark">{q.title}</span>
+                        <span className="text-muted small mt-auto fw-bold">จำนวน {q.questions.length} ข้อ</span>
                       </div>
                     </div>
                   ))}
-                  
-                  <div className="d-flex flex-column flex-md-row gap-3 mt-4">
-                    <button type="button" className="btn btn-light text-success border border-success rounded-pill fw-bold py-3 px-5 custom-btn-outline" onClick={addQuestion}>+ เพิ่มโจทย์ข้อต่อไป</button>
-                    <button type="submit" className="btn btn-success rounded-pill fw-bold flex-grow-1 py-3 shadow-sm custom-btn">💾 บันทึกแบบทดสอบ</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-            
-            <h5 className="fw-bold mb-3 text-dark">แบบทดสอบที่สร้างไว้แล้ว</h5>
-            <div className="row g-3">
-              {quizzes.length === 0 && <p className="text-muted">ยังไม่มีแบบทดสอบ</p>}
-              {quizzes.map((q) => (
-                <div key={q.id} className="col-md-6 col-lg-4">
-                  <div className="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white hover-card">
-                    <strong className="text-success small mb-3 bg-success bg-opacity-10 d-inline-block px-3 py-2 rounded-pill align-self-start">{q.courses.course_name} ({q.courses.section})</strong>
-                    <span className="fw-bold fs-5 mb-2 text-dark">{q.title}</span>
-                    <span className="text-muted small mt-auto fw-bold">จำนวน {q.questions.length} ข้อ</span>
-                  </div>
                 </div>
-              ))}
-            </div>
+              </>
+            )}
+
+            {quizSubTab === "scores" && (
+               <div className="card border-0 shadow-sm rounded-4 bg-white slide-up">
+                 <div className="card-body p-4 p-md-5">
+                   <div className="d-flex justify-content-between align-items-center mb-4">
+                     <h5 className="fw-bold m-0 text-dark">ผลคะแนนแบบทดสอบ (ตรวจอัตโนมัติ)</h5>
+                     <button onClick={handleExportQuizCSV} className="btn btn-success rounded-pill fw-bold px-4 shadow-sm">
+                       📥 โหลดคะแนนสอบ (CSV)
+                     </button>
+                   </div>
+                   
+                   {quizSubmissions.length === 0 ? (
+                     <div className="text-center text-muted py-5"><span className="fs-1 d-block mb-3">📭</span>ยังไม่มีนักเรียนส่งข้อสอบ</div>
+                   ) : (
+                     <div className="table-responsive rounded-4 border">
+                       <table className="table table-hover align-middle mb-0">
+                         <thead className="table-light">
+                           <tr>
+                             <th className="px-4 py-3">วิชา / กลุ่ม</th>
+                             <th className="py-3">ชื่อแบบทดสอบ</th>
+                             <th className="py-3">รหัสนักศึกษา</th>
+                             <th className="py-3">ชื่อ - นามสกุล</th>
+                             <th className="text-center py-3">คะแนนที่ได้</th>
+                           </tr>
+                         </thead>
+                         <tbody>
+                           {quizSubmissions.map(qs => (
+                             <tr key={qs.id}>
+                               <td className="px-4 fw-bold text-secondary">{qs.quizzes?.courses?.course_name || "-"} <br/><small className="text-muted">({qs.quizzes?.courses?.section || "-"})</small></td>
+                               <td className="text-dark">{qs.quizzes?.title || "-"}</td>
+                               <td>{qs.profiles?.student_code || "-"}</td>
+                               <td className="fw-bold text-dark">{qs.profiles?.full_name || "ไม่ระบุชื่อ"}</td>
+                               <td className="text-center">
+                                 <span className="badge bg-success rounded-pill px-3 py-2 fs-6 shadow-sm">
+                                   {qs.score} / {qs.total_score}
+                                 </span>
+                               </td>
+                             </tr>
+                           ))}
+                         </tbody>
+                       </table>
+                     </div>
+                   )}
+                 </div>
+               </div>
+            )}
           </div>
         )}
 
@@ -892,6 +1024,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
         .custom-btn { transition: all 0.3s; } 
         .custom-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(25, 135, 84, 0.3) !important; } 
         .custom-btn-outline:hover { background-color: rgba(25, 135, 84, 0.1); } 
+        .hover-primary:hover { color: #198754 !important; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } 
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } 
         @keyframes slideDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
