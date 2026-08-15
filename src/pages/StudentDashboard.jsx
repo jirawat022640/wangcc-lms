@@ -4,11 +4,9 @@ import { supabase } from '../supabaseClient'
 
 export default function StudentDashboard({ session, handleLogout }) {
   const navigate = useNavigate()
-  // เมนูหลัก: home, classroom, tasks, profile
   const [activeTab, setActiveTab] = useState('home') 
-  // เมนูย่อย
-  const [classSubTab, setClassSubTab] = useState('enroll') // enroll, materials
-  const [taskSubTab, setTaskSubTab] = useState('assignments') // assignments, quizzes
+  const [classSubTab, setClassSubTab] = useState('enroll') 
+  const [taskSubTab, setTaskSubTab] = useState('assignments') 
 
   const [allCourses, setAllCourses] = useState([])
   const [enrolledCourses, setEnrolledCourses] = useState([])
@@ -31,7 +29,8 @@ export default function StudentDashboard({ session, handleLogout }) {
     const { data: pData } = await supabase.from('profiles').select('full_name').eq('id', session.user.id).single()
     if (pData?.full_name) setProfileName(pData.full_name)
 
-    const { data: cData } = await supabase.from('courses').select('*').order('created_at', { ascending: false })
+    // อัปเดต: ดึงข้อมูลชื่อครูผู้สอน (profiles) มาด้วย
+    const { data: cData } = await supabase.from('courses').select('*, profiles(full_name)').order('created_at', { ascending: false })
     if (cData) setAllCourses(cData)
 
     const { data: eData } = await supabase.from('enrollments').select('course_id').eq('student_id', session.user.id)
@@ -101,29 +100,19 @@ export default function StudentDashboard({ session, handleLogout }) {
 
   return (
     <div className="bg-light min-vh-100 pb-5" style={{ paddingBottom: '80px' }}>
-      
-      {/* Top Header */}
       <div className="bg-white shadow-sm sticky-top px-4 py-3 d-flex justify-content-between align-items-center mb-4">
         <h4 className="fw-bold text-primary m-0">LMS Portal</h4>
-        <button onClick={handleLogout} className="btn btn-light text-danger rounded-pill fw-bold px-3 py-2 border-0">
-          ออกจากระบบ
-        </button>
+        <button onClick={handleLogout} className="btn btn-light text-danger rounded-pill fw-bold px-3 py-2 border-0">ออกจากระบบ</button>
       </div>
 
       <div className="container">
-        
-        {/* Risk Alert (Modern Banner) */}
         {isAtRisk && !takingQuiz && (
           <div className="alert alert-danger border-0 shadow-sm rounded-4 d-flex align-items-center gap-3 p-3 mb-4">
             <div className="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center" style={{width:'40px', height:'40px'}}>⚠️</div>
-            <div>
-              <h6 className="fw-bold mb-1">สถานะการเรียนน่าเป็นห่วง!</h6>
-              <p className="mb-0 small">คุณมีงานค้าง {missingCount} ชิ้น หรือคะแนนต่ำกว่าเกณฑ์ รีบเคลียร์งานด่วนครับ</p>
-            </div>
+            <div><h6 className="fw-bold mb-1">สถานะการเรียนน่าเป็นห่วง!</h6><p className="mb-0 small">คุณมีงานค้าง {missingCount} ชิ้น หรือคะแนนต่ำกว่าเกณฑ์ รีบเคลียร์งานด่วนครับ</p></div>
           </div>
         )}
 
-        {/* Quiz Taking Mode (ทับหน้าจอทั้งหมด) */}
         {takingQuiz ? (
           <div className="card shadow-sm border-0 rounded-4 overflow-hidden mb-5">
             <div className="bg-danger text-white p-4">
@@ -152,7 +141,6 @@ export default function StudentDashboard({ session, handleLogout }) {
           </div>
         ) : (
           <>
-            {/* Desktop Navigation (ซ่อนในมือถือ) */}
             <div className="d-none d-md-flex gap-2 mb-4 bg-white p-2 rounded-pill shadow-sm w-100">
               <button className={`btn rounded-pill flex-grow-1 fw-bold ${activeTab === 'home' ? 'btn-primary shadow-sm' : 'btn-white text-muted'}`} onClick={() => setActiveTab('home')}>🏠 หน้าหลัก</button>
               <button className={`btn rounded-pill flex-grow-1 fw-bold ${activeTab === 'classroom' ? 'btn-primary shadow-sm' : 'btn-white text-muted'}`} onClick={() => setActiveTab('classroom')}>📚 ห้องเรียน</button>
@@ -168,35 +156,16 @@ export default function StudentDashboard({ session, handleLogout }) {
                     <div className="position-relative z-1">
                       <h4 className="fw-bold mb-1">สวัสดี, {profileName || 'นักศึกษา'} 👋</h4>
                       <p className="text-white-50 mb-4">พร้อมสำหรับการเรียนรู้ในวันนี้หรือยัง?</p>
-                      
                       <div className="bg-white bg-opacity-10 p-3 rounded-4">
-                        <div className="d-flex justify-content-between mb-2">
-                          <span className="fw-bold text-white small">ความก้าวหน้าการเรียน</span>
-                          <span className="fw-bold text-white small">{progressPercentage}%</span>
-                        </div>
-                        <div className="progress bg-white bg-opacity-25" style={{ height: '8px' }}>
-                          <div className="progress-bar bg-white rounded-pill" style={{ width: `${progressPercentage}%` }}></div>
-                        </div>
+                        <div className="d-flex justify-content-between mb-2"><span className="fw-bold text-white small">ความก้าวหน้าการเรียน</span><span className="fw-bold text-white small">{progressPercentage}%</span></div>
+                        <div className="progress bg-white bg-opacity-25" style={{ height: '8px' }}><div className="progress-bar bg-white rounded-pill" style={{ width: `${progressPercentage}%` }}></div></div>
                       </div>
                     </div>
                   </div>
                 </div>
-
                 <div className="row g-3">
-                  <div className="col-6">
-                    <div className="card border-0 shadow-sm rounded-4 p-3 h-100 d-flex flex-column align-items-center justify-content-center">
-                      <div className="bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center mb-2" style={{width:'50px', height:'50px', fontSize:'24px'}}>📖</div>
-                      <h2 className="fw-bold mb-0">{enrolledCourses.length}</h2>
-                      <p className="text-muted small mb-0">วิชาที่เรียน</p>
-                    </div>
-                  </div>
-                  <div className="col-6">
-                    <div className="card border-0 shadow-sm rounded-4 p-3 h-100 d-flex flex-column align-items-center justify-content-center">
-                      <div className="bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center mb-2" style={{width:'50px', height:'50px', fontSize:'24px'}}>⏳</div>
-                      <h2 className="fw-bold mb-0">{missingCount}</h2>
-                      <p className="text-muted small mb-0">งานค้างส่ง</p>
-                    </div>
-                  </div>
+                  <div className="col-6"><div className="card border-0 shadow-sm rounded-4 p-3 h-100 d-flex flex-column align-items-center justify-content-center"><div className="bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center mb-2" style={{width:'50px', height:'50px', fontSize:'24px'}}>📖</div><h2 className="fw-bold mb-0">{enrolledCourses.length}</h2><p className="text-muted small mb-0">วิชาที่เรียน</p></div></div>
+                  <div className="col-6"><div className="card border-0 shadow-sm rounded-4 p-3 h-100 d-flex flex-column align-items-center justify-content-center"><div className="bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center mb-2" style={{width:'50px', height:'50px', fontSize:'24px'}}>⏳</div><h2 className="fw-bold mb-0">{missingCount}</h2><p className="text-muted small mb-0">งานค้างส่ง</p></div></div>
                 </div>
               </div>
             )}
@@ -204,7 +173,6 @@ export default function StudentDashboard({ session, handleLogout }) {
             {/* TAB 2: 📚 ห้องเรียน */}
             {activeTab === 'classroom' && (
               <div className="fade-in">
-                {/* Sub-Tabs Toggle */}
                 <div className="d-flex bg-white p-1 rounded-pill shadow-sm mb-4">
                   <button className={`btn rounded-pill flex-grow-1 fw-bold ${classSubTab === 'enroll' ? 'btn-primary' : 'btn-white text-muted'}`} onClick={() => setClassSubTab('enroll')}>ลงทะเบียนวิชา</button>
                   <button className={`btn rounded-pill flex-grow-1 fw-bold ${classSubTab === 'materials' ? 'btn-primary' : 'btn-white text-muted'}`} onClick={() => setClassSubTab('materials')}>เอกสารเรียน</button>
@@ -217,9 +185,14 @@ export default function StudentDashboard({ session, handleLogout }) {
                       return (
                         <div key={c.id} className="card border-0 shadow-sm rounded-4 overflow-hidden">
                           <div className="card-body p-4">
-                            <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 mb-2">{c.course_code}</span>
+                            <div className="d-flex justify-content-between align-items-start mb-2">
+                              <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2">{c.course_code}</span>
+                              <span className="badge bg-light text-dark border">กลุ่ม: {c.section}</span>
+                            </div>
                             <h5 className="fw-bold mb-1">{c.course_name}</h5>
-                            <p className="text-muted small mb-3">ภาคเรียน: {c.semester||'-'} | หน่วยกิต: {c.credits||'-'} | กลุ่ม: {c.section}</p>
+                            {/* อัปเดต: แสดงชื่อครูผู้สอน */}
+                            <p className="mb-2 text-dark fw-bold small">👨‍🏫 ผู้สอน: <span className="text-primary">{c.profiles?.full_name || 'ไม่ระบุชื่อครู'}</span></p>
+                            <p className="text-muted small mb-3">ภาคเรียน: {c.semester||'-'} | หน่วยกิต: {c.credits||'-'}</p>
                             <button onClick={() => handleEnroll(c.id)} disabled={isEnrolled} className={`btn w-100 rounded-pill fw-bold py-2 ${isEnrolled ? 'bg-light text-success border-0' : 'btn-primary shadow-sm'}`}>
                               {isEnrolled ? '✅ ลงทะเบียนแล้ว' : '➕ ลงทะเบียนเรียน'}
                             </button>
@@ -266,14 +239,11 @@ export default function StudentDashboard({ session, handleLogout }) {
                             <p className="text-muted small mb-1">{a.courses.course_name}</p>
                             <h5 className="fw-bold mb-2">{a.title}</h5>
                             <p className="text-secondary small mb-3 bg-light p-3 rounded-4">{a.description}</p>
-                            
                             {mySub ? (
                               <div className="bg-success bg-opacity-10 p-3 rounded-4">
                                 <h6 className="fw-bold text-success mb-2">✅ ส่งงานแล้ว</h6>
                                 <p className="small mb-2 text-dark">"{mySub.submitted_text}"</p>
-                                <span className="badge bg-success rounded-pill px-3 py-2">
-                                  {mySub.score !== null ? `คะแนน: ${mySub.score}` : 'รอครูตรวจ'}
-                                </span>
+                                <span className="badge bg-success rounded-pill px-3 py-2">{mySub.score !== null ? `คะแนน: ${mySub.score}` : 'รอครูตรวจ'}</span>
                               </div>
                             ) : (
                               <form onSubmit={(e) => handleWorkSubmit(e, a.id)}>
@@ -298,15 +268,10 @@ export default function StudentDashboard({ session, handleLogout }) {
                             <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-1 align-self-start mb-2">แบบทดสอบ</span>
                             <h5 className="fw-bold mb-1">{q.title}</h5>
                             <p className="text-muted small mb-3">{q.courses.course_name}</p>
-                            
                             {isDone ? (
-                              <div className="bg-success bg-opacity-10 text-success fw-bold text-center p-2 rounded-pill w-100">
-                                ✅ ทำแล้ว ได้ {isDone.score}/{isDone.total_score} คะแนน
-                              </div>
+                              <div className="bg-success bg-opacity-10 text-success fw-bold text-center p-2 rounded-pill w-100">✅ ทำแล้ว ได้ {isDone.score}/{isDone.total_score} คะแนน</div>
                             ) : (
-                              <button onClick={() => handleStartQuiz(q)} className="btn btn-danger rounded-pill fw-bold py-2 shadow-sm w-100">
-                                ✍️ เริ่มทำแบบทดสอบ
-                              </button>
+                              <button onClick={() => handleStartQuiz(q)} className="btn btn-danger rounded-pill fw-bold py-2 shadow-sm w-100">✍️ เริ่มทำแบบทดสอบ</button>
                             )}
                           </div>
                         </div>
@@ -322,23 +287,20 @@ export default function StudentDashboard({ session, handleLogout }) {
               <div className="fade-in">
                 <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
                   <div className="bg-primary p-5 text-center position-relative">
-                    <div className="bg-white rounded-circle position-absolute start-50 translate-middle border border-4 border-white shadow-sm d-flex justify-content-center align-items-center" style={{width:'80px', height:'80px', top: '100%', fontSize:'30px'}}>
-                      👨‍🎓
-                    </div>
+                    <div className="bg-white rounded-circle position-absolute start-50 translate-middle border border-4 border-white shadow-sm d-flex justify-content-center align-items-center" style={{width:'80px', height:'80px', top: '100%', fontSize:'30px'}}>👨‍🎓</div>
                   </div>
                   <div className="card-body pt-5 px-4 pb-4 text-center mt-3">
                     <h5 className="fw-bold mb-1">{profileName || 'นักศึกษา'}</h5>
                     <p className="text-muted mb-0">{session?.user?.email}</p>
                   </div>
                 </div>
-
                 <div className="card border-0 shadow-sm rounded-4">
                   <div className="card-body p-4">
                     <h6 className="fw-bold mb-3">แก้ไขข้อมูลส่วนตัว</h6>
                     <form onSubmit={handleUpdateProfile}>
                       <div className="mb-3">
                         <label className="form-label text-muted small fw-bold">ชื่อ - นามสกุล</label>
-                        <input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-2" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="ระบุชื่อ-นามสกุล" required />
+                        <input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-2" value={profileName} onChange={e => setProfileName(e.target.value)} required />
                       </div>
                       <button type="submit" className="btn btn-primary w-100 rounded-pill fw-bold py-2 shadow-sm">บันทึกข้อมูล</button>
                     </form>
@@ -350,36 +312,17 @@ export default function StudentDashboard({ session, handleLogout }) {
         )}
       </div>
 
-      {/* Bottom Navigation (เฉพาะบนจอมือถือ) */}
       {!takingQuiz && (
         <div className="fixed-bottom bg-white border-top shadow-lg d-md-none" style={{ zIndex: 1050, paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="d-flex justify-content-around px-2 py-2">
-            <button onClick={() => setActiveTab('home')} className={`btn border-0 d-flex flex-column align-items-center p-1 ${activeTab === 'home' ? 'text-primary' : 'text-muted'}`}>
-              <span className="fs-4 mb-1 lh-1">🏠</span>
-              <span className="fw-bold" style={{fontSize: '11px'}}>หน้าหลัก</span>
-            </button>
-            <button onClick={() => setActiveTab('classroom')} className={`btn border-0 d-flex flex-column align-items-center p-1 ${activeTab === 'classroom' ? 'text-primary' : 'text-muted'}`}>
-              <span className="fs-4 mb-1 lh-1">📚</span>
-              <span className="fw-bold" style={{fontSize: '11px'}}>ห้องเรียน</span>
-            </button>
-            <button onClick={() => setActiveTab('tasks')} className={`btn border-0 d-flex flex-column align-items-center p-1 ${activeTab === 'tasks' ? 'text-primary' : 'text-muted'}`}>
-              <span className="fs-4 mb-1 lh-1">📝</span>
-              <span className="fw-bold" style={{fontSize: '11px'}}>งาน/สอบ</span>
-            </button>
-            <button onClick={() => setActiveTab('profile')} className={`btn border-0 d-flex flex-column align-items-center p-1 ${activeTab === 'profile' ? 'text-primary' : 'text-muted'}`}>
-              <span className="fs-4 mb-1 lh-1">👤</span>
-              <span className="fw-bold" style={{fontSize: '11px'}}>ฉัน</span>
-            </button>
+            <button onClick={() => setActiveTab('home')} className={`btn border-0 d-flex flex-column align-items-center p-1 ${activeTab === 'home' ? 'text-primary' : 'text-muted'}`}><span className="fs-4 mb-1 lh-1">🏠</span><span className="fw-bold" style={{fontSize: '11px'}}>หน้าหลัก</span></button>
+            <button onClick={() => setActiveTab('classroom')} className={`btn border-0 d-flex flex-column align-items-center p-1 ${activeTab === 'classroom' ? 'text-primary' : 'text-muted'}`}><span className="fs-4 mb-1 lh-1">📚</span><span className="fw-bold" style={{fontSize: '11px'}}>ห้องเรียน</span></button>
+            <button onClick={() => setActiveTab('tasks')} className={`btn border-0 d-flex flex-column align-items-center p-1 ${activeTab === 'tasks' ? 'text-primary' : 'text-muted'}`}><span className="fs-4 mb-1 lh-1">📝</span><span className="fw-bold" style={{fontSize: '11px'}}>งาน/สอบ</span></button>
+            <button onClick={() => setActiveTab('profile')} className={`btn border-0 d-flex flex-column align-items-center p-1 ${activeTab === 'profile' ? 'text-primary' : 'text-muted'}`}><span className="fs-4 mb-1 lh-1">👤</span><span className="fw-bold" style={{fontSize: '11px'}}>ฉัน</span></button>
           </div>
         </div>
       )}
-
-      {/* เพิ่ม CSS เล็กน้อยสำหรับ Transition แบบเนียนๆ */}
-      <style>{`
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .form-control:focus { box-shadow: none; border: 1px solid #0d6efd !important; }
-      `}</style>
+      <style>{`.fade-in { animation: fadeIn 0.3s ease-in-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .form-control:focus { box-shadow: none; border: 1px solid #0d6efd !important; }`}</style>
     </div>
   )
 }
