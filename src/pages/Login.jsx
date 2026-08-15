@@ -66,7 +66,10 @@ export default function Login({ setSession }) {
           email: emailToUse,
           password,
         })
-        if (loginData?.session) setSession(loginData.session)
+        if (loginData?.session) {
+  setSession(loginData.session);
+  window.location.reload(); // บังคับรีเฟรชหน้าเว็บ 1 ครั้งเพื่อเข้าสู่ระบบทันที
+}
       }
     }
     setLoading(false)
