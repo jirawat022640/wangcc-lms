@@ -35,11 +35,35 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LoginPage setSession={setSession} />} />
-        <Route path="/admin" element={<AdminDashboard session={session} handleLogout={() => supabase.auth.signOut()} />} />
-        <Route path="/teacher" element={<TeacherDashboard session={session} handleLogout={() => supabase.auth.signOut()} />} />
-        <Route path="/student" element={<StudentDashboard session={session} handleLogout={() => supabase.auth.signOut()} />} />
-        <Route path="*" element={<Navigate to="/" />} />
+        {/* หน้า Login: ถ้ามี session แล้วให้เช็ค role แล้วเปลี่ยนหน้าอัตโนมัติ */}
+        <Route path="/" element={
+          !session ? (
+            <LoginPage setSession={setSession} />
+          ) : session.role === 'admin' ? (
+            <Navigate to="/admin" replace />
+          ) : session.role === 'teacher' ? (
+            <Navigate to="/teacher" replace />
+          ) : (
+            <Navigate to="/student" replace />
+          )
+        } />
+
+        {/* แดชบอร์ดต่างๆ: ป้องกันไม่ให้คนที่ยังไม่ล็อกอินแอบเข้าผ่าน URL */}
+        <Route 
+          path="/admin" 
+          element={session?.role === 'admin' ? <AdminDashboard session={session} handleLogout={() => supabase.auth.signOut()} /> : <Navigate to="/" replace />} 
+        />
+        <Route 
+          path="/teacher" 
+          element={session?.role === 'teacher' ? <TeacherDashboard session={session} handleLogout={() => supabase.auth.signOut()} /> : <Navigate to="/" replace />} 
+        />
+        <Route 
+          path="/student" 
+          element={session ? <StudentDashboard session={session} handleLogout={() => supabase.auth.signOut()} /> : <Navigate to="/" replace />} 
+        />
+        
+        {/* ถ้าพิมพ์ URL มั่ว ให้จับกลับมาที่หน้าแรก */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   )
