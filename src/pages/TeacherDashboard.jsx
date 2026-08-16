@@ -23,7 +23,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [viewingCourseStudents, setViewingCourseStudents] = useState(null);
 
   const [courseForm, setCourseForm] = useState({ 
-    code: "", name: "", level: "", room: "", department: "", semester: "", credits: "" 
+    code: "", name: "", section: "", semester: "", credits: "" 
   });
   
   const [assignForm, setAssignForm] = useState({ course_id: "", title: "", description: "" });
@@ -31,7 +31,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [questions, setQuestions] = useState([{ question: "", options: ["", "", "", ""], correctOption: 0 }]);
   const [gradeForm, setGradeForm] = useState({ id: "", score: "" });
   
-  // 🌟 อัปเกรด State เพื่อเก็บข้อมูลส่วนตัวครู
   const [profileForm, setProfileForm] = useState({ 
     full_name: '', nickname: '', phone: '', avatar_url: '', 
     student_code: '', department: '' 
@@ -54,7 +53,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   const fetchData = async () => {
     try {
-      // 🌟 ดึงข้อมูลโปรไฟล์ครู
       const { data: pData } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
       if (pData) {
         setProfileForm({
@@ -76,7 +74,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
       const { data: deptData } = await supabase.from('departments').select('*').order('name');
       if (deptData) setDepartments(deptData);
 
-      const { data: cData } = await supabase.from("courses").select("*").eq("teacher_id", session.user.id);
+      const { data: cData } = await supabase.from("courses").select("*").eq("teacher_id", session.user.id).order('created_at', { ascending: false });
       const coursesList = cData || [];
       setCourses(coursesList);
 
@@ -166,7 +164,31 @@ export default function TeacherDashboard({ session, handleLogout }) {
     setViewingCourseStudents(null); 
   };
   
-  // 🌟 บันทึกข้อมูลส่วนตัวครู
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const handleUploadAvatar = async (e) => {
+    try {
+      setUploadingAvatar(true);
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `user_${session.user.id}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setProfileForm({ ...profileForm, avatar_url: publicUrl });
+      
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปโหลดรูปภาพสำเร็จ!', showConfirmButton: false, timer: 3000 });
+    } catch (error) {
+      Swal.fire('ข้อผิดพลาด', `ไม่สามารถอัปโหลดรูปได้: ${error.message}`, 'error');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleUpdateProfile = async (e) => { 
     e.preventDefault(); 
     await supabase.from("profiles").update({ 
@@ -182,18 +204,22 @@ export default function TeacherDashboard({ session, handleLogout }) {
   
   const handleCreateCourse = async (e) => {
     e.preventDefault();
-    const finalSectionName = `${courseForm.level}${courseForm.room} ${courseForm.department}`;
+
+    if (!courseForm.section) {
+      Swal.fire('แจ้งเตือน', 'กรุณาเลือกกลุ่มเรียน/แผนก', 'warning');
+      return;
+    }
 
     await supabase.from("courses").insert([{ 
       course_code: courseForm.code, 
       course_name: courseForm.name, 
-      section: finalSectionName, 
+      section: courseForm.section, 
       semester: courseForm.semester, 
       credits: courseForm.credits, 
       teacher_id: session.user.id 
     }]);
     
-    setCourseForm(prev => ({ code: "", name: "", level: "", room: "", department: "", semester: prev.semester, credits: "" })); 
+    setCourseForm(prev => ({ code: "", name: "", section: "", semester: prev.semester, credits: "" })); 
     fetchData(); 
     Swal.fire('สำเร็จ!', 'เปิดรายวิชาใหม่เรียบร้อยแล้ว', 'success');
   };
@@ -502,7 +528,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
   if (!session || session.role !== "teacher") return <Navigate to="/" />;
 
   return (
-    <div className="bg-light min-vh-100 pb-5" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div className="bg-light min-vh-100 pb-5 font-app">
       
       <div className="bg-white shadow-sm sticky-top px-4 py-3 d-flex align-items-center justify-content-between mb-4 z-3">
         <div className="d-flex align-items-center gap-3">
@@ -543,7 +569,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
         </>
       )}
 
-      <div className="container" style={{ maxWidth: '1000px' }}>
+      <div className="container position-relative" style={{ maxWidth: '1000px' }}>
         
         {announcements.length > 0 && activeTab === "analytics" && (
           <div className="mb-4">
@@ -565,7 +591,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
             <div className="card shadow-sm border-0 rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #198754 0%, #146c43 100%)' }}>
               <div className="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4 text-white">
                 <div className="d-flex align-items-center gap-3">
-                   {/* 🌟 แสดงรูปโปรไฟล์ย่อๆ ตรงหน้าแรก */}
                    <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center" style={{width: '60px', height: '60px', fontSize: '25px'}}>
                       {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
                    </div>
@@ -675,25 +700,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
                           <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="หน่วยกิต" value={courseForm.credits} onChange={(e) => setCourseForm({ ...courseForm, credits: e.target.value })} required />
                         </div>
                         
-                        <div className="col-md-3">
-                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={courseForm.level} onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })} required>
-                            <option value="">-- ระดับชั้น --</option>
-                            <option value="ปวช.">ปวช.</option>
-                            <option value="ปวส.">ปวส.</option>
-                          </select>
-                        </div>
-                        <div className="col-md-3">
-                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={courseForm.room} onChange={(e) => setCourseForm({ ...courseForm, room: e.target.value })} required>
-                            <option value="">-- ห้อง/รูปแบบ --</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="ทวิภาคี">ทวิภาคี</option>
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={courseForm.department} onChange={(e) => setCourseForm({ ...courseForm, department: e.target.value })} required>
-                            <option value="">-- แผนกวิชา --</option>
+                        <div className="col-md-10">
+                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary fw-bold" value={courseForm.section} onChange={(e) => setCourseForm({ ...courseForm, section: e.target.value })} required>
+                            <option value="">-- เลือกกลุ่มเรียน/แผนก (ดึงข้อมูลจากระบบกลาง) --</option>
                             {departments.map((d) => (
                                <option key={d.id} value={d.name}>{d.name}</option>
                             ))}
@@ -1142,8 +1151,15 @@ export default function TeacherDashboard({ session, handleLogout }) {
                     <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} placeholder="08X-XXX-XXXX" />
                   </div>
                   <div className="mb-4">
-                    <label className="form-label text-muted small fw-bold ms-2">ลิงก์รูปโปรไฟล์ (Image URL)</label>
-                    <input type="url" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.avatar_url} onChange={(e) => setProfileForm({...profileForm, avatar_url: e.target.value})} placeholder="https://..." />
+                    <label className="form-label text-muted small fw-bold ms-2">รูปโปรไฟล์ (อัปโหลดจากเครื่อง)</label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="form-control custom-input bg-light border-0 rounded-pill px-4 py-2" 
+                      onChange={handleUploadAvatar} 
+                      disabled={uploadingAvatar}
+                    />
+                    {uploadingAvatar && <small className="text-success mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
                   </div>
                   
                   <hr className="my-4 border-light" />
@@ -1166,9 +1182,13 @@ export default function TeacherDashboard({ session, handleLogout }) {
           </div>
         )}
 
+        {/* 🌟 Spacer ดันเนื้อหาขึ้นให้พ้นขอบจอล่าง 100% */}
+        <div style={{ height: '120px', width: '100%' }}></div>
+
       </div>
 
       <style>{`
+        .font-app { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; } 
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
         .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
         .slide-down { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 

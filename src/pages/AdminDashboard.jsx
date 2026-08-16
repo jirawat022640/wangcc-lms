@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { createClient } from '@supabase/supabase-js'
 import Swal from 'sweetalert2' 
-import * as XLSX from 'xlsx' // 🌟 นำเข้า Library สำหรับอ่านไฟล์ Excel
+import * as XLSX from 'xlsx' 
 
 export default function AdminDashboard({ session, handleLogout }) {
   const navigate = useNavigate()
@@ -257,7 +257,6 @@ export default function AdminDashboard({ session, handleLogout }) {
     setIsAdding(false)
   }
 
-  // 🌟 ฟังก์ชันจัดการอัปโหลด Excel / CSV (อ่านได้หลายชีต)
   const handleFileUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -279,7 +278,6 @@ export default function AdminDashboard({ session, handleLogout }) {
     setIsUploading(true)
     const reader = new FileReader()
     
-    // ตั้งค่าให้อ่านไฟล์เป็น ArrayBuffer เพื่อรองรับ Excel
     reader.onload = async (event) => {
       try {
         const data = new Uint8Array(event.target.result);
@@ -287,13 +285,11 @@ export default function AdminDashboard({ session, handleLogout }) {
         
         let insertData = [];
 
-        // วนลูปอ่านข้อมูลทุกชีตในไฟล์
         workbook.SheetNames.forEach(sheetName => {
           const worksheet = workbook.Sheets[sheetName];
           const sheetData = XLSX.utils.sheet_to_json(worksheet);
           
           sheetData.forEach(row => {
-             // แมปข้อมูลจากชื่อคอลัมน์ภาษาไทยให้ตรงกับ Database
              const code = row['รหัสประจำตัว'] || row['student_code'];
              const name = row['ชื่อ-นามสกุล'] || row['full_name'];
              const dept = row['แผนกวิชา'] || row['department'];
@@ -317,7 +313,6 @@ export default function AdminDashboard({ session, handleLogout }) {
           return 
         }
 
-        // หั่นข้อมูลเป็นก้อนๆ (Chunk) เพื่อไม่ให้ฐานข้อมูลทำงานหนักเกินไป
         const chunkSize = 200; 
         let successCount = 0
         for (let i = 0; i < insertData.length; i += chunkSize) {
@@ -335,7 +330,6 @@ export default function AdminDashboard({ session, handleLogout }) {
       }
     }
     
-    // สั่งอ่านไฟล์
     reader.readAsArrayBuffer(file) 
   }
 
@@ -413,7 +407,7 @@ export default function AdminDashboard({ session, handleLogout }) {
   if (!session || session.role !== 'admin') return <Navigate to="/" />
 
   return (
-    <div className="bg-light min-vh-100 pb-5" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div className="bg-light min-vh-100 font-app">
       
       {/* ---------------- โมดอลสำหรับแก้ไขข้อมูล ---------------- */}
       {editingUser && (
@@ -498,7 +492,7 @@ export default function AdminDashboard({ session, handleLogout }) {
         </>
       )}
 
-      <div className="container" style={{ maxWidth: '1100px' }}>
+      <div className="container position-relative" style={{ maxWidth: '1100px', paddingBottom: '120px' }}>
         
         {/* TAB 1: 📊 สถิติภาพรวม */}
         {activeTab === 'overview' && (
@@ -545,7 +539,7 @@ export default function AdminDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* TAB: 🏢 จัดการห้องเรียน */}
+        {/* 🌟 TAB: 🏢 จัดการห้องเรียน */}
         {activeTab === 'classrooms' && (
           <div className="fade-in row g-4">
             <div className="col-lg-5">
@@ -625,7 +619,6 @@ export default function AdminDashboard({ session, handleLogout }) {
                   </p>
                 </div>
                 <div>
-                  {/* 🌟 เปลี่ยน input ให้รองรับไฟล์ .xlsx */}
                   <input type="file" accept=".xlsx, .xls, .csv" id="excelUpload" className="d-none" onChange={handleFileUpload} disabled={isUploading} />
                   <label htmlFor="excelUpload" className="btn btn-primary rounded-pill fw-bold px-4 py-2 mb-0" style={{cursor: 'pointer'}}>
                     {isUploading ? '⏳ กำลังนำเข้า...' : '📄 อัปโหลด Excel/CSV'}
@@ -840,6 +833,7 @@ export default function AdminDashboard({ session, handleLogout }) {
 
       </div>
       <style>{`
+        .font-app { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; } 
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .slide-down { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1); }

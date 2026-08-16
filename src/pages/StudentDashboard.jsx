@@ -19,7 +19,6 @@ export default function StudentDashboard({ session, handleLogout }) {
   const [announcements, setAnnouncements] = useState([])
   const [submitForm, setSubmitForm] = useState({ assign_id: '', text: '' })
   
-  // 🌟 อัปเกรด State เพื่อเก็บข้อมูลส่วนตัวทั้งหมด
   const [profileForm, setProfileForm] = useState({ 
     full_name: '', nickname: '', phone: '', avatar_url: '', 
     student_code: '', department: '', grade_level: '' 
@@ -32,7 +31,6 @@ export default function StudentDashboard({ session, handleLogout }) {
   }, [session])
 
   const fetchData = async () => {
-    // 🌟 ดึงข้อมูลโปรไฟล์ทั้งหมด
     const { data: pData } = await supabase
       .from('profiles')
       .select('*')
@@ -57,17 +55,29 @@ export default function StudentDashboard({ session, handleLogout }) {
       .eq('is_active', true)
       .order('created_at', { ascending: false })
     
-    if (annData) {
-      setAnnouncements(annData)
-    }
+    if (annData) setAnnouncements(annData)
 
     const { data: cData } = await supabase
       .from('courses')
       .select('*, profiles(full_name)')
       .order('created_at', { ascending: false })
     
-    if (cData) {
-      setAllCourses(cData)
+    if (cData && pData) {
+      const studentDept = pData.department || '';
+      const studentLevel = pData.grade_level || '';
+      const baseLevel = studentLevel.split('/')[0];
+
+      const myClassCourses = cData.filter(course => {
+        const section = course.section || '';
+        if (!studentDept) return false;
+        
+        const matchDept = section.includes(studentDept);
+        const matchLevel = baseLevel ? section.includes(baseLevel) : true;
+        
+        return matchDept && matchLevel;
+      });
+
+      setAllCourses(myClassCourses)
     }
 
     const { data: eData } = await supabase
@@ -114,7 +124,31 @@ export default function StudentDashboard({ session, handleLogout }) {
     }
   }
 
-  // 🌟 ฟังก์ชันบันทึกข้อมูลส่วนตัว (อัปเดตเฉพาะฟิลด์ที่อนุญาต)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const handleUploadAvatar = async (e) => {
+    try {
+      setUploadingAvatar(true);
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `user_${session.user.id}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setProfileForm({ ...profileForm, avatar_url: publicUrl });
+      
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปโหลดรูปภาพสำเร็จ!', showConfirmButton: false, timer: 3000 });
+    } catch (error) {
+      Swal.fire('ข้อผิดพลาด', `ไม่สามารถอัปโหลดรูปได้: ${error.message}`, 'error');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleUpdateProfile = async (e) => { 
     e.preventDefault(); 
     await supabase.from('profiles').update({ 
@@ -124,7 +158,7 @@ export default function StudentDashboard({ session, handleLogout }) {
       avatar_url: profileForm.avatar_url
     }).eq('id', session.user.id); 
     
-    fetchData(); // รีเฟรชข้อมูลล่าสุด
+    fetchData(); 
     Swal.fire('สำเร็จ!', 'บันทึกข้อมูลส่วนตัวเรียบร้อย!', 'success');
   }
 
@@ -147,9 +181,7 @@ export default function StudentDashboard({ session, handleLogout }) {
     await supabase.from('submissions').insert([{ assignment_id: assignId, student_id: session.user.id, submitted_text: submitForm.text }]); 
     setSubmitForm({ assign_id: '', text: '' }); 
     fetchData(); 
-    Swal.fire({
-      toast: true, position: 'top-end', icon: 'success', title: 'ส่งงานสำเร็จ!', showConfirmButton: false, timer: 2000
-    });
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'ส่งงานสำเร็จ!', showConfirmButton: false, timer: 2000 });
   }
 
   const handleStartQuiz = (quiz) => { 
@@ -206,10 +238,7 @@ export default function StudentDashboard({ session, handleLogout }) {
   let totalScore = 0; 
   let gradedCount = 0; 
   submissions.forEach(s => { 
-    if(s.score !== null){ 
-      totalScore += s.score; 
-      gradedCount++; 
-    } 
+    if(s.score !== null){ totalScore += s.score; gradedCount++; } 
   });
   
   const avgScore = gradedCount > 0 ? (totalScore / (gradedCount * 10)) * 100 : 100; 
@@ -218,9 +247,11 @@ export default function StudentDashboard({ session, handleLogout }) {
   if (!session || session.role !== 'student') return <Navigate to="/" />
 
   return (
-    <div className="bg-light min-vh-100 pb-5 font-app" style={{ paddingBottom: '90px' }}>
+    <div className="bg-light min-vh-100 font-app">
       <div className="mx-auto" style={{ maxWidth: '480px', minHeight: '100vh', backgroundColor: '#fafafa', position: 'relative', boxShadow: '0 0 20px rgba(0,0,0,0.05)' }}>
-        <div className="p-4">
+        
+        {/* ใช้ pt-4 px-4 แทน p-4 แบบเดิมเพื่อหลีกเลี่ยงการทับซ้อนของระยะห่างด้านล่าง */}
+        <div className="pt-4 px-4">
           
           {takingQuiz ? (
              <div className="card shadow-sm border-0 rounded-4 overflow-hidden mb-5 slide-up">
@@ -261,7 +292,6 @@ export default function StudentDashboard({ session, handleLogout }) {
                 <div className="fade-in">
                   <div className="d-flex justify-content-between align-items-center mb-4 mt-2">
                     <div className="d-flex gap-3 align-items-center">
-                      {/* 🌟 แสดงรูปโปรไฟล์ย่อๆ ตรงหน้าแรก */}
                       <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center" style={{width: '45px', height: '45px', fontSize: '20px'}}>
                          {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👨‍🎓'}
                       </div>
@@ -396,7 +426,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                   
                   {classSubTab === 'enroll' && (
                     <div className="d-flex flex-column gap-3">
-                      {allCourses.map(c => { 
+                      {allCourses.length === 0 ? <p className="text-center text-muted py-5">ยังไม่มีรายวิชาเปิดสำหรับกลุ่มเรียนของคุณ</p> : allCourses.map(c => { 
                         const isEnrolled = enrolledCourses.includes(c.id); 
                         return (
                           <div key={c.id} className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
@@ -498,7 +528,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                 </div>
               )}
 
-              {/* 🌟 TAB 4: โปรไฟล์ (จัดเต็ม) */}
+              {/* TAB 4: โปรไฟล์ */}
               {activeTab === 'profile' && (
                 <div className="fade-in">
                   <h4 className="fw-bold text-dark mb-4">บัญชีผู้ใช้</h4>
@@ -531,8 +561,15 @@ export default function StudentDashboard({ session, handleLogout }) {
                           <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} placeholder="08X-XXX-XXXX" />
                         </div>
                         <div className="mb-4">
-                          <label className="form-label text-muted small fw-bold ms-2">ลิงก์รูปโปรไฟล์ (Image URL)</label>
-                          <input type="url" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.avatar_url} onChange={e => setProfileForm({...profileForm, avatar_url: e.target.value})} placeholder="https://..." />
+                          <label className="form-label text-muted small fw-bold ms-2">รูปโปรไฟล์ (อัปโหลดจากเครื่อง)</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="form-control custom-input bg-light border-0 rounded-pill px-4 py-2" 
+                            onChange={handleUploadAvatar} 
+                            disabled={uploadingAvatar}
+                          />
+                          {uploadingAvatar && <small className="text-primary mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
                         </div>
                         
                         <hr className="my-4 border-light" />
@@ -562,11 +599,15 @@ export default function StudentDashboard({ session, handleLogout }) {
               )}
             </>
           )}
+
+          {/* 🌟 แทรกกล่องเว้นระยะ (Spacer) ดันเนื้อหาขึ้นให้พ้นจากแถบเมนูด้านล่าง 100% */}
+          <div style={{ height: '100px', width: '100%' }}></div>
+
         </div>
 
-        {/* เมนูแท็บด้านล่าง */}
+        {/* แถบเมนูด้านล่างสุด (ล็อคติดจอ) */}
         {!takingQuiz && (
-          <div className="position-absolute bottom-0 w-100 bg-white border-top shadow-lg" style={{ borderTopLeftRadius: '20px', borderTopRightRadius: '20px', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="position-fixed bottom-0 bg-white border-top shadow-lg" style={{ width: '100%', maxWidth: '480px', borderTopLeftRadius: '20px', borderTopRightRadius: '20px', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 1040 }}>
             <div className="d-flex justify-content-around px-2 py-2">
               <button onClick={() => setActiveTab('home')} className={`btn border-0 d-flex flex-column align-items-center p-2 w-25 ${activeTab === 'home' ? 'text-primary' : 'text-muted'}`}>
                 <span className="fs-4 mb-1 lh-1">🏠</span>
