@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { createClient } from '@supabase/supabase-js'
-import Swal from 'sweetalert2' // 🌟 นำเข้า SweetAlert2
+import Swal from 'sweetalert2' 
+import * as XLSX from 'xlsx' // 🌟 นำเข้า Library สำหรับอ่านไฟล์ Excel
 
 export default function AdminDashboard({ session, handleLogout }) {
   const navigate = useNavigate()
@@ -21,11 +22,9 @@ export default function AdminDashboard({ session, handleLogout }) {
   const [annForm, setAnnForm] = useState({ title: '', content: '' })
   const [semForm, setSemForm] = useState('')
 
-  // State สำหรับจัดการกลุ่มเรียน/แผนก
   const [departments, setDepartments] = useState([])
   const [deptForm, setDeptForm] = useState({ name: '' })
 
-  // State สำหรับระบบค้นหา (Search Filters)
   const [searchStudent, setSearchStudent] = useState('')
   const [searchTeacher, setSearchTeacher] = useState('')
   const [searchCourse, setSearchCourse] = useState('')
@@ -99,7 +98,6 @@ export default function AdminDashboard({ session, handleLogout }) {
     setShowAddTeacher(false)
   }
 
-  // 🌟 ใช้ SweetAlert สำหรับตั้งรหัสผ่านใหม่
   const handleResetPassword = async (userId, name) => {
     const { value: newPass } = await Swal.fire({
       title: 'รีเซ็ตรหัสผ่าน',
@@ -125,7 +123,6 @@ export default function AdminDashboard({ session, handleLogout }) {
     }
   }
 
-  // 🌟 ใช้ SweetAlert สำหรับยืนยันการลบวิชา
   const handleDeleteCourseAdmin = async (courseId, courseName) => {
     const result = await Swal.fire({
       title: 'คำเตือน: ยืนยันการลบวิชา?',
@@ -146,7 +143,6 @@ export default function AdminDashboard({ session, handleLogout }) {
     Swal.fire('ลบสำเร็จ!', 'ลบรายวิชาออกจากระบบเรียบร้อยแล้ว', 'success')
   }
 
-  // 🌟 ใช้ SweetAlert สำหรับการสร้างประกาศ
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault()
     await supabase.from('announcements').insert([annForm])
@@ -261,14 +257,14 @@ export default function AdminDashboard({ session, handleLogout }) {
     setIsAdding(false)
   }
 
-  // 🌟 ใช้ SweetAlert สำหรับอัปโหลด CSV
-  const handleCSVUpload = async (e) => {
+  // 🌟 ฟังก์ชันจัดการอัปโหลด Excel / CSV (อ่านได้หลายชีต)
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
     const result = await Swal.fire({
       title: 'นำเข้าข้อมูล?',
-      text: `ยืนยันการนำเข้าข้อมูลนักเรียนจากไฟล์ ${file.name} หรือไม่?`,
+      text: `ยืนยันการนำเข้าข้อมูลนักเรียนจากไฟล์ ${file.name} (ระบบจะดึงข้อมูลจากทุกชีตโดยอัตโนมัติ)`,
       icon: 'info',
       showCancelButton: true,
       confirmButtonText: 'นำเข้าเลย',
@@ -282,27 +278,46 @@ export default function AdminDashboard({ session, handleLogout }) {
 
     setIsUploading(true)
     const reader = new FileReader()
+    
+    // ตั้งค่าให้อ่านไฟล์เป็น ArrayBuffer เพื่อรองรับ Excel
     reader.onload = async (event) => {
       try {
-        const text = event.target.result; 
-        const rows = text.split('\n').filter(row => row.trim() !== '')
-        const insertData = []
-        for (let i = 1; i < rows.length; i++) {
-          const cols = rows[i].split(',')
-          if (cols.length >= 4) {
-             insertData.push({ 
-                student_code: cols[0].trim().replace(/"/g, ''), 
-                full_name: cols[1].trim().replace(/"/g, ''), 
-                department: cols[2].trim().replace(/"/g, ''), 
-                grade_level: cols[3].trim().replace(/"/g, '') 
-             })
-          }
-        }
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        let insertData = [];
+
+        // วนลูปอ่านข้อมูลทุกชีตในไฟล์
+        workbook.SheetNames.forEach(sheetName => {
+          const worksheet = workbook.Sheets[sheetName];
+          const sheetData = XLSX.utils.sheet_to_json(worksheet);
+          
+          sheetData.forEach(row => {
+             // แมปข้อมูลจากชื่อคอลัมน์ภาษาไทยให้ตรงกับ Database
+             const code = row['รหัสประจำตัว'] || row['student_code'];
+             const name = row['ชื่อ-นามสกุล'] || row['full_name'];
+             const dept = row['แผนกวิชา'] || row['department'];
+             const level = row['ระดับชั้น'] || row['grade_level'];
+
+             if (code && name) {
+               insertData.push({
+                 student_code: String(code).trim().replace(/"/g, ''),
+                 full_name: String(name).trim().replace(/"/g, ''),
+                 department: dept ? String(dept).trim().replace(/"/g, '') : '',
+                 grade_level: level ? String(level).trim().replace(/"/g, '') : ''
+               });
+             }
+          });
+        });
+
         if (insertData.length === 0) { 
-          Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบข้อมูลในไฟล์ CSV', 'error')
+          Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบข้อมูลในไฟล์ หรือตั้งชื่อหัวคอลัมน์ไม่ถูกต้อง (รหัสประจำตัว, ชื่อ-นามสกุล, แผนกวิชา, ระดับชั้น)', 'error')
           setIsUploading(false)
+          e.target.value = null 
           return 
         }
+
+        // หั่นข้อมูลเป็นก้อนๆ (Chunk) เพื่อไม่ให้ฐานข้อมูลทำงานหนักเกินไป
         const chunkSize = 200; 
         let successCount = 0
         for (let i = 0; i < insertData.length; i += chunkSize) {
@@ -311,18 +326,19 @@ export default function AdminDashboard({ session, handleLogout }) {
           successCount += chunk.length
         }
         
-        Swal.fire('เสร็จสิ้น!', `นำเข้านักเรียนสำเร็จทั้งหมด ${successCount} คน!`, 'success')
+        Swal.fire('เสร็จสิ้น!', `อ่านข้อมูลทั้งหมด ${workbook.SheetNames.length} ชีต\nนำเข้านักเรียนสำเร็จ ${successCount} คน!`, 'success')
         fetchMasterCount()
       } catch (error) { 
-        Swal.fire('Error', `เกิดข้อผิดพลาด: ${error.message}`, 'error')
+        Swal.fire('Error', `รูปแบบไฟล์ไม่ถูกต้อง หรือเกิดข้อผิดพลาด: ${error.message}`, 'error')
       } finally { 
         setIsUploading(false); e.target.value = null 
       }
     }
-    reader.readAsText(file, 'UTF-8') 
+    
+    // สั่งอ่านไฟล์
+    reader.readAsArrayBuffer(file) 
   }
 
-  // 🌟 ใช้ SweetAlert สำหรับจัดการกลุ่มเรียน/แผนก
   const handleCreateDepartment = async (e) => {
     e.preventDefault()
     if (!deptForm.name.trim()) return
@@ -368,7 +384,6 @@ export default function AdminDashboard({ session, handleLogout }) {
     }
   }
 
-  // Logic การกรองข้อมูลแบบ Real-time
   const teachers = profiles.filter(p => p.role === 'teacher')
   const students = profiles.filter(p => p.role === 'student')
 
@@ -530,7 +545,7 @@ export default function AdminDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* 🌟 TAB: 🏢 จัดการห้องเรียน */}
+        {/* TAB: 🏢 จัดการห้องเรียน */}
         {activeTab === 'classrooms' && (
           <div className="fade-in row g-4">
             <div className="col-lg-5">
@@ -610,9 +625,10 @@ export default function AdminDashboard({ session, handleLogout }) {
                   </p>
                 </div>
                 <div>
-                  <input type="file" accept=".csv" id="csvUpload" className="d-none" onChange={handleCSVUpload} disabled={isUploading} />
-                  <label htmlFor="csvUpload" className="btn btn-primary rounded-pill fw-bold px-4 py-2 mb-0" style={{cursor: 'pointer'}}>
-                    {isUploading ? '⏳ กำลังนำเข้า...' : '📄 อัปโหลด CSV'}
+                  {/* 🌟 เปลี่ยน input ให้รองรับไฟล์ .xlsx */}
+                  <input type="file" accept=".xlsx, .xls, .csv" id="excelUpload" className="d-none" onChange={handleFileUpload} disabled={isUploading} />
+                  <label htmlFor="excelUpload" className="btn btn-primary rounded-pill fw-bold px-4 py-2 mb-0" style={{cursor: 'pointer'}}>
+                    {isUploading ? '⏳ กำลังนำเข้า...' : '📄 อัปโหลด Excel/CSV'}
                   </label>
                 </div>
               </div>
