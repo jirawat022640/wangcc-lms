@@ -83,10 +83,14 @@ export default function StudentDashboard({ session, handleLogout }) {
       const baseLevel = studentLevel.split('/')[0];
       const myClassCourses = cData.filter(course => {
         const section = course.section || '';
+        // ถ้านักเรียนไม่มีข้อมูลแผนก ก็ไม่ให้เห็น
         if (!studentDept) return false;
+        
+        // เช็คแค่ว่า ในชื่อกลุ่มเรียนที่ครูสร้าง มีคำว่า "ช่างซ่อมบำรุง" (หรือแผนกของเด็ก) อยู่ก็พอ
         const matchDept = section.includes(studentDept);
-        const matchLevel = baseLevel ? section.includes(baseLevel) : true;
-        return matchDept && matchLevel;
+        
+        // ส่งค่าผ่านเลย ไม่ต้องเช็คระดับชั้น (matchLevel) ให้จุกจิกอีกต่อไป
+        return matchDept; 
       });
       setAllCourses(myClassCourses)
     }
