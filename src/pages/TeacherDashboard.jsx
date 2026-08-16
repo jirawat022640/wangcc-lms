@@ -9,6 +9,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [quizSubTab, setQuizSubTab] = useState("create"); 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // 🌟 เพิ่ม State สำหรับเก็บข้อมูลแผนกวิชาจาก Database
+  const [departments, setDepartments] = useState([]);
+  
   const [courses, setCourses] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
@@ -19,7 +22,11 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [announcements, setAnnouncements] = useState([]);
   const [viewingCourseStudents, setViewingCourseStudents] = useState(null);
 
-  const [courseForm, setCourseForm] = useState({ code: "", name: "", section: "", semester: "", credits: "" });
+  // 🌟 อัปเดตฟอร์มสร้างรายวิชา ให้รับค่า 3 ส่วน (ระดับชั้น, ห้อง, แผนก)
+  const [courseForm, setCourseForm] = useState({ 
+    code: "", name: "", level: "", room: "", department: "", semester: "", credits: "" 
+  });
+  
   const [assignForm, setAssignForm] = useState({ course_id: "", title: "", description: "" });
   const [quizForm, setQuizForm] = useState({ course_id: "", title: "" });
   const [questions, setQuestions] = useState([{ question: "", options: ["", "", "", ""], correctOption: 0 }]);
@@ -42,87 +49,110 @@ export default function TeacherDashboard({ session, handleLogout }) {
   }, [session]);
 
   const fetchData = async () => {
-    const { data: pData } = await supabase.from("profiles").select("full_name").eq("id", session.user.id).single();
-    if (pData?.full_name) setProfileName(pData.full_name);
+    try {
+      const { data: pData } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+      if (pData) setProfileName(pData.full_name);
 
-    const { data: annData } = await supabase.from('announcements').select('*').eq('is_active', true).order('created_at', { ascending: false });
-    if (annData) setAnnouncements(annData);
+      const { data: annData } = await supabase.from('announcements').select('*').eq('is_active', true).order('created_at', { ascending: false });
+      if (annData) setAnnouncements(annData);
 
-    const { data: sysData } = await supabase.from('system_settings').select('current_semester').eq('id', 1).single();
-    if (sysData) setCourseForm(prev => ({ ...prev, semester: sysData.current_semester }));
+      const { data: sysData } = await supabase.from('system_settings').select('current_semester').eq('id', 1).single();
+      if (sysData) setCourseForm(prev => ({ ...prev, semester: sysData.current_semester }));
 
-    const { data: cData } = await supabase.from("courses").select("*").eq("teacher_id", session.user.id).order("created_at", { ascending: false });
-    if (cData) setCourses(cData);
+      // 🌟 ดึงข้อมูลแผนกวิชาจากฐานข้อมูลมาแสดงใน Dropdown
+      const { data: deptData } = await supabase.from('departments').select('*').order('name');
+      if (deptData) setDepartments(deptData);
 
-    const myCourseIds = cData ? cData.map((c) => c.id) : [];
-    
-    if (myCourseIds.length > 0) {
-      const { data: eData } = await supabase.from("enrollments").select("course_id, profiles(student_code, full_name)").in("course_id", myCourseIds);
-      if (eData) setEnrollments(eData);
+      // 1. ดึงวิชา
+      const { data: cData } = await supabase.from("courses").select("*").eq("teacher_id", session.user.id);
+      const coursesList = cData || [];
+      setCourses(coursesList);
 
-      // 🌟 ดึงข้อมูลงาน (Assignments)
-      const { data: aData } = await supabase.from("assignments")
-        .select("*, courses!inner(id, course_code, course_name, section, semester, credits, teacher_id)")
-        .eq("courses.teacher_id", session.user.id)
-        .order("created_at", { ascending: false });
-      
-      if (aData) setAssignments(aData);
+      if (coursesList.length > 0) {
+        const myCourseIds = coursesList.map(c => c.id);
 
-      // 🌟 แก้ไขระบบดึงการส่งงาน: ดึงขึ้นมาตรงๆ แล้วจับคู่เองเพื่อป้องกันฐานข้อมูล Block
-      const myAssignIds = aData ? aData.map(a => a.id) : [];
-      if (myAssignIds.length > 0) {
-        const { data: sData } = await supabase
-          .from("submissions")
-          .select("*, profiles(student_code, full_name)")
-          .in("assignment_id", myAssignIds)
-          .order("created_at", { ascending: false });
+        const { data: eData } = await supabase.from("enrollments").select("*").in("course_id", myCourseIds);
+        if (eData) setEnrollments(eData);
+
+        // 2. ดึงงาน
+        const { data: aData } = await supabase.from("assignments").select("*").in("course_id", myCourseIds);
+        const assignList = aData || [];
+        setAssignments(assignList);
+        const myAssignIds = assignList.map(a => a.id);
+
+        // 3. ดึง Submissions ดิบๆ
+        if (myAssignIds.length > 0) {
+          const { data: sData, error: sErr } = await supabase.from("submissions").select("*").in("assignment_id", myAssignIds);
+          if (sErr) console.error("Error fetching submissions:", sErr);
           
-        if (sData) {
-          // นำข้อมูลงาน (aData) มาประกอบร่างเข้ากับการส่งงาน (sData) ด้วยตนเอง
-          const enrichedSubmissions = sData.map(sub => {
-            const assign = aData.find(a => a.id === sub.assignment_id);
-            return { ...sub, assignments: assign };
+          const subList = sData || [];
+
+          // 4. ดึงชื่อนักเรียนมาประกอบร่าง
+          const studentIds = [...new Set(subList.map(s => s.student_id).filter(Boolean))];
+          let profilesList = [];
+          if (studentIds.length > 0) {
+            const { data: profData } = await supabase.from("profiles").select("*").in("id", studentIds);
+            profilesList = profData || [];
+          }
+
+          // 5. ประกอบข้อมูล
+          const enrichedSubs = subList.map(sub => {
+            const assign = assignList.find(a => a.id === sub.assignment_id);
+            const course = coursesList.find(c => c.id === assign?.course_id);
+            const student = profilesList.find(p => p.id === sub.student_id);
+
+            return {
+              ...sub,
+              assignments: { ...assign, courses: course || {} },
+              profiles: student || { student_code: "-", full_name: "ไม่ระบุชื่อ" }
+            };
           });
-          setSubmissions(enrichedSubmissions);
+          
+          enrichedSubs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          setSubmissions(enrichedSubs);
         } else {
           setSubmissions([]);
         }
-      } else {
-        setSubmissions([]);
-      }
 
-      const { data: mData } = await supabase.from("materials").select("*, courses!inner(course_name, section, teacher_id)").eq("courses.teacher_id", session.user.id).order("created_at", { ascending: false });
-      if (mData) setMaterials(mData);
+        // ดึงเอกสารประกอบ
+        const { data: mData } = await supabase.from("materials").select("*").in("course_id", myCourseIds);
+        if (mData) setMaterials(mData.map(m => ({ ...m, courses: coursesList.find(c => c.id === m.course_id) })));
 
-      // 🌟 ดึงข้อมูลแบบทดสอบ (Quizzes)
-      const { data: qData } = await supabase.from("quizzes")
-        .select("*, courses!inner(id, course_code, course_name, section, semester, teacher_id)")
-        .eq("courses.teacher_id", session.user.id)
-        .order("created_at", { ascending: false });
-      
-      if (qData) setQuizzes(qData);
+        // ดึงแบบทดสอบ
+        const { data: qData } = await supabase.from("quizzes").select("*").in("course_id", myCourseIds);
+        const quizList = qData || [];
+        setQuizzes(quizList.map(q => ({ ...q, courses: coursesList.find(c => c.id === q.course_id) })));
 
-      // 🌟 แก้ไขระบบดึงคะแนนสอบในวิธีเดียวกัน
-      const myQuizIds = qData ? qData.map(q => q.id) : [];
-      if (myQuizIds.length > 0) {
-        const { data: qsData } = await supabase
-          .from("quiz_submissions")
-          .select("*, profiles(student_code, full_name)")
-          .in("quiz_id", myQuizIds)
-          .order("created_at", { ascending: false });
-          
-        if (qsData) {
-          const enrichedQS = qsData.map(qs => {
-            const quiz = qData.find(q => q.id === qs.quiz_id);
-            return { ...qs, quizzes: quiz };
-          });
-          setQuizSubmissions(enrichedQS);
+        const myQuizIds = quizList.map(q => q.id);
+        if (myQuizIds.length > 0) {
+           const { data: qsData } = await supabase.from("quiz_submissions").select("*").in("quiz_id", myQuizIds);
+           const qsList = qsData || [];
+           
+           const qsStudentIds = [...new Set(qsList.map(qs => qs.student_id).filter(Boolean))];
+           let qsProfilesList = [];
+           if (qsStudentIds.length > 0) {
+              const { data: qsProfData } = await supabase.from("profiles").select("*").in("id", qsStudentIds);
+              qsProfilesList = qsProfData || [];
+           }
+
+           const enrichedQS = qsList.map(qs => {
+              const quiz = quizList.find(q => q.id === qs.quiz_id);
+              const course = coursesList.find(c => c.id === quiz?.course_id);
+              const student = qsProfilesList.find(p => p.id === qs.student_id);
+              return {
+                ...qs,
+                quizzes: { ...quiz, courses: course || {} },
+                profiles: student || { student_code: "-", full_name: "ไม่ระบุชื่อ" }
+              }
+           });
+           enrichedQS.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+           setQuizSubmissions(enrichedQS);
         } else {
-          setQuizSubmissions([]);
+           setQuizSubmissions([]);
         }
-      } else {
-        setQuizSubmissions([]);
       }
+    } catch (err) {
+      console.error("Fetch Data Error:", err);
     }
   };
 
@@ -138,18 +168,23 @@ export default function TeacherDashboard({ session, handleLogout }) {
     alert("บันทึกสำเร็จ"); 
   };
   
+  // 🌟 ฟังก์ชันบันทึกการเปิดรายวิชาที่นำ Dropdown 3 ช่องมารวมกัน
   const handleCreateCourse = async (e) => {
     e.preventDefault();
+    
+    // นำค่าระดับชั้น + ห้อง + แผนก มารวมกัน เช่น "ปวช.1 แผนกวิชาช่างยนต์" หรือ "ปวส.ทวิภาคี แผนกวิชาการบัญชี"
+    const finalSectionName = `${courseForm.level}${courseForm.room} ${courseForm.department}`;
+
     await supabase.from("courses").insert([{ 
       course_code: courseForm.code, 
       course_name: courseForm.name, 
-      section: courseForm.section, 
+      section: finalSectionName, 
       semester: courseForm.semester, 
       credits: courseForm.credits, 
       teacher_id: session.user.id 
     }]);
     
-    setCourseForm(prev => ({ code: "", name: "", section: "", semester: prev.semester, credits: "" })); 
+    setCourseForm(prev => ({ code: "", name: "", level: "", room: "", department: "", semester: prev.semester, credits: "" })); 
     fetchData(); 
     alert("สร้างรายวิชาสำเร็จ");
   };
@@ -404,7 +439,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
   return (
     <div className="bg-light min-vh-100 pb-5" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       
-      {/* 🟢 Top Navigation */}
       <div className="bg-white shadow-sm sticky-top px-4 py-3 d-flex align-items-center justify-content-between mb-4 z-3">
         <div className="d-flex align-items-center gap-3">
           <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-success rounded-circle d-flex align-items-center justify-content-center p-0" style={{ width: '40px', height: '40px' }}>
@@ -415,7 +449,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
         <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style={{ width: '35px', height: '35px' }}>👩‍🏫</div>
       </div>
 
-      {/* 🟢 Drawer Menu */}
       {isMenuOpen && (
         <>
           <div className="offcanvas-backdrop fade show" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
@@ -447,7 +480,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
       <div className="container" style={{ maxWidth: '1000px' }}>
         
-        {/* 📢 แจ้งเตือนประกาศส่วนกลางสำหรับครู */}
         {announcements.length > 0 && activeTab === "analytics" && (
           <div className="mb-4">
             {announcements.map(ann => (
@@ -555,27 +587,53 @@ export default function TeacherDashboard({ session, handleLogout }) {
               </div>
             ) : (
               <>
+                {/* 🌟 ปรับฟอร์มสร้างรายวิชาใหม่ ให้มี Dropdown */}
                 <div className="card border-0 shadow-sm rounded-4 mb-5 overflow-hidden">
                   <div className="card-body p-4 bg-white">
-                    <h5 className="fw-bold mb-4 text-dark">✨ เปิดรายวิชาใหม่</h5>
+                    <h5 className="fw-bold mb-4 text-dark d-flex align-items-center gap-2"><span>✨</span> เปิดรายวิชาใหม่</h5>
                     <form onSubmit={handleCreateCourse}>
                       <div className="row g-3 mb-3">
                         <div className="col-md-3">
                           <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="รหัสวิชา" value={courseForm.code} onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })} required />
                         </div>
-                        <div className="col-md-5">
+                        <div className="col-md-6">
                           <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="ชื่อวิชา" value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} required />
-                        </div>
-                        <div className="col-md-4">
-                          <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="กลุ่ม/แผนก (เช่น ปวช.1)" value={courseForm.section} onChange={(e) => setCourseForm({ ...courseForm, section: e.target.value })} required />
-                        </div>
-                        <div className="col-md-3">
-                          <input type="text" className="form-control bg-light border-0 rounded-4 p-3 text-secondary fw-bold" placeholder="ภาคเรียน" value={courseForm.semester} readOnly title="ดึงค่าอัตโนมัติจากที่แอดมินตั้งค่าไว้" />
                         </div>
                         <div className="col-md-3">
                           <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="หน่วยกิต" value={courseForm.credits} onChange={(e) => setCourseForm({ ...courseForm, credits: e.target.value })} required />
                         </div>
-                        <div className="col-md-6">
+                        
+                        {/* 🌟 3 Dropdown ใหม่แทนช่องกรอกข้อความ */}
+                        <div className="col-md-3">
+                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={courseForm.level} onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })} required>
+                            <option value="">-- ระดับชั้น --</option>
+                            <option value="ปวช.">ปวช.</option>
+                            <option value="ปวส.">ปวส.</option>
+                          </select>
+                        </div>
+                        <div className="col-md-3">
+                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={courseForm.room} onChange={(e) => setCourseForm({ ...courseForm, room: e.target.value })} required>
+                            <option value="">-- ห้อง/รูปแบบ --</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="ทวิภาคี">ทวิภาคี</option>
+                          </select>
+                        </div>
+                        <div className="col-md-4">
+                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={courseForm.department} onChange={(e) => setCourseForm({ ...courseForm, department: e.target.value })} required>
+                            <option value="">-- แผนกวิชา --</option>
+                            {departments.map((d) => (
+                               <option key={d.id} value={d.name}>{d.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-2">
+                          <input type="text" className="form-control bg-light border-0 rounded-4 p-3 text-secondary fw-bold" placeholder="ภาคเรียน" value={courseForm.semester} readOnly title="ดึงค่าอัตโนมัติจากที่แอดมินตั้งค่าไว้" />
+                        </div>
+                        
+                        <div className="col-md-12 mt-4">
                           <button type="submit" className="btn btn-success w-100 rounded-4 fw-bold p-3 shadow-sm custom-btn">บันทึกรายวิชา</button>
                         </div>
                       </div>
