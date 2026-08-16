@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import Swal from 'sweetalert2' // 🌟 นำเข้า SweetAlert2
+import Swal from 'sweetalert2' 
 
 export default function StudentDashboard({ session, handleLogout }) {
   const navigate = useNavigate()
@@ -19,7 +19,11 @@ export default function StudentDashboard({ session, handleLogout }) {
   const [announcements, setAnnouncements] = useState([])
   const [submitForm, setSubmitForm] = useState({ assign_id: '', text: '' })
   
-  const [profileName, setProfileName] = useState('')
+  // 🌟 อัปเกรด State เพื่อเก็บข้อมูลส่วนตัวทั้งหมด
+  const [profileForm, setProfileForm] = useState({ 
+    full_name: '', nickname: '', phone: '', avatar_url: '', 
+    student_code: '', department: '', grade_level: '' 
+  })
   const [takingQuiz, setTakingQuiz] = useState(null)
   const [quizAnswers, setQuizAnswers] = useState({})
 
@@ -28,14 +32,23 @@ export default function StudentDashboard({ session, handleLogout }) {
   }, [session])
 
   const fetchData = async () => {
+    // 🌟 ดึงข้อมูลโปรไฟล์ทั้งหมด
     const { data: pData } = await supabase
       .from('profiles')
-      .select('full_name')
+      .select('*')
       .eq('id', session.user.id)
       .single()
     
-    if (pData?.full_name) {
-      setProfileName(pData.full_name)
+    if (pData) {
+      setProfileForm({
+        full_name: pData.full_name || '',
+        nickname: pData.nickname || '',
+        phone: pData.phone || '',
+        avatar_url: pData.avatar_url || '',
+        student_code: pData.student_code || '',
+        department: pData.department || '',
+        grade_level: pData.grade_level || ''
+      })
     }
 
     const { data: annData } = await supabase
@@ -101,10 +114,18 @@ export default function StudentDashboard({ session, handleLogout }) {
     }
   }
 
+  // 🌟 ฟังก์ชันบันทึกข้อมูลส่วนตัว (อัปเดตเฉพาะฟิลด์ที่อนุญาต)
   const handleUpdateProfile = async (e) => { 
     e.preventDefault(); 
-    await supabase.from('profiles').update({ full_name: profileName }).eq('id', session.user.id); 
-    Swal.fire('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อย!', 'success');
+    await supabase.from('profiles').update({ 
+      full_name: profileForm.full_name,
+      nickname: profileForm.nickname,
+      phone: profileForm.phone,
+      avatar_url: profileForm.avatar_url
+    }).eq('id', session.user.id); 
+    
+    fetchData(); // รีเฟรชข้อมูลล่าสุด
+    Swal.fire('สำเร็จ!', 'บันทึกข้อมูลส่วนตัวเรียบร้อย!', 'success');
   }
 
   const handleEnroll = async (courseId) => {
@@ -240,9 +261,12 @@ export default function StudentDashboard({ session, handleLogout }) {
                 <div className="fade-in">
                   <div className="d-flex justify-content-between align-items-center mb-4 mt-2">
                     <div className="d-flex gap-3 align-items-center">
-                      <div className="bg-white rounded-circle shadow-sm d-flex justify-content-center align-items-center" style={{width: '45px', height: '45px', fontSize: '20px'}}>👨‍🎓</div>
+                      {/* 🌟 แสดงรูปโปรไฟล์ย่อๆ ตรงหน้าแรก */}
+                      <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center" style={{width: '45px', height: '45px', fontSize: '20px'}}>
+                         {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👨‍🎓'}
+                      </div>
                       <div>
-                        <h6 className="fw-bold mb-0">สวัสดี, {profileName || 'นักศึกษา'} 👋</h6>
+                        <h6 className="fw-bold mb-0">สวัสดี, {profileForm.full_name || 'นักศึกษา'} 👋</h6>
                         <small className="text-muted">วันนี้เรียนวิชาอะไรดี?</small>
                       </div>
                     </div>
@@ -474,33 +498,66 @@ export default function StudentDashboard({ session, handleLogout }) {
                 </div>
               )}
 
-              {/* TAB 4: โปรไฟล์ */}
+              {/* 🌟 TAB 4: โปรไฟล์ (จัดเต็ม) */}
               {activeTab === 'profile' && (
                 <div className="fade-in">
                   <h4 className="fw-bold text-dark mb-4">บัญชีผู้ใช้</h4>
                   <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white">
                     <div className="bg-primary p-5 text-center position-relative" style={{ backgroundImage: 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)' }}>
-                      <div className="bg-white rounded-circle position-absolute start-50 translate-middle border border-4 border-white shadow-sm d-flex justify-content-center align-items-center" style={{width:'80px', height:'80px', top: '100%', fontSize:'30px'}}>👨‍🎓</div>
+                      <div className="bg-white rounded-circle position-absolute start-50 translate-middle border border-4 border-white shadow-sm d-flex justify-content-center align-items-center overflow-hidden" style={{width:'80px', height:'80px', top: '100%', fontSize:'30px'}}>
+                         {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👨‍🎓'}
+                      </div>
                     </div>
                     <div className="card-body pt-5 px-4 pb-4 text-center mt-3">
-                      <h5 className="fw-bold mb-1 text-dark">{profileName || 'นักศึกษา'}</h5>
+                      <h5 className="fw-bold mb-1 text-dark">{profileForm.full_name || 'นักศึกษา'}</h5>
                       <p className="text-muted mb-0">{session?.user?.email}</p>
                     </div>
                   </div>
                   
                   <div className="card border-0 shadow-sm rounded-4 bg-white mb-4">
                     <div className="card-body p-4">
-                      <h6 className="fw-bold mb-3 text-dark">แก้ไขข้อมูลส่วนตัว</h6>
+                      <h6 className="fw-bold mb-3 text-dark">ข้อมูลที่แก้ไขได้</h6>
                       <form onSubmit={handleUpdateProfile}>
                         <div className="mb-3">
-                          <label className="form-label text-muted small fw-bold">ชื่อ - นามสกุล</label>
-                          <input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-3" value={profileName} onChange={e => setProfileName(e.target.value)} required />
+                          <label className="form-label text-muted small fw-bold ms-2">ชื่อ - นามสกุล</label>
+                          <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.full_name} onChange={e => setProfileForm({...profileForm, full_name: e.target.value})} required />
                         </div>
-                        <button type="submit" className="btn btn-primary w-100 rounded-pill fw-bold py-3 shadow-sm">บันทึกข้อมูล</button>
+                        <div className="mb-3">
+                          <label className="form-label text-muted small fw-bold ms-2">ชื่อเล่น</label>
+                          <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.nickname} onChange={e => setProfileForm({...profileForm, nickname: e.target.value})} placeholder="ระบุชื่อเล่น" />
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label text-muted small fw-bold ms-2">เบอร์โทรศัพท์</label>
+                          <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} placeholder="08X-XXX-XXXX" />
+                        </div>
+                        <div className="mb-4">
+                          <label className="form-label text-muted small fw-bold ms-2">ลิงก์รูปโปรไฟล์ (Image URL)</label>
+                          <input type="url" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.avatar_url} onChange={e => setProfileForm({...profileForm, avatar_url: e.target.value})} placeholder="https://..." />
+                        </div>
+                        
+                        <hr className="my-4 border-light" />
+                        <h6 className="fw-bold mb-3 text-dark">ข้อมูลของระบบ (แก้ไขไม่ได้)</h6>
+                        
+                        <div className="mb-3">
+                          <label className="form-label text-muted small fw-bold ms-2">รหัสประจำตัว</label>
+                          <input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-3 text-muted" value={profileForm.student_code} disabled />
+                        </div>
+                        <div className="row mb-4 g-2">
+                          <div className="col-6">
+                            <label className="form-label text-muted small fw-bold ms-2">ระดับชั้น</label>
+                            <input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-3 text-muted" value={profileForm.grade_level} disabled />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label text-muted small fw-bold ms-2">แผนกวิชา</label>
+                            <input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-3 text-muted text-truncate" value={profileForm.department} disabled title={profileForm.department} />
+                          </div>
+                        </div>
+
+                        <button type="submit" className="btn btn-primary w-100 rounded-pill fw-bold py-3 shadow-sm custom-btn">💾 บันทึกข้อมูล</button>
                       </form>
                     </div>
                   </div>
-                  <button onClick={handleLogout} className="btn btn-light text-danger w-100 rounded-pill fw-bold py-3 shadow-sm bg-white">ออกจากระบบ</button>
+                  <button onClick={handleLogout} className="btn btn-light text-danger w-100 rounded-pill fw-bold py-3 shadow-sm bg-white mb-4 custom-btn">ออกจากระบบ</button>
                 </div>
               )}
             </>
@@ -539,6 +596,10 @@ export default function StudentDashboard({ session, handleLogout }) {
         .slide-down { animation: slideDown 0.4s ease-out; } 
         .app-icon-btn { transition: transform 0.2s; } 
         .app-icon-btn:active { transform: scale(0.95); } 
+        .custom-input { transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); } 
+        .custom-input:focus { box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15) !important; background-color: #fff !important; }
+        .custom-btn { transition: all 0.3s; } 
+        .custom-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(13, 110, 253, 0.3) !important; } 
         .form-control:focus { box-shadow: none; border: 1px solid #0d6efd !important; } 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } 
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } 

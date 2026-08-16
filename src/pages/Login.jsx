@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
-import Swal from 'sweetalert2' // 🌟 นำเข้า SweetAlert2
+import Swal from 'sweetalert2' 
 
 export default function Login({ setSession }) {
   const [isLogin, setIsLogin] = useState(true)
@@ -23,6 +23,7 @@ export default function Login({ setSession }) {
         email: emailToUse,
         password,
       })
+      
       if (error) {
         Swal.fire({
           icon: 'error',
@@ -31,14 +32,38 @@ export default function Login({ setSession }) {
           confirmButtonColor: '#0d6efd'
         })
       } else {
+        // 🌟 เพิ่มระบบ Auto-Sync: ดึงข้อมูลล่าสุดจากที่แอดมินอัปโหลด มาอัปเดตโปรไฟล์ให้อัตโนมัติเวลาล็อคอิน
+        try {
+          // 1. หารหัสประจำตัวของผู้ใช้ที่เพิ่งล็อคอิน
+          const { data: profile } = await supabase.from('profiles').select('student_code, full_name').eq('id', data.user.id).single();
+          const codeToCheck = sCode || profile?.student_code;
+
+          if (codeToCheck) {
+            // 2. ไปเช็คในฐานข้อมูลหลัก (ที่แอดมินอัปโหลด CSV)
+            const { data: masterData } = await supabase.from('student_master').select('*').eq('student_code', codeToCheck).single();
+            
+            // 3. ถ้าเจอข้อมูล ให้เอามาอัปเดตทับในโปรไฟล์ทันที
+            if (masterData) {
+              await supabase.from('profiles').update({
+                full_name: masterData.full_name || profile?.full_name,
+                department: masterData.department,
+                grade_level: masterData.grade_level
+              }).eq('id', data.user.id);
+            }
+          }
+        } catch (syncError) {
+          console.log("Auto-sync error:", syncError); // ปล่อยผ่านไปถ้าหาไม่เจอ เพื่อไม่ให้การล็อคอินสะดุด
+        }
+
         Swal.fire({
           icon: 'success',
           title: 'เข้าสู่ระบบสำเร็จ!',
-          text: 'กำลังพาดำเนินการ...',
+          text: 'กำลังโหลดข้อมูลส่วนตัวของคุณ...',
           timer: 1500,
           timerProgressBar: true,
           showConfirmButton: false
         })
+        
         setTimeout(() => {
           window.location.reload()
         }, 1500)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import Swal from 'sweetalert2'; // 🌟 นำเข้า SweetAlert2
+import Swal from 'sweetalert2'; 
 
 export default function TeacherDashboard({ session, handleLogout }) {
   const navigate = useNavigate();
@@ -30,7 +30,12 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [quizForm, setQuizForm] = useState({ course_id: "", title: "" });
   const [questions, setQuestions] = useState([{ question: "", options: ["", "", "", ""], correctOption: 0 }]);
   const [gradeForm, setGradeForm] = useState({ id: "", score: "" });
-  const [profileName, setProfileName] = useState("");
+  
+  // 🌟 อัปเกรด State เพื่อเก็บข้อมูลส่วนตัวครู
+  const [profileForm, setProfileForm] = useState({ 
+    full_name: '', nickname: '', phone: '', avatar_url: '', 
+    student_code: '', department: '' 
+  });
 
   const [editingCourse, setEditingCourse] = useState(null);
   const [editingMaterial, setEditingMaterial] = useState(null);
@@ -49,8 +54,18 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   const fetchData = async () => {
     try {
+      // 🌟 ดึงข้อมูลโปรไฟล์ครู
       const { data: pData } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
-      if (pData) setProfileName(pData.full_name);
+      if (pData) {
+        setProfileForm({
+          full_name: pData.full_name || '',
+          nickname: pData.nickname || '',
+          phone: pData.phone || '',
+          avatar_url: pData.avatar_url || '',
+          student_code: pData.student_code || '',
+          department: pData.department || ''
+        });
+      }
 
       const { data: annData } = await supabase.from('announcements').select('*').eq('is_active', true).order('created_at', { ascending: false });
       if (annData) setAnnouncements(annData);
@@ -61,7 +76,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
       const { data: deptData } = await supabase.from('departments').select('*').order('name');
       if (deptData) setDepartments(deptData);
 
-      // 1. ดึงวิชา
       const { data: cData } = await supabase.from("courses").select("*").eq("teacher_id", session.user.id);
       const coursesList = cData || [];
       setCourses(coursesList);
@@ -72,20 +86,15 @@ export default function TeacherDashboard({ session, handleLogout }) {
         const { data: eData } = await supabase.from("enrollments").select("*").in("course_id", myCourseIds);
         if (eData) setEnrollments(eData);
 
-        // 2. ดึงงาน
         const { data: aData } = await supabase.from("assignments").select("*").in("course_id", myCourseIds);
         const assignList = aData || [];
         setAssignments(assignList);
         const myAssignIds = assignList.map(a => a.id);
 
-        // 3. ดึง Submissions ดิบๆ
         if (myAssignIds.length > 0) {
-          const { data: sData, error: sErr } = await supabase.from("submissions").select("*").in("assignment_id", myAssignIds);
-          if (sErr) console.error("Error fetching submissions:", sErr);
-          
+          const { data: sData } = await supabase.from("submissions").select("*").in("assignment_id", myAssignIds);
           const subList = sData || [];
 
-          // 4. ดึงชื่อนักเรียนมาประกอบร่าง
           const studentIds = [...new Set(subList.map(s => s.student_id).filter(Boolean))];
           let profilesList = [];
           if (studentIds.length > 0) {
@@ -93,7 +102,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
             profilesList = profData || [];
           }
 
-          // 5. ประกอบข้อมูล
           const enrichedSubs = subList.map(sub => {
             const assign = assignList.find(a => a.id === sub.assignment_id);
             const course = coursesList.find(c => c.id === assign?.course_id);
@@ -112,11 +120,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
           setSubmissions([]);
         }
 
-        // ดึงเอกสารประกอบ
         const { data: mData } = await supabase.from("materials").select("*").in("course_id", myCourseIds);
         if (mData) setMaterials(mData.map(m => ({ ...m, courses: coursesList.find(c => c.id === m.course_id) })));
 
-        // ดึงแบบทดสอบ
         const { data: qData } = await supabase.from("quizzes").select("*").in("course_id", myCourseIds);
         const quizList = qData || [];
         setQuizzes(quizList.map(q => ({ ...q, courses: coursesList.find(c => c.id === q.course_id) })));
@@ -160,9 +166,17 @@ export default function TeacherDashboard({ session, handleLogout }) {
     setViewingCourseStudents(null); 
   };
   
+  // 🌟 บันทึกข้อมูลส่วนตัวครู
   const handleUpdateProfile = async (e) => { 
     e.preventDefault(); 
-    await supabase.from("profiles").update({ full_name: profileName }).eq("id", session.user.id); 
+    await supabase.from("profiles").update({ 
+      full_name: profileForm.full_name,
+      nickname: profileForm.nickname,
+      phone: profileForm.phone,
+      avatar_url: profileForm.avatar_url
+    }).eq("id", session.user.id); 
+    
+    fetchData();
     Swal.fire('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อย', 'success'); 
   };
   
@@ -550,9 +564,15 @@ export default function TeacherDashboard({ session, handleLogout }) {
           <div className="fade-in">
             <div className="card shadow-sm border-0 rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #198754 0%, #146c43 100%)' }}>
               <div className="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4 text-white">
-                <div>
-                  <h3 className="fw-bold mb-1">สวัสดี, ครู{profileName || ""} 👋</h3>
-                  <p className="text-white-50 mb-0">ยินดีต้อนรับกลับสู่ระบบการจัดการเรียนการสอน</p>
+                <div className="d-flex align-items-center gap-3">
+                   {/* 🌟 แสดงรูปโปรไฟล์ย่อๆ ตรงหน้าแรก */}
+                   <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center" style={{width: '60px', height: '60px', fontSize: '25px'}}>
+                      {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
+                   </div>
+                   <div>
+                     <h3 className="fw-bold mb-1">สวัสดี, ครู{profileForm.full_name || ""} 👋</h3>
+                     <p className="text-white-50 mb-0">ยินดีต้อนรับกลับสู่ระบบการจัดการเรียนการสอน</p>
+                   </div>
                 </div>
                 <button onClick={handleExportCSV} className="btn btn-light text-success fw-bold rounded-pill px-4 py-3 shadow-sm d-flex align-items-center gap-2">
                   <span>📥</span> โหลดคะแนนงาน (CSV)
@@ -624,7 +644,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
                       {enrollments.filter((e) => e.course_id === viewingCourseStudents.id).map((student, idx) => (
                         <div key={idx} className="col-md-6">
                           <div className="bg-light rounded-4 p-3 d-flex align-items-center gap-3">
-                            <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex justify-content-center align-items-center" style={{ width: "45px", height: "45px", fontSize: "20px" }}>👨‍🎓</div>
+                            <div className="bg-success bg-opacity-10 text-success rounded-circle overflow-hidden d-flex justify-content-center align-items-center" style={{ width: "45px", height: "45px", fontSize: "20px" }}>
+                               {student.profiles?.avatar_url ? <img src={student.profiles.avatar_url} alt="" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👨‍🎓'}
+                            </div>
                             <div>
                               <h6 className="fw-bold text-dark mb-0">{student.profiles?.full_name || "ยังไม่ระบุชื่อ"}</h6>
                               <small className="text-muted">รหัส: {student.profiles?.student_code || "-"}</small>
@@ -1088,31 +1110,59 @@ export default function TeacherDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* TAB 6: 👤 บัญชี */}
+        {/* 🌟 TAB 6: 👤 บัญชี (จัดเต็ม) */}
         {activeTab === "profile" && (
           <div className="fade-in d-flex flex-column align-items-center">
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white w-100" style={{ maxWidth: "500px" }}>
               <div className="p-5 text-center position-relative" style={{ background: 'linear-gradient(135deg, #198754 0%, #146c43 100%)' }}>
-                <div className="bg-white rounded-circle position-absolute start-50 translate-middle border border-4 border-white shadow-sm d-flex justify-content-center align-items-center" style={{ width: "90px", height: "90px", top: "100%", fontSize: "36px" }}>👩‍🏫</div>
+                <div className="bg-white rounded-circle position-absolute start-50 translate-middle border border-4 border-white shadow-sm d-flex justify-content-center align-items-center overflow-hidden" style={{ width: "90px", height: "90px", top: "100%", fontSize: "36px" }}>
+                   {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
+                </div>
               </div>
               <div className="card-body pt-5 px-4 pb-5 text-center mt-3">
-                <h4 className="fw-bold mb-1 text-dark">ครู{profileName || ""}</h4>
+                <h4 className="fw-bold mb-1 text-dark">ครู{profileForm.full_name || ""}</h4>
                 <p className="text-muted mb-0">{session?.user?.email}</p>
               </div>
             </div>
             
-            <div className="card border-0 shadow-sm rounded-4 bg-white w-100" style={{ maxWidth: "500px" }}>
+            <div className="card border-0 shadow-sm rounded-4 bg-white w-100 mb-4" style={{ maxWidth: "500px" }}>
               <div className="card-body p-4 p-md-5">
                 <h5 className="fw-bold mb-4 text-dark text-center">แก้ไขข้อมูลส่วนตัว</h5>
                 <form onSubmit={handleUpdateProfile}>
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <label className="form-label text-muted small fw-bold ms-2">ชื่อ - นามสกุล</label>
-                    <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3 fw-bold" value={profileName} onChange={(e) => setProfileName(e.target.value)} required />
+                    <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3 fw-bold" value={profileForm.full_name} onChange={(e) => setProfileForm({...profileForm, full_name: e.target.value})} required />
                   </div>
-                  <button type="submit" className="btn btn-success w-100 rounded-pill fw-bold py-3 shadow-sm custom-btn">บันทึกข้อมูล</button>
+                  <div className="mb-3">
+                    <label className="form-label text-muted small fw-bold ms-2">ชื่อเล่น</label>
+                    <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.nickname} onChange={(e) => setProfileForm({...profileForm, nickname: e.target.value})} placeholder="ระบุชื่อเล่น" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label text-muted small fw-bold ms-2">เบอร์โทรศัพท์</label>
+                    <input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} placeholder="08X-XXX-XXXX" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="form-label text-muted small fw-bold ms-2">ลิงก์รูปโปรไฟล์ (Image URL)</label>
+                    <input type="url" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.avatar_url} onChange={(e) => setProfileForm({...profileForm, avatar_url: e.target.value})} placeholder="https://..." />
+                  </div>
+                  
+                  <hr className="my-4 border-light" />
+                  <h6 className="fw-bold mb-3 text-dark">ข้อมูลของระบบ (แก้ไขไม่ได้)</h6>
+                  
+                  <div className="mb-3">
+                    <label className="form-label text-muted small fw-bold ms-2">รหัสบุคลากร</label>
+                    <input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-3 text-muted" value={profileForm.student_code} disabled />
+                  </div>
+                  <div className="mb-4">
+                    <label className="form-label text-muted small fw-bold ms-2">แผนกวิชา</label>
+                    <input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-3 text-muted" value={profileForm.department} disabled />
+                  </div>
+
+                  <button type="submit" className="btn btn-success w-100 rounded-pill fw-bold py-3 shadow-sm custom-btn">💾 บันทึกข้อมูล</button>
                 </form>
               </div>
             </div>
+            
           </div>
         )}
 
