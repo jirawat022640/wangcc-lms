@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import Swal from 'sweetalert2' // 🌟 นำเข้า SweetAlert2
 
 export default function StudentDashboard({ session, handleLogout }) {
   const navigate = useNavigate()
@@ -103,20 +104,20 @@ export default function StudentDashboard({ session, handleLogout }) {
   const handleUpdateProfile = async (e) => { 
     e.preventDefault(); 
     await supabase.from('profiles').update({ full_name: profileName }).eq('id', session.user.id); 
-    alert('บันทึกข้อมูลเรียบร้อย!'); 
+    Swal.fire('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อย!', 'success');
   }
 
   const handleEnroll = async (courseId) => {
     const { error } = await supabase.from('enrollments').insert([{ student_id: session.user.id, course_id: courseId }])
     if (error) { 
       if (error.code === '23505' || error.message.includes('duplicate')) {
-        alert('คุณได้ลงทะเบียนวิชานี้ไปแล้ว'); 
+        Swal.fire('แจ้งเตือน', 'คุณได้ลงทะเบียนวิชานี้ไปแล้ว', 'info'); 
       } else {
-        alert(`เกิดข้อผิดพลาด: ${error.message}`); 
+        Swal.fire('ข้อผิดพลาด', `เกิดข้อผิดพลาด: ${error.message}`, 'error'); 
       }
     } else { 
       fetchData(); 
-      alert('ลงทะเบียนสำเร็จ!'); 
+      Swal.fire('สำเร็จ!', 'ลงทะเบียนวิชานี้เรียบร้อยแล้ว!', 'success'); 
     }
   }
 
@@ -125,7 +126,9 @@ export default function StudentDashboard({ session, handleLogout }) {
     await supabase.from('submissions').insert([{ assignment_id: assignId, student_id: session.user.id, submitted_text: submitForm.text }]); 
     setSubmitForm({ assign_id: '', text: '' }); 
     fetchData(); 
-    alert('ส่งงานสำเร็จ!'); 
+    Swal.fire({
+      toast: true, position: 'top-end', icon: 'success', title: 'ส่งงานสำเร็จ!', showConfirmButton: false, timer: 2000
+    });
   }
 
   const handleStartQuiz = (quiz) => { 
@@ -135,7 +138,17 @@ export default function StudentDashboard({ session, handleLogout }) {
 
   const handleQuizSubmit = async () => {
     if (Object.keys(quizAnswers).length < takingQuiz.questions.length) { 
-      if(!window.confirm('คุณยังทำข้อสอบไม่ครบทุกข้อ ต้องการส่งคำตอบเลยหรือไม่?')) return; 
+      const result = await Swal.fire({
+        title: 'ทำข้อสอบยังไม่ครบ!',
+        text: 'คุณยังทำข้อสอบไม่ครบทุกข้อ ต้องการส่งคำตอบเลยหรือไม่?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ส่งเลย',
+        cancelButtonText: 'กลับไปทำต่อ'
+      });
+      if (!result.isConfirmed) return;
     }
     
     let score = 0; 
@@ -150,7 +163,7 @@ export default function StudentDashboard({ session, handleLogout }) {
       total_score: takingQuiz.questions.length 
     }]);
     
-    alert(`ส่งข้อสอบสำเร็จ! คุณทำได้ ${score}/${takingQuiz.questions.length} คะแนน`); 
+    Swal.fire('ส่งข้อสอบสำเร็จ!', `คุณทำได้ ${score}/${takingQuiz.questions.length} คะแนน`, 'success'); 
     setTakingQuiz(null); 
     setQuizAnswers({}); 
     fetchData(); 

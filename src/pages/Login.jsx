@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import Swal from 'sweetalert2' // 🌟 นำเข้า SweetAlert2
 
 export default function Login({ setSession }) {
   const [isLogin, setIsLogin] = useState(true)
@@ -9,12 +10,9 @@ export default function Login({ setSession }) {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
 
-  const [alertMsg, setAlertMsg] = useState({ type: '', text: '' })
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setAlertMsg({ type: '', text: '' }) 
     
     const emailToUse = identifier.includes('@') ? identifier : `${identifier}@wnytc.ac.th`
     const sCode = identifier.includes('@') ? '' : identifier
@@ -26,12 +24,24 @@ export default function Login({ setSession }) {
         password,
       })
       if (error) {
-        setAlertMsg({ type: 'danger', text: '❌ รหัสผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง' })
+        Swal.fire({
+          icon: 'error',
+          title: 'เข้าสู่ระบบไม่สำเร็จ',
+          text: 'รหัสผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง',
+          confirmButtonColor: '#0d6efd'
+        })
       } else {
-        setAlertMsg({ type: 'success', text: '✅ เข้าสู่ระบบสำเร็จ! กำลังพาดำเนินการ...' })
+        Swal.fire({
+          icon: 'success',
+          title: 'เข้าสู่ระบบสำเร็จ!',
+          text: 'กำลังพาดำเนินการ...',
+          timer: 1500,
+          timerProgressBar: true,
+          showConfirmButton: false
+        })
         setTimeout(() => {
           window.location.reload()
-        }, 1000)
+        }, 1500)
       }
     } else {
       // ----------------- สมัครสมาชิก -----------------
@@ -47,10 +57,14 @@ export default function Login({ setSession }) {
       })
       
       if (error) {
-        setAlertMsg({ type: 'danger', text: `❌ สมัครสมาชิกไม่สำเร็จ: ${error.message}` })
+        Swal.fire({
+          icon: 'error',
+          title: 'สมัครสมาชิกไม่สำเร็จ',
+          text: error.message,
+          confirmButtonColor: '#0d6efd'
+        })
       } else {
         if (data.user) {
-           // 🌟 แก้ไขตรงนี้: ใช้ upsert เพื่อสร้างข้อมูลโปรไฟล์ใหม่ พร้อมผูก ID และ Role
            await supabase.from('profiles').upsert({
               id: data.user.id,
               student_code: sCode,
@@ -61,16 +75,20 @@ export default function Login({ setSession }) {
            })
         }
         
-        setAlertMsg({ 
-          type: 'success', 
-          text: masterData ? `🎉 ยินดีต้อนรับ ${masterData.full_name}! กำลังเข้าสู่ระบบ...` : '🎉 สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...' 
+        Swal.fire({
+          icon: 'success',
+          title: masterData ? `ยินดีต้อนรับ ${masterData.full_name}!` : 'สมัครสมาชิกสำเร็จ!',
+          text: 'กำลังพาดำเนินการเข้าสู่ระบบ...',
+          timer: 2000,
+          timerProgressBar: true,
+          showConfirmButton: false
         })
         
         const { data: loginData } = await supabase.auth.signInWithPassword({ email: emailToUse, password })
         if (loginData?.session) {
           setTimeout(() => {
             window.location.reload()
-          }, 1500)
+          }, 2000)
         }
       }
     }
@@ -95,18 +113,11 @@ export default function Login({ setSession }) {
         </div>
 
         <div className="d-flex bg-light p-1 mx-4 rounded-pill mb-4 mt-n3 shadow-sm position-relative" style={{ zIndex: 10, transform: 'translateY(-15px)' }}>
-          <button type="button" onClick={() => {setIsLogin(true); setAlertMsg({type:'',text:''})}} className={`btn rounded-pill flex-grow-1 fw-bold transition-all py-2 ${isLogin ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'}`}>เข้าสู่ระบบ</button>
-          <button type="button" onClick={() => {setIsLogin(false); setAlertMsg({type:'',text:''})}} className={`btn rounded-pill flex-grow-1 fw-bold transition-all py-2 ${!isLogin ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'}`}>สมัครสมาชิก</button>
+          <button type="button" onClick={() => setIsLogin(true)} className={`btn rounded-pill flex-grow-1 fw-bold transition-all py-2 ${isLogin ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'}`}>เข้าสู่ระบบ</button>
+          <button type="button" onClick={() => setIsLogin(false)} className={`btn rounded-pill flex-grow-1 fw-bold transition-all py-2 ${!isLogin ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'}`}>สมัครสมาชิก</button>
         </div>
 
         <div className="card-body px-4 pb-5 pt-0">
-          
-          {alertMsg.text && (
-            <div className={`alert alert-${alertMsg.type} border-0 shadow-sm rounded-4 text-center small fw-bold slide-down py-2 mb-4`} role="alert">
-              {alertMsg.text}
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
             {!isLogin && (
               <div className="form-floating mb-1 slide-down">

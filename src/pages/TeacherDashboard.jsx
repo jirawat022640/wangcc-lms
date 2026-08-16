@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import Swal from 'sweetalert2'; // 🌟 นำเข้า SweetAlert2
 
 export default function TeacherDashboard({ session, handleLogout }) {
   const navigate = useNavigate();
@@ -9,7 +10,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [quizSubTab, setQuizSubTab] = useState("create"); 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // 🌟 เพิ่ม State สำหรับเก็บข้อมูลแผนกวิชาจาก Database
   const [departments, setDepartments] = useState([]);
   
   const [courses, setCourses] = useState([]);
@@ -22,7 +22,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [announcements, setAnnouncements] = useState([]);
   const [viewingCourseStudents, setViewingCourseStudents] = useState(null);
 
-  // 🌟 อัปเดตฟอร์มสร้างรายวิชา ให้รับค่า 3 ส่วน (ระดับชั้น, ห้อง, แผนก)
   const [courseForm, setCourseForm] = useState({ 
     code: "", name: "", level: "", room: "", department: "", semester: "", credits: "" 
   });
@@ -59,7 +58,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
       const { data: sysData } = await supabase.from('system_settings').select('current_semester').eq('id', 1).single();
       if (sysData) setCourseForm(prev => ({ ...prev, semester: sysData.current_semester }));
 
-      // 🌟 ดึงข้อมูลแผนกวิชาจากฐานข้อมูลมาแสดงใน Dropdown
       const { data: deptData } = await supabase.from('departments').select('*').order('name');
       if (deptData) setDepartments(deptData);
 
@@ -165,14 +163,11 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const handleUpdateProfile = async (e) => { 
     e.preventDefault(); 
     await supabase.from("profiles").update({ full_name: profileName }).eq("id", session.user.id); 
-    alert("บันทึกสำเร็จ"); 
+    Swal.fire('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อย', 'success'); 
   };
   
-  // 🌟 ฟังก์ชันบันทึกการเปิดรายวิชาที่นำ Dropdown 3 ช่องมารวมกัน
   const handleCreateCourse = async (e) => {
     e.preventDefault();
-    
-    // นำค่าระดับชั้น + ห้อง + แผนก มารวมกัน เช่น "ปวช.1 แผนกวิชาช่างยนต์" หรือ "ปวส.ทวิภาคี แผนกวิชาการบัญชี"
     const finalSectionName = `${courseForm.level}${courseForm.room} ${courseForm.department}`;
 
     await supabase.from("courses").insert([{ 
@@ -186,12 +181,15 @@ export default function TeacherDashboard({ session, handleLogout }) {
     
     setCourseForm(prev => ({ code: "", name: "", level: "", room: "", department: "", semester: prev.semester, credits: "" })); 
     fetchData(); 
-    alert("สร้างรายวิชาสำเร็จ");
+    Swal.fire('สำเร็จ!', 'เปิดรายวิชาใหม่เรียบร้อยแล้ว', 'success');
   };
 
   const handleCreateAssignment = async (e) => { 
     e.preventDefault(); 
-    if (!assignForm.course_id) return alert("กรุณาเลือกรายวิชา"); 
+    if (!assignForm.course_id) {
+       Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning');
+       return;
+    }
     
     await supabase.from("assignments").insert([{ 
       course_id: assignForm.course_id, 
@@ -201,7 +199,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
     
     setAssignForm({ course_id: "", title: "", description: "" }); 
     fetchData(); 
-    alert("สั่งงานสำเร็จ"); 
+    Swal.fire('สำเร็จ!', 'สั่งงานนักเรียนเรียบร้อยแล้ว', 'success'); 
   };
 
   const handleCloneAssignment = (e) => {
@@ -218,11 +216,20 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   const handleCreateQuiz = async (e) => { 
     e.preventDefault(); 
-    if (!quizForm.course_id) return alert("กรุณาเลือกรายวิชา"); 
+    if (!quizForm.course_id) {
+      Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning');
+      return;
+    }
     
     for (let i = 0; i < questions.length; i++) { 
-      if (!questions[i].question) return alert(`กรุณากรอกโจทย์ข้อที่ ${i + 1}`); 
-      if (questions[i].options.some((opt) => opt.trim() === "")) return alert(`กรุณากรอกตัวเลือกให้ครบในข้อที่ ${i + 1}`); 
+      if (!questions[i].question) {
+        Swal.fire('แจ้งเตือน', `กรุณากรอกโจทย์ข้อที่ ${i + 1}`, 'warning');
+        return;
+      }
+      if (questions[i].options.some((opt) => opt.trim() === "")) {
+        Swal.fire('แจ้งเตือน', `กรุณากรอกตัวเลือกให้ครบในข้อที่ ${i + 1}`, 'warning');
+        return;
+      }
     } 
     
     await supabase.from("quizzes").insert([{ 
@@ -234,7 +241,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
     setQuizForm({ course_id: "", title: "" }); 
     setQuestions([{ question: "", options: ["", "", "", ""], correctOption: 0 }]); 
     fetchData(); 
-    alert("สร้างแบบทดสอบสำเร็จ"); 
+    Swal.fire('สำเร็จ!', 'สร้างแบบทดสอบเรียบร้อยแล้ว', 'success'); 
   };
 
   const handleCloneQuiz = (e) => {
@@ -253,14 +260,17 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   const handleUploadMaterial = async (e) => { 
     e.preventDefault(); 
-    if (!materialForm.course_id) return alert("กรุณาเลือกรายวิชา"); 
+    if (!materialForm.course_id) {
+      Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning');
+      return;
+    }
     
     let finalUrl = ""; 
     setUploading(true); 
     
     if (uploadMode === "file") { 
       if (!materialForm.file) { 
-        alert("กรุณาเลือกไฟล์"); 
+        Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์', 'warning'); 
         setUploading(false); 
         return; 
       } 
@@ -272,7 +282,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
       const { error: uploadError } = await supabase.storage.from("course_materials").upload(filePath, file); 
       
       if (uploadError) { 
-        alert(`อัปโหลดไม่สำเร็จ: ${uploadError.message}`); 
+        Swal.fire('ข้อผิดพลาด', `อัปโหลดไม่สำเร็จ: ${uploadError.message}`, 'error'); 
         setUploading(false); 
         return; 
       } 
@@ -280,7 +290,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
       finalUrl = publicUrl; 
     } else { 
       if (!materialForm.link) { 
-        alert("กรุณาวางลิงก์"); 
+        Swal.fire('แจ้งเตือน', 'กรุณาวางลิงก์', 'warning'); 
         setUploading(false); 
         return; 
       } 
@@ -295,7 +305,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
     
     setMaterialForm({ course_id: "", title: "", file: null, link: "" }); 
     fetchData(); 
-    alert("อัปโหลดเอกสารสำเร็จ!"); 
+    Swal.fire('สำเร็จ!', 'อัปโหลดเอกสารสำเร็จ!', 'success'); 
     setUploading(false); 
   };
 
@@ -304,19 +314,26 @@ export default function TeacherDashboard({ session, handleLogout }) {
     await supabase.from("submissions").update({ score: gradeForm.score }).eq("id", subId); 
     setGradeForm({ id: "", score: "" }); 
     fetchData(); 
-    alert("บันทึกคะแนนสำเร็จ"); 
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกคะแนนสำเร็จ', showConfirmButton: false, timer: 1500 }); 
   };
 
   const handleBatchGradeSubmit = async (e) => {
     e.preventDefault();
-    if (selectedSubIds.length === 0) return alert("กรุณาเลือกงานที่ต้องการให้คะแนน");
-    if (!batchScore) return alert("กรุณาระบุคะแนนที่ต้องการให้");
+    if (selectedSubIds.length === 0) {
+      Swal.fire('แจ้งเตือน', 'กรุณาเลือกงานที่ต้องการให้คะแนน', 'warning');
+      return;
+    }
+    if (!batchScore) {
+      Swal.fire('แจ้งเตือน', 'กรุณาระบุคะแนนที่ต้องการให้', 'warning');
+      return;
+    }
 
     await supabase.from("submissions").update({ score: batchScore }).in("id", selectedSubIds);
+    const count = selectedSubIds.length;
     setSelectedSubIds([]);
     setBatchScore("");
     fetchData();
-    alert(`บันทึกคะแนน ${batchScore} ให้กับ ${selectedSubIds.length} รายการ สำเร็จ!`);
+    Swal.fire('บันทึกสำเร็จ!', `บันทึกคะแนน ${batchScore} ให้กับ ${count} รายการ สำเร็จ!`, 'success');
   };
 
   const toggleSubSelection = (id) => {
@@ -324,21 +341,49 @@ export default function TeacherDashboard({ session, handleLogout }) {
   };
 
   const handleDeleteCourse = async (id) => { 
-    if (!window.confirm("⚠️ ลบวิชานี้หรือไม่?")) return; 
+    const result = await Swal.fire({
+      title: 'คำเตือน',
+      text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารในวิชาจะถูกลบไปด้วย",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'ลบวิชา'
+    });
+    if (!result.isConfirmed) return; 
     await supabase.from("courses").delete().eq("id", id); 
     fetchData(); 
+    Swal.fire('ลบแล้ว!', 'ลบวิชาเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteMaterial = async (id) => { 
-    if (!window.confirm("⚠️ ลบเอกสารนี้หรือไม่?")) return; 
+    const result = await Swal.fire({
+      title: 'ยืนยันการลบ',
+      text: "ลบเอกสารประกอบการสอนนี้หรือไม่?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'ลบเอกสาร'
+    });
+    if (!result.isConfirmed) return; 
     await supabase.from("materials").delete().eq("id", id); 
     fetchData(); 
+    Swal.fire('ลบแล้ว!', 'ลบเอกสารเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteAssignment = async (id) => { 
-    if (!window.confirm("⚠️ ลบคำสั่งงานนี้หรือไม่?")) return; 
+    const result = await Swal.fire({
+      title: 'ยืนยันการลบ',
+      text: "ลบคำสั่งงานนี้หรือไม่? คะแนนและงานของนักเรียนจะหายไปด้วย",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'ลบงาน'
+    });
+    if (!result.isConfirmed) return; 
     await supabase.from("assignments").delete().eq("id", id); 
     fetchData(); 
+    Swal.fire('ลบแล้ว!', 'ลบคำสั่งงานเรียบร้อยแล้ว', 'success');
   };
 
   const handleUpdateCourse = async (e) => { 
@@ -353,7 +398,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
     
     setEditingCourse(null); 
     fetchData(); 
-    alert("อัปเดตวิชาสำเร็จ"); 
+    Swal.fire('สำเร็จ!', 'อัปเดตข้อมูลวิชาสำเร็จ', 'success'); 
   };
 
   const handleUpdateMaterial = async (e) => { 
@@ -361,7 +406,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
     await supabase.from("materials").update({ title: editingMaterial.title }).eq("id", editingMaterial.id); 
     setEditingMaterial(null); 
     fetchData(); 
-    alert("อัปเดตสำเร็จ"); 
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปเดตชื่อเอกสารสำเร็จ', showConfirmButton: false, timer: 1500 }); 
   };
 
   const addQuestion = () => setQuestions([...questions, { question: "", options: ["", "", "", ""], correctOption: 0 }]);
@@ -369,7 +414,10 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const updateOption = (qIndex, optIndex, value) => { const newQs = [...questions]; newQs[qIndex].options[optIndex] = value; setQuestions(newQs); };
   
   const handleExportCSV = () => { 
-    if (submissions.length === 0) return alert("ยังไม่มีข้อมูลส่งงาน"); 
+    if (submissions.length === 0) {
+      Swal.fire('แจ้งเตือน', 'ยังไม่มีข้อมูลส่งงานให้ดาวน์โหลด', 'info');
+      return; 
+    }
     let csvContent = "\uFEFFภาคเรียน,รหัสวิชา,วิชา,หน่วยกิต,กลุ่มเรียน/แผนก,ชิ้นงาน,รหัสนักศึกษา,ชื่อ-นามสกุล,คะแนน,สถานะ\n"; 
     
     submissions.forEach((sub) => { 
@@ -388,7 +436,10 @@ export default function TeacherDashboard({ session, handleLogout }) {
   };
 
   const handleExportQuizCSV = () => {
-    if (quizSubmissions.length === 0) return alert("ยังไม่มีข้อมูลคะแนนสอบ");
+    if (quizSubmissions.length === 0) {
+      Swal.fire('แจ้งเตือน', 'ยังไม่มีข้อมูลคะแนนสอบ', 'info');
+      return;
+    }
     let csvContent = "\uFEFFภาคเรียน,รหัสวิชา,วิชา,กลุ่มเรียน/แผนก,แบบทดสอบ,รหัสนักศึกษา,ชื่อ-นามสกุล,คะแนนที่ได้,คะแนนเต็ม\n";
     
     quizSubmissions.forEach((qs) => {
@@ -587,7 +638,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
               </div>
             ) : (
               <>
-                {/* 🌟 ปรับฟอร์มสร้างรายวิชาใหม่ ให้มี Dropdown */}
                 <div className="card border-0 shadow-sm rounded-4 mb-5 overflow-hidden">
                   <div className="card-body p-4 bg-white">
                     <h5 className="fw-bold mb-4 text-dark d-flex align-items-center gap-2"><span>✨</span> เปิดรายวิชาใหม่</h5>
@@ -603,7 +653,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
                           <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="หน่วยกิต" value={courseForm.credits} onChange={(e) => setCourseForm({ ...courseForm, credits: e.target.value })} required />
                         </div>
                         
-                        {/* 🌟 3 Dropdown ใหม่แทนช่องกรอกข้อความ */}
                         <div className="col-md-3">
                           <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={courseForm.level} onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })} required>
                             <option value="">-- ระดับชั้น --</option>
