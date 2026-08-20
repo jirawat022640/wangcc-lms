@@ -136,21 +136,23 @@ export default function Login({ setSession }) {
         <div className="card-body px-4 pb-5 pt-0">
           <form onSubmit={handleSubmit} className="d-flex flex-column gap-2">
             
-            {/* 🌟 แก้ไข: ย้าย Label ไว้ด้านบน Input ป้องกันการซ้อนทับ */}
             {!isLogin && (
               <div className="mb-2 text-start slide-down">
-                <label htmlFor="fullName" className="text-muted fw-bold small ms-2 mb-1">👤 ชื่อ-สกุล (เว้นว่างถ้าระบบมีชื่อแล้ว)</label>
+                {/* 🌟 เปลี่ยน text-muted เป็น text-white-50 ให้อ่านง่าย */}
+                <label htmlFor="fullName" className="text-white-50 fw-bold small ms-2 mb-1">👤 ชื่อ-สกุล (เว้นว่างถ้าระบบมีชื่อแล้ว)</label>
                 <input type="text" className="form-control rounded-4 theme-input bg-white text-dark shadow-none py-3" id="fullName" placeholder="พิมพ์ชื่อ - นามสกุล..." value={fullName} onChange={(e) => setFullName(e.target.value)} />
               </div>
             )}
 
             <div className="mb-2 text-start">
-              <label htmlFor="identifier" className="text-muted fw-bold small ms-2 mb-1">{isLogin ? '🧑‍💻 รหัสผู้ใช้งาน (เช่น 6620001)' : '🧑‍💻 รหัสประจำตัว (ใช้เข้าระบบ)'}</label>
+              {/* 🌟 เปลี่ยน text-muted เป็น text-white-50 ให้อ่านง่าย */}
+              <label htmlFor="identifier" className="text-white-50 fw-bold small ms-2 mb-1">{isLogin ? '🧑‍💻 รหัสผู้ใช้งาน (เช่น 6620001)' : '🧑‍💻 รหัสประจำตัว (ใช้เข้าระบบ)'}</label>
               <input type="text" className="form-control rounded-4 theme-input bg-white text-dark shadow-none py-3" id="identifier" placeholder="พิมพ์รหัสประจำตัว หรือ อีเมล..." value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
             </div>
 
             <div className="mb-4 text-start">
-              <label htmlFor="password" className="text-muted fw-bold small ms-2 mb-1">🔒 รหัสผ่าน (เช่น เลข ปชช.)</label>
+              {/* 🌟 เปลี่ยน text-muted เป็น text-white-50 ให้อ่านง่าย */}
+              <label htmlFor="password" className="text-white-50 fw-bold small ms-2 mb-1">🔒 รหัสผ่าน (เช่น เลข ปชช.)</label>
               <input type="password" className="form-control rounded-4 theme-input bg-white text-dark shadow-none py-3" id="password" placeholder="พิมพ์รหัสผ่าน..." value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
 
