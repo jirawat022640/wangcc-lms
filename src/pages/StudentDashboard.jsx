@@ -29,8 +29,10 @@ export default function StudentDashboard({ session, handleLogout }) {
   
   const [takingQuiz, setTakingQuiz] = useState(null)
   const [quizAnswers, setQuizAnswers] = useState({})
+  
+  // 🌟 State สำหรับเวลานับถอยหลัง (หน่วยเป็นวินาที)
+  const [timeLeft, setTimeLeft] = useState(null)
 
-  // 🌟 Ref สำหรับระบบ Anti-Cheat (ป้องกันดึงค่า State ผิดพลาดใน Event Listener)
   const takingQuizRef = useRef(null)
   const quizAnswersRef = useRef({})
   const cheatWarningsRef = useRef(0)
@@ -57,18 +59,17 @@ export default function StudentDashboard({ session, handleLogout }) {
     if (session?.role === 'student') fetchData()
   }, [session])
 
-  // 🌟 ระบบจับการโกง (Anti-Cheat): ตรวจจับเมื่อนักเรียนสลับแอป หรือเปลี่ยนแท็บเบราว์เซอร์
   useEffect(() => {
     takingQuizRef.current = takingQuiz;
     quizAnswersRef.current = quizAnswers;
   }, [takingQuiz, quizAnswers]);
 
+  // 🌟 ระบบจับการโกง (สลับแอป/หน้าจอ)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && takingQuizRef.current) {
         cheatWarningsRef.current += 1;
         if (cheatWarningsRef.current >= 2) {
-          // ถ้าเตือนแล้วยังสลับแอปอีก ให้บังคับส่งข้อสอบทันที
           Swal.fire({
              title: 'หมดสิทธิ์สอบ!', 
              text: 'คุณทำผิดกฎโดยการสลับหน้าจอเกินกำหนด ระบบได้ทำการส่งข้อสอบของคุณอัตโนมัติแล้ว', 
@@ -76,9 +77,8 @@ export default function StudentDashboard({ session, handleLogout }) {
              confirmButtonText: 'ตกลง',
              allowOutsideClick: false
           });
-          forceSubmitQuiz();
+          forceSubmitQuiz(true); // บังคับส่งและติดป้ายทุจริต
         } else {
-          // เตือนครั้งแรก
           Swal.fire({
              title: '⚠️ คำเตือน!', 
              text: 'ห้ามสลับหน้าจอ เปิดแท็บใหม่ หรือสลับแอปอื่นระหว่างทำข้อสอบ! หากตรวจพบอีกครั้งระบบจะยึดกระดาษคำตอบทันที', 
@@ -93,7 +93,31 @@ export default function StudentDashboard({ session, handleLogout }) {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  const forceSubmitQuiz = async () => {
+  // 🌟 ระบบนับเวลาถอยหลัง
+  useEffect(() => {
+    if (timeLeft === null || !takingQuiz) return;
+    
+    // ถ้าเวลาหมด บังคับส่งข้อสอบ (แต่ไม่ติดป้ายทุจริต)
+    if (timeLeft <= 0) {
+      Swal.fire({
+         title: 'หมดเวลาทำข้อสอบ! ⏳', 
+         text: 'ระบบกำลังส่งกระดาษคำตอบของคุณอัตโนมัติ', 
+         icon: 'info',
+         showConfirmButton: false,
+         timer: 2500
+      });
+      forceSubmitQuiz(false); 
+      return;
+    }
+
+    const timerId = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [timeLeft, takingQuiz]);
+
+  const forceSubmitQuiz = async (isCheated = false) => {
     const currentQuiz = takingQuizRef.current;
     const currentAnswers = quizAnswersRef.current;
     if (!currentQuiz) return;
@@ -107,13 +131,21 @@ export default function StudentDashboard({ session, handleLogout }) {
       quiz_id: currentQuiz.id, 
       student_id: session.user.id, 
       score: score, 
-      total_score: currentQuiz.questions.length 
+      total_score: currentQuiz.questions.length,
+      is_cheated: isCheated // ส่งสถานะทุจริตไปตามเงื่อนไข
     }]);
     
     setTakingQuiz(null); 
     setQuizAnswers({}); 
+    setTimeLeft(null);
     cheatWarningsRef.current = 0;
     fetchData();
+  };
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
   };
 
   const fetchData = async () => {
@@ -276,13 +308,19 @@ export default function StudentDashboard({ session, handleLogout }) {
     } catch (error) { Swal.fire('เกิดข้อผิดพลาด', error.message, 'error'); }
   };
 
-  // 🌟 ฟังก์ชันสุ่มโจทย์แบบอัตโนมัติ (Randomize)
   const handleStartQuiz = (quiz) => { 
-    // ทำการสุ่มข้อสอบทุกครั้งที่กดเริ่มทำ
+    // สุ่มข้อสอบทุกครั้ง
     const shuffledQuestions = [...quiz.questions].sort(() => Math.random() - 0.5);
     setTakingQuiz({ ...quiz, questions: shuffledQuestions }); 
     setQuizAnswers({}); 
-    cheatWarningsRef.current = 0; // รีเซ็ตตัวนับการโกง
+    cheatWarningsRef.current = 0; 
+
+    // 🌟 เริ่มนับเวลาถอยหลัง (ถ้าครูกำหนดเวลาไว้)
+    if (quiz.time_limit && quiz.time_limit > 0) {
+      setTimeLeft(quiz.time_limit * 60); // แปลงนาทีเป็นวินาที
+    } else {
+      setTimeLeft(null); // ไม่จำกัดเวลา
+    }
   }
 
   const handleQuizSubmit = async () => {
@@ -296,16 +334,19 @@ export default function StudentDashboard({ session, handleLogout }) {
       if (quizAnswers[index] === q.correctOption) score++; 
     });
     
+    // กดส่งปกติ (ไม่ทุจริต)
     await supabase.from('quiz_submissions').insert([{ 
       quiz_id: takingQuiz.id, 
       student_id: session.user.id, 
       score: score, 
-      total_score: takingQuiz.questions.length 
+      total_score: takingQuiz.questions.length,
+      is_cheated: false
     }]);
     
     Swal.fire('ส่งข้อสอบสำเร็จ!', `คุณทำได้ ${score}/${takingQuiz.questions.length} คะแนน`, 'success'); 
     setTakingQuiz(null); 
     setQuizAnswers({}); 
+    setTimeLeft(null);
     cheatWarningsRef.current = 0;
     fetchData(); 
   }
@@ -332,19 +373,26 @@ export default function StudentDashboard({ session, handleLogout }) {
           
           {takingQuiz ? (
              <div className="card shadow-sm border-0 rounded-4 overflow-hidden mb-5 slide-up">
-                <div className="bg-primary text-white p-4">
+                <div className="bg-primary text-white p-4 position-relative">
                   <h5 className="mb-0 fw-bold">📝 {takingQuiz.title}</h5>
                   <small className="text-white-50 mt-1 d-block">⚠️ ห้ามสลับหน้าจอหรือย่อแอปขณะสอบ</small>
+                  
+                  {/* 🌟 แสดงเวลาถอยหลัง (ถ้ามีการตั้งเวลาไว้) */}
+                  {timeLeft !== null && (
+                    <div className="bg-danger text-white fw-bold px-3 py-2 rounded-pill shadow-sm mt-3 d-inline-block border border-white">
+                      ⏳ เหลือเวลา: {formatTime(timeLeft)} นาที
+                    </div>
+                  )}
                 </div>
+
                 <div className="card-body p-4">
                   {takingQuiz.questions.map((q, qIndex) => (
                     <div key={qIndex} className="mb-5 border-bottom pb-4">
                       <h6 className="fw-bold mb-3 fs-5">{qIndex + 1}. {q.question}</h6>
                       
-                      {/* 🌟 แสดงรูปภาพประกอบโจทย์ข้อสอบ (ถ้าครูอัปโหลดมา) */}
                       {q.imageUrl && (
-                        <div className="mb-3 rounded-4 overflow-hidden shadow-sm border">
-                          <img src={q.imageUrl} alt="ภาพประกอบโจทย์" className="w-100 object-fit-contain" style={{ maxHeight: '200px' }} />
+                        <div className="mb-3 rounded-4 overflow-hidden shadow-sm border text-center">
+                          <img src={q.imageUrl} alt="ภาพประกอบโจทย์" className="w-100 object-fit-contain" style={{ maxHeight: '250px' }} />
                         </div>
                       )}
 
@@ -354,7 +402,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                             <input 
                               type="radio" 
                               name={`q-${qIndex}`} 
-                              className="form-check-input mt-0" 
+                              className="form-check-input mt-0 flex-shrink-0" 
                               style={{width: '20px', height:'20px'}} 
                               checked={quizAnswers[qIndex] === optIndex} 
                               onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} 
@@ -366,8 +414,8 @@ export default function StudentDashboard({ session, handleLogout }) {
                     </div>
                   ))}
                   <div className="d-flex gap-3 pt-2">
-                    <button onClick={() => setTakingQuiz(null)} className="btn btn-light rounded-pill fw-bold px-4 py-3 text-secondary w-50">ยกเลิก</button>
-                    <button onClick={handleQuizSubmit} className="btn btn-primary rounded-pill fw-bold py-3 shadow-sm w-50">ส่งคำตอบ</button>
+                    <button onClick={() => { setTakingQuiz(null); setTimeLeft(null); }} className="btn btn-light rounded-pill fw-bold px-4 py-3 text-secondary w-50">ยกเลิกสอบ</button>
+                    <button onClick={handleQuizSubmit} className="btn btn-primary rounded-pill fw-bold py-3 shadow-sm w-50">ส่งข้อสอบ</button>
                   </div>
                 </div>
              </div>
@@ -612,8 +660,17 @@ export default function StudentDashboard({ session, handleLogout }) {
                               <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1 align-self-start mb-2">แบบทดสอบ</span>
                               <h5 className="fw-bold mb-1 text-dark">{q.title}</h5>
                               <p className="text-muted small mb-3">{q.courses.course_name} {moduleName && <span className="text-primary fw-bold">[{moduleName}]</span>}</p>
+                              
+                              {/* 🌟 แจ้งนักเรียนก่อนกดสอบว่ามีเวลาจำกัดไหม */}
+                              {q.time_limit > 0 && (
+                                <p className="text-warning fw-bold small mb-3">⏳ เวลาทำข้อสอบ: {q.time_limit} นาที</p>
+                              )}
+
                               {isDone ? (
-                                <div className="bg-success bg-opacity-10 text-success fw-bold text-center p-3 rounded-pill w-100">✅ ทำแล้ว ได้ {isDone.score}/{isDone.total_score} คะแนน</div>
+                                <div className="bg-success bg-opacity-10 text-success fw-bold text-center p-3 rounded-pill w-100">
+                                  ✅ ทำแล้ว ได้ {isDone.score}/{isDone.total_score} คะแนน
+                                  {isDone.is_cheated && <span className="d-block mt-1 text-danger small">🚨 โดนตัดสิทธิ์(ทุจริต/หมดเวลา)</span>}
+                                </div>
                               ) : (
                                 <button onClick={() => handleStartQuiz(q)} className="btn btn-primary rounded-pill fw-bold py-3 shadow-sm w-100">✍️ เริ่มทำแบบทดสอบ</button>
                               )}
