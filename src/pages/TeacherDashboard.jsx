@@ -247,7 +247,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
   };
 
   const handleDeleteModule = async (id) => {
-    const result = await Swal.fire({ title: 'ลบบทเรียน?', text: "เอกสารและงานในบทนี้จะถูกนำออกจากหมวดหมู่ (แต่ไม่ถูกลบ)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบทิ้ง' });
+    const result = await Swal.fire({ title: 'ลบบทเรียน?', text: "เอกสารและงานในบทนี้จะถูกนำออกจากหมวดหมู่ (แต่ไม่ถูกลบ)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบทิ้ง' });
     if (!result.isConfirmed) return;
     await supabase.from("modules").delete().eq("id", id);
     fetchData();
@@ -351,7 +351,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
        text: "ลบแบบทดสอบนี้หรือไม่? คำเตือน: คะแนนสอบของนักเรียนจะถูกลบไปด้วย", 
        icon: 'warning', 
        showCancelButton: true, 
-       confirmButtonColor: '#d33', 
+       confirmButtonColor: '#e50914', 
        confirmButtonText: 'ลบทิ้ง' 
     });
     if (!result.isConfirmed) return;
@@ -432,19 +432,19 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const toggleSubSelection = (id) => setSelectedSubIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
   const handleDeleteCourse = async (id) => { 
-    const result = await Swal.fire({ title: 'คำเตือน', text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบวิชา' });
+    const result = await Swal.fire({ title: 'คำเตือน', text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบวิชา' });
     if (!result.isConfirmed) return; 
     await supabase.from("courses").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบวิชาเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteMaterial = async (id) => { 
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบเอกสารประกอบการสอนนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบเอกสาร' });
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบเอกสารประกอบการสอนนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบเอกสาร' });
     if (!result.isConfirmed) return; 
     await supabase.from("materials").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบเอกสารเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteAssignment = async (id) => { 
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบคำสั่งงานนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบงาน' });
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบคำสั่งงานนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบงาน' });
     if (!result.isConfirmed) return; 
     await supabase.from("assignments").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบคำสั่งงานเรียบร้อยแล้ว', 'success');
   };
@@ -598,7 +598,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   if (!session || session.role !== "teacher") return <Navigate to="/" />;
 
-  // 🌟 แปลงเมนูเป็นภาษาไทย
+  // 🌟 แปลงเมนูเป็นภาษาไทยทั้งหมด
   const menuItems = [
     { id: 'analytics', icon: '📊', label: 'สถิติภาพรวม' }, 
     { id: 'courses', icon: '📚', label: 'จัดการวิชาเรียน' }, 
@@ -617,8 +617,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
       {/* 🖥️ Desktop Sidebar */}
       <div className="sidebar shadow-sm">
         <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
-          <div className="bg-theme-red text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style={{width:'45px', height:'45px'}}>R</div>
-          <h4 className="fw-bold m-0 text-theme-dark">LMS Teacher</h4>
+          {/* 🌟 เปลี่ยนไอคอนเป็นโลโก้วิทยาลัย */}
+          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'50px', height:'50px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
+          <h4 className="fw-bold m-0 text-theme-dark">ครูผู้สอน</h4>
         </div>
         <div className="d-flex flex-column gap-1 flex-grow-1" style={{overflowY: 'auto'}}>
           {menuItems.map(item => (
@@ -647,7 +648,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                   <span className="fs-5">{item.icon}</span> {item.label}
                 </button>
               ))}
-              <div className="mt-auto pt-3 border-top">
+              <div className="mt-auto pt-3 border-top border-light">
                 <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> ออกจากระบบ</button>
               </div>
             </div>
@@ -664,7 +665,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
             <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-circle p-2 fs-5 border-0">☰</button>
             <h5 className="fw-bold text-theme-dark m-0">ศูนย์ควบคุมครู</h5>
           </div>
-          <div className="bg-theme-red text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style={{width:'35px', height:'35px'}}>👩‍🏫</div>
+          {/* 🌟 เปลี่ยนไอคอนเป็นโลโก้วิทยาลัย */}
+          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'40px', height:'40px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
         </div>
 
         <div className="container-fluid p-4" style={{ maxWidth: '1200px' }}>
@@ -997,8 +999,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
                               <div className="d-flex justify-content-between align-items-start mb-3 pe-4">
                                 <div>
                                   <span className="badge bg-theme-dark text-white rounded-pill px-3 py-2 me-2">{sub.assignments?.courses?.section || "-"}</span>
+                                  <span className="badge bg-light text-theme-dark border rounded-pill px-3 py-2">{sub.profiles?.student_code || "-"}</span>
                                   <div className="fw-bold text-theme-dark mt-2 fs-5">{sub.profiles?.full_name || "ไม่ระบุชื่อ"}</div>
-                                  <span className="text-muted small fw-bold">รหัส: {sub.profiles?.student_code || "-"}</span>
                                 </div>
                                 {sub.score !== null && editingGrade !== sub.id ? (
                                   <div className="text-success fw-bold bg-success bg-opacity-10 px-3 py-2 rounded-pill border border-success mt-1 d-flex align-items-center gap-2">
@@ -1340,7 +1342,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                     <hr className="my-4 border-light" />
 
                     <h6 className="fw-bold mb-3 text-theme-dark">ข้อมูลระบบ (แก้ไขไม่ได้)</h6>
-                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">รหัสประจำตัว</label><input type="text" className="form-control theme-input" value={profileForm.student_code} disabled /></div>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">รหัสบุคลากร</label><input type="text" className="form-control theme-input" value={profileForm.student_code} disabled /></div>
                     <div className="mb-4"><label className="form-label text-muted small fw-bold px-2">แผนกวิชา</label><input type="text" className="form-control theme-input" value={profileForm.department} disabled /></div>
                     <button type="submit" className="btn btn-theme-dark w-100 rounded-pill fw-bold py-3 shadow-sm">💾 บันทึกข้อมูล</button>
                   </form>

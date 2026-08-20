@@ -253,17 +253,17 @@ export default function StudentDashboard({ session, handleLogout }) {
 
   const navigateToService = (tab, subTab) => { setActiveTab(tab); if (subTab) { tab === 'classroom' ? setClassSubTab(subTab) : setTaskSubTab(subTab); } }
 
+  // 🌟 (กู้คืนโค้ดส่วนที่หายไป) คำนวณความเสี่ยงและงานค้างของนักเรียน
   const totalAssignments = assignments.length; 
   const completedAssignments = submissions.length; 
   const missingCount = totalAssignments - completedAssignments;
   const progressPercentage = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
   
-  // 🌟 (กู้คืนโค้ดส่วนที่หายไป) คำนวณความเสี่ยงของนักเรียน
   let totalScore = 0; let gradedCount = 0; 
   submissions.forEach(s => { if(s.score !== null){ totalScore += s.score; gradedCount++; } });
   const avgScore = gradedCount > 0 ? (totalScore / (gradedCount * 10)) * 100 : 100; 
   const isAtRisk = missingCount >= 2 || avgScore < 50;
-  
+
   if (!session || session.role !== 'student') return <Navigate to="/" />
 
   return (
@@ -272,8 +272,9 @@ export default function StudentDashboard({ session, handleLogout }) {
       {/* 🖥️ Desktop Sidebar */}
       <div className={`sidebar ${takingQuiz ? 'd-none' : ''} shadow-sm`}>
         <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
-          <div className="bg-theme-red text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style={{width:'45px', height:'45px'}}>R</div>
-          <h4 className="fw-bold m-0 text-theme-dark">LMS</h4>
+          {/* 🌟 ใส่โลโก้วิทยาลัย */}
+          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'50px', height:'50px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
+          <h4 className="fw-bold m-0 text-theme-dark">สมาร์ท LMS</h4>
         </div>
         <div className="d-flex flex-column gap-2 flex-grow-1">
           <button className={`nav-link-btn ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}><span className="fs-5">🏠</span> หน้าหลัก</button>
@@ -291,8 +292,8 @@ export default function StudentDashboard({ session, handleLogout }) {
         
         {/* Mobile Header (Hidden on taking quiz) */}
         {!takingQuiz && (
-          <div className="mobile-only d-flex justify-content-between align-items-center p-4 pb-2">
-            <div className="d-flex gap-3 align-items-center">
+          <div className="mobile-only d-flex justify-content-between align-items-center p-4 bg-white shadow-sm sticky-top z-3">
+            <div className="d-flex align-items-center gap-3">
               <div className="bg-theme-dark rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center border border-2 border-white" style={{width: '45px', height: '45px', fontSize: '20px'}}>
                   {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👨‍🎓'}
               </div>
@@ -301,7 +302,8 @@ export default function StudentDashboard({ session, handleLogout }) {
                 <small className="text-muted fw-bold">พร้อมเรียนรู้หรือยัง!</small>
               </div>
             </div>
-            <div className="bg-theme-red text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style={{width:'40px', height:'40px'}}>R</div>
+            {/* 🌟 ใส่โลโก้วิทยาลัย */}
+            <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'40px', height:'40px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
           </div>
         )}
 
@@ -330,7 +332,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                       <div className="d-flex flex-column gap-3">
                         {q.options.map((opt, optIndex) => (
                           <label key={optIndex} className={`d-flex align-items-center gap-3 border p-4 rounded-4 transition-all ${quizAnswers[qIndex] === optIndex ? 'border-theme-red bg-theme-red bg-opacity-10 fw-bold text-theme-red shadow-sm' : 'border-light bg-light hover-bg-gray'}`} style={{cursor: 'pointer'}}>
-                            <input type="radio" name={`q-${qIndex}`} className="form-check-input mt-0 flex-shrink-0" style={{width: '22px', height:'22px'}} checked={quizAnswers[qIndex] === optIndex} onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} />
+                            <input type="radio" name={`q-${qIndex}`} className="form-check-input mt-0 flex-shrink-0" style={{width: '22px', height:'22px', accentColor: 'var(--theme-red)'}} checked={quizAnswers[qIndex] === optIndex} onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} />
                             <span className="fs-6">{opt}</span>
                           </label>
                         ))}
@@ -560,9 +562,9 @@ export default function StudentDashboard({ session, handleLogout }) {
                                   ) : (
                                     <form onSubmit={(e) => handleWorkSubmit(e, a.id)} className="bg-theme-gray p-3 rounded-4 border border-light">
                                       <div className="d-flex flex-column gap-2 mb-3">
-                                        <textarea className="theme-input form-control bg-white" placeholder="💬 พิมพ์คำตอบ..." value={isCurrentForm ? submitForm.text : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, text: e.target.value })} rows="2" />
-                                        <input type="url" className="theme-input form-control bg-white" placeholder="🔗 แนบลิงก์เว็บ / YouTube" value={isCurrentForm ? submitForm.link : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, link: e.target.value })} />
-                                        <div className="bg-white p-2 rounded-4">
+                                        <textarea className="theme-input form-control" placeholder="💬 พิมพ์คำตอบ..." value={isCurrentForm ? submitForm.text : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, text: e.target.value })} rows="2" />
+                                        <input type="url" className="theme-input form-control" placeholder="🔗 แนบลิงก์เว็บ / YouTube" value={isCurrentForm ? submitForm.link : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, link: e.target.value })} />
+                                        <div className="bg-white p-2 rounded-4 border border-light mt-1">
                                           <label className="small fw-bold text-muted mb-1 px-2">📂 แนบไฟล์ / รูปภาพ</label>
                                           <input type="file" className="form-control border-0 shadow-none bg-transparent fw-bold" onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, file: e.target.files[0] })} />
                                         </div>
@@ -657,10 +659,10 @@ export default function StudentDashboard({ session, handleLogout }) {
                         <hr className="my-4 border-light" />
                         <h6 className="fw-bold mb-3 text-theme-dark">ข้อมูลระบบ (แก้ไขไม่ได้)</h6>
                         
-                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">รหัสประจำตัว</label><input type="text" className="theme-input form-control" value={profileForm.student_code} disabled /></div>
+                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">รหัสประจำตัว</label><input type="text" className="theme-input form-control text-muted" value={profileForm.student_code} disabled /></div>
                         <div className="row mb-4 g-3">
-                          <div className="col-6"><label className="form-label text-muted small fw-bold px-2">ระดับชั้น</label><input type="text" className="theme-input form-control" value={profileForm.grade_level} disabled /></div>
-                          <div className="col-6"><label className="form-label text-muted small fw-bold px-2">แผนกวิชา</label><input type="text" className="theme-input form-control text-truncate" value={profileForm.department} disabled title={profileForm.department} /></div>
+                          <div className="col-6"><label className="form-label text-muted small fw-bold px-2">ระดับชั้น</label><input type="text" className="theme-input form-control text-muted" value={profileForm.grade_level} disabled /></div>
+                          <div className="col-6"><label className="form-label text-muted small fw-bold px-2">แผนกวิชา</label><input type="text" className="theme-input form-control text-truncate text-muted" value={profileForm.department} disabled title={profileForm.department} /></div>
                         </div>
 
                         <button type="submit" className="btn btn-theme-dark w-100 rounded-pill fw-bold py-3 shadow-sm">💾 บันทึกข้อมูล</button>

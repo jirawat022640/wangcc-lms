@@ -110,7 +110,7 @@ export default function Login({ setSession }) {
   }
 
   return (
-    <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: '#121212' }}>
+    <div className="min-vh-100 d-flex align-items-center justify-content-center font-app" style={{ backgroundColor: '#121212' }}>
       
       <div className="card border-0 rounded-4 overflow-hidden fade-in" style={{ maxWidth: '420px', width: '90%', zIndex: 2, background: '#1c1c1e', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
         
@@ -120,9 +120,8 @@ export default function Login({ setSession }) {
           <img 
             src="/LOGO-Wangcc.png" 
             alt="วิทยาลัยเทคนิควังน้ำเย็น" 
-            className="rounded-circle shadow-lg mb-3 mx-auto d-block position-relative" 
-            style={{ width: '95px', height: '95px', border: '3px solid #E50914', objectFit: 'cover', zIndex: 5 }} 
-            onError={(e) => { e.target.src = 'https://via.placeholder.com/95/E50914/FFFFFF?text=WNYTC' }}
+            className="rounded-circle shadow-lg mb-3 mx-auto d-block position-relative bg-white" 
+            style={{ width: '100px', height: '100px', border: '3px solid #E50914', objectFit: 'cover', zIndex: 5 }} 
           />
           <h3 className="fw-bold text-white mb-1 position-relative">สมาร์ท LMS</h3>
           <p className="text-white-50 small mb-0 position-relative fw-bold">วิทยาลัยเทคนิควังน้ำเย็น</p>
@@ -138,19 +137,22 @@ export default function Login({ setSession }) {
           <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
             {!isLogin && (
               <div className="form-floating mb-1 slide-down">
-                <input type="text" className="form-control rounded-4 bg-dark border-0 text-white shadow-none" id="fullName" placeholder="ชื่อ - นามสกุล" value={fullName} onChange={(e) => setFullName(e.target.value)} style={{color: 'white'}} />
-                <label htmlFor="fullName" className="text-white-50">👤 ชื่อ-สกุล (เว้นว่างถ้าระบบมีชื่อแล้ว)</label>
+                {/* 🌟 บังคับใช้คลาส bg-white และ text-dark เพื่อให้อ่านง่าย 100% */}
+                <input type="text" className="form-control rounded-4 theme-input bg-white text-dark shadow-none" id="fullName" placeholder="ชื่อ - นามสกุล" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                <label htmlFor="fullName" className="text-muted fw-bold">👤 ชื่อ-สกุล (เว้นว่างถ้าระบบมีชื่อแล้ว)</label>
               </div>
             )}
 
             <div className="form-floating mb-1">
-              <input type="text" className="form-control rounded-4 bg-dark border-0 text-white shadow-none" id="identifier" placeholder="รหัสประจำตัว หรือ อีเมล" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
-              <label htmlFor="identifier" className="text-white-50">{isLogin ? '🧑‍💻 รหัสผู้ใช้งาน (เช่น 6620001)' : '🧑‍💻 รหัสประจำตัว (ใช้เข้าระบบ)'}</label>
+              {/* 🌟 บังคับใช้คลาส bg-white และ text-dark */}
+              <input type="text" className="form-control rounded-4 theme-input bg-white text-dark shadow-none" id="identifier" placeholder="รหัสประจำตัว หรือ อีเมล" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
+              <label htmlFor="identifier" className="text-muted fw-bold">{isLogin ? '🧑‍💻 รหัสผู้ใช้งาน (เช่น 6620001)' : '🧑‍💻 รหัสประจำตัว (ใช้เข้าระบบ)'}</label>
             </div>
 
             <div className="form-floating mb-4">
-              <input type="password" className="form-control rounded-4 bg-dark border-0 text-white shadow-none" id="password" placeholder="รหัสผ่าน" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-              <label htmlFor="password" className="text-white-50">🔒 รหัสผ่าน (เลขบัตรปชช 13 หลัก)</label>
+              {/* 🌟 บังคับใช้คลาส bg-white และ text-dark */}
+              <input type="password" className="form-control rounded-4 theme-input bg-white text-dark shadow-none" id="password" placeholder="รหัสผ่าน" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+              <label htmlFor="password" className="text-muted fw-bold">🔒 รหัสผ่าน (เช่น เลข ปชช.)</label>
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-theme-red btn-lg rounded-pill fw-bold shadow-lg w-100 mb-2" style={{ padding: '14px', transition: 'all 0.3s' }}>

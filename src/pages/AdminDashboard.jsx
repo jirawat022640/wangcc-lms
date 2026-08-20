@@ -177,7 +177,7 @@ export default function AdminDashboard({ session, handleLogout }) {
 
   const handleChangeRole = async (userId, currentRole) => {
     const newRole = currentRole === 'student' ? 'teacher' : 'student'
-    const roleText = newRole === 'teacher' ? 'ครู' : 'นักเรียน'
+    const roleText = newRole === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'
     
     const result = await Swal.fire({
       title: `เปลี่ยนสิทธิ์เป็น ${roleText}?`,
@@ -347,7 +347,12 @@ export default function AdminDashboard({ session, handleLogout }) {
        setDeptForm({ name: "" })
        fetchClassroomData()
        Swal.fire({
-         toast: true, position: 'top-end', icon: 'success', title: 'บันทึกข้อมูลห้องเรียนสำเร็จ!', showConfirmButton: false, timer: 2000
+         toast: true,
+         position: 'top-end',
+         icon: 'success',
+         title: 'บันทึกข้อมูลกลุ่มเรียนสำเร็จ!',
+         showConfirmButton: false,
+         timer: 2000
        })
     }
   }
@@ -370,7 +375,7 @@ export default function AdminDashboard({ session, handleLogout }) {
        Swal.fire('ลบไม่สำเร็จ', error.message, 'error')
     } else {
        fetchClassroomData()
-       Swal.fire('ลบสำเร็จ!', 'ข้อมูลห้องเรียนถูกลบออกแล้ว', 'success')
+       Swal.fire('ลบสำเร็จ!', 'ข้อมูลกลุ่มเรียนถูกลบออกแล้ว', 'success')
     }
   }
 
@@ -402,14 +407,15 @@ export default function AdminDashboard({ session, handleLogout }) {
 
   if (!session || session.role !== 'admin') return <Navigate to="/" />
 
+  // 🌟 แปลงเมนูเป็นภาษาไทย 100%
   const menuItems = [
-    { id: 'overview', icon: '📊', label: 'Overview' },
-    { id: 'classrooms', icon: '🏢', label: 'Classrooms' },
-    { id: 'students', icon: '👨‍🎓', label: 'Students' },
-    { id: 'teachers', icon: '👨‍🏫', label: 'Teachers' },
-    { id: 'courses', icon: '📚', label: 'Courses' },
-    { id: 'announcements', icon: '📢', label: 'Announcements' },
-    { id: 'settings', icon: '⚙️', label: 'Settings' }
+    { id: 'overview', icon: '📊', label: 'ภาพรวมระบบ' },
+    { id: 'classrooms', icon: '🏢', label: 'จัดการห้องเรียน' },
+    { id: 'students', icon: '👨‍🎓', label: 'จัดการนักเรียน' },
+    { id: 'teachers', icon: '👨‍🏫', label: 'จัดการครูผู้สอน' },
+    { id: 'courses', icon: '📚', label: 'รายวิชาทั้งหมด' },
+    { id: 'announcements', icon: '📢', label: 'ประกาศข่าวสาร' },
+    { id: 'settings', icon: '⚙️', label: 'ตั้งค่าระบบ' }
   ];
 
   return (
@@ -419,39 +425,39 @@ export default function AdminDashboard({ session, handleLogout }) {
       {editingUser && (
         <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1050, backdropFilter: 'blur(5px)' }}>
           <div className="theme-card w-100 slide-up mx-3" style={{ maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h5 className="fw-bold mb-4 border-bottom border-light pb-3 text-theme-dark">✏️ Edit {editingUser.role === 'teacher' ? 'Teacher' : 'Student'}</h5>
+            <h5 className="fw-bold mb-4 border-bottom border-light pb-3 text-theme-dark">✏️ แก้ไขข้อมูล {editingUser.role === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'}</h5>
             <form onSubmit={handleSaveEdit}>
               <div className="mb-3">
-                <label className="form-label small fw-bold text-muted px-2">Full Name</label>
-                <input type="text" className="form-control theme-input bg-white" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
+                <label className="form-label small fw-bold text-muted px-2">ชื่อ - นามสกุล</label>
+                <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
               </div>
               <div className="row mb-3">
                 <div className="col-6">
-                  <label className="form-label small fw-bold text-muted px-2">Nickname</label>
-                  <input type="text" className="form-control theme-input bg-white" value={editForm.nickname} onChange={e => setEditForm({...editForm, nickname: e.target.value})} />
+                  <label className="form-label small fw-bold text-muted px-2">ชื่อเล่น</label>
+                  <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.nickname} onChange={e => setEditForm({...editForm, nickname: e.target.value})} />
                 </div>
                 <div className="col-6">
-                  <label className="form-label small fw-bold text-muted px-2">Phone</label>
-                  <input type="text" className="form-control theme-input bg-white" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                  <label className="form-label small fw-bold text-muted px-2">เบอร์โทรศัพท์</label>
+                  <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                 </div>
               </div>
               <div className="mb-3">
-                <label className="form-label small fw-bold text-muted px-2">Department</label>
-                <input type="text" className="form-control theme-input bg-white" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} />
+                <label className="form-label small fw-bold text-muted px-2">แผนกวิชา</label>
+                <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} />
               </div>
               {editingUser.role === 'student' && (
                 <div className="mb-3">
-                  <label className="form-label small fw-bold text-muted px-2">Grade Level</label>
-                  <input type="text" className="form-control theme-input bg-white" value={editForm.grade_level} onChange={e => setEditForm({...editForm, grade_level: e.target.value})} />
+                  <label className="form-label small fw-bold text-muted px-2">ระดับชั้น</label>
+                  <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.grade_level} onChange={e => setEditForm({...editForm, grade_level: e.target.value})} />
                 </div>
               )}
               <div className="mb-4">
-                <label className="form-label small fw-bold text-muted px-2">Avatar URL</label>
-                <input type="url" className="form-control theme-input bg-white" value={editForm.avatar_url} onChange={e => setEditForm({...editForm, avatar_url: e.target.value})} />
+                <label className="form-label small fw-bold text-muted px-2">ลิงก์รูปโปรไฟล์ (URL)</label>
+                <input type="url" className="form-control theme-input bg-white text-dark" value={editForm.avatar_url} onChange={e => setEditForm({...editForm, avatar_url: e.target.value})} />
               </div>
               <div className="d-flex gap-2">
-                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-light w-50 rounded-pill fw-bold py-3 text-muted">Cancel</button>
-                <button type="submit" className="btn btn-theme-red w-50 rounded-pill fw-bold shadow-sm py-3">Save Changes</button>
+                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-light w-50 rounded-pill fw-bold py-3 text-muted">ยกเลิก</button>
+                <button type="submit" className="btn btn-theme-red w-50 rounded-pill fw-bold shadow-sm py-3">บันทึกข้อมูล</button>
               </div>
             </form>
           </div>
@@ -461,8 +467,9 @@ export default function AdminDashboard({ session, handleLogout }) {
       {/* 🖥️ Desktop Sidebar */}
       <div className="sidebar shadow-sm">
         <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
-          <div className="bg-theme-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style={{width:'45px', height:'45px'}}>🛡️</div>
-          <h4 className="fw-bold m-0 text-theme-dark">LMS Admin</h4>
+          {/* 🌟 แสดงโลโก้วิทยาลัยใน Sidebar คอมพิวเตอร์ */}
+          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'50px', height:'50px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
+          <h4 className="fw-bold m-0 text-theme-dark">ผู้ดูแลระบบ</h4>
         </div>
         <div className="d-flex flex-column gap-1 flex-grow-1" style={{overflowY: 'auto'}}>
           {menuItems.map(item => (
@@ -472,7 +479,7 @@ export default function AdminDashboard({ session, handleLogout }) {
           ))}
         </div>
         <div className="mt-3 border-top pt-3">
-          <button onClick={handleLogout} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> Logout</button>
+          <button onClick={handleLogout} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> ออกจากระบบ</button>
         </div>
       </div>
 
@@ -482,7 +489,7 @@ export default function AdminDashboard({ session, handleLogout }) {
           <div className="offcanvas-backdrop fade show d-lg-none" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
           <div className="offcanvas offcanvas-start show shadow-lg border-0 d-lg-none" style={{ visibility: "visible", zIndex: 1045, width: "280px" }}>
             <div className="offcanvas-header p-4 bg-theme-dark text-white">
-              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🛡️</span> Admin Menu</h5>
+              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🛡️</span> เมนูแอดมิน</h5>
               <button type="button" className="btn-close btn-close-white" onClick={() => setIsMenuOpen(false)}></button>
             </div>
             <div className="offcanvas-body d-flex flex-column p-3 bg-white gap-1" style={{ overflowY: 'auto' }}>
@@ -492,7 +499,7 @@ export default function AdminDashboard({ session, handleLogout }) {
                 </button>
               ))}
               <div className="mt-auto pt-3 border-top border-light">
-                <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> Logout</button>
+                <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> ออกจากระบบ</button>
               </div>
             </div>
           </div>
@@ -506,9 +513,10 @@ export default function AdminDashboard({ session, handleLogout }) {
         <div className="mobile-only d-flex justify-content-between align-items-center p-4 bg-white shadow-sm sticky-top z-3">
           <div className="d-flex align-items-center gap-3">
             <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-circle p-2 fs-5 border-0">☰</button>
-            <h5 className="fw-bold text-theme-dark m-0">Admin Hub</h5>
+            <h5 className="fw-bold text-theme-dark m-0">ศูนย์ควบคุม (Admin)</h5>
           </div>
-          <div className="bg-theme-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style={{width:'35px', height:'35px'}}>🛡️</div>
+          {/* 🌟 แสดงโลโก้วิทยาลัยใน Header มือถือ */}
+          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'40px', height:'40px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
         </div>
 
         <div className="container-fluid p-4" style={{ maxWidth: '1200px' }}>
@@ -518,8 +526,8 @@ export default function AdminDashboard({ session, handleLogout }) {
             <div className="fade-in">
                <div className="hero-card mb-4">
                   <div className="position-relative z-2">
-                      <h3 className="fw-bold mb-2">Welcome, Admin 👋</h3>
-                      <p className="text-white-50 mb-0">Current Semester: {sysSettings.current_semester}</p>
+                      <h3 className="fw-bold mb-2">ยินดีต้อนรับ, ผู้ดูแลระบบ 👋</h3>
+                      <p className="text-white-50 mb-0">ภาคเรียนปัจจุบัน: {sysSettings.current_semester}</p>
                   </div>
                </div>
                <div className="row g-4">
@@ -527,28 +535,28 @@ export default function AdminDashboard({ session, handleLogout }) {
                    <div className="theme-card text-center h-100">
                      <div className="bg-theme-dark bg-opacity-10 text-theme-dark rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>👨‍🏫</div>
                      <h2 className="fw-bold text-theme-dark mb-0">{teachers.length}</h2>
-                     <small className="text-muted fw-bold">Teachers</small>
+                     <small className="text-muted fw-bold">ครูผู้สอน</small>
                    </div>
                  </div>
                  <div className="col-6 col-md-3">
                    <div className="theme-card text-center h-100">
                      <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>👨‍🎓</div>
                      <h2 className="fw-bold text-theme-dark mb-0">{students.length}</h2>
-                     <small className="text-muted fw-bold">Students</small>
+                     <small className="text-muted fw-bold">นักเรียน</small>
                    </div>
                  </div>
                  <div className="col-6 col-md-3">
                    <div className="theme-card text-center h-100">
                      <div className="bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>📚</div>
                      <h2 className="fw-bold text-theme-dark mb-0">{stats.totalCourses}</h2>
-                     <small className="text-muted fw-bold">Courses</small>
+                     <small className="text-muted fw-bold">รายวิชา</small>
                    </div>
                  </div>
                  <div className="col-6 col-md-3">
                    <div className="theme-card text-center h-100">
                      <div className="bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>📈</div>
                      <h2 className="fw-bold text-theme-dark mb-0">{stats.submissionRate}%</h2>
-                     <small className="text-muted fw-bold">Task Rate</small>
+                     <small className="text-muted fw-bold">อัตราการส่งงาน</small>
                    </div>
                  </div>
                </div>
@@ -560,26 +568,27 @@ export default function AdminDashboard({ session, handleLogout }) {
             <div className="fade-in row g-4">
               <div className="col-lg-5">
                 <div className="theme-card h-100">
-                  <h5 className="fw-bold mb-4 text-theme-dark d-flex align-items-center gap-2"><span>➕</span> Add Department</h5>
-                  <p className="text-muted small mb-4 fw-bold">Add sections for teachers to select when creating courses.</p>
+                  <h5 className="fw-bold mb-4 text-theme-dark d-flex align-items-center gap-2"><span>➕</span> เพิ่มข้อมูลห้องเรียน</h5>
+                  <p className="text-muted small mb-4 fw-bold">เพิ่มกลุ่มเรียน/แผนก เพื่อให้ครูนำไปเลือกตอนเปิดรายวิชา</p>
                   
                   <form onSubmit={handleCreateDepartment} className="d-flex flex-column gap-3">
                     <div className="form-floating">
-                      <input type="text" className="form-control theme-input bg-white" id="deptName" placeholder="e.g. IT Year 1" value={deptForm.name} onChange={(e) => setDeptForm({ name: e.target.value })} required />
-                      <label htmlFor="deptName" className="text-muted fw-bold px-4">e.g. IT Year 1</label>
+                      {/* 🌟 บังคับใส่คลาส text-dark เพื่อให้อ่านออก 100% */}
+                      <input type="text" className="form-control theme-input bg-white text-dark" id="deptName" placeholder="เช่น ช่างยนต์ ปวช.1/1" value={deptForm.name} onChange={(e) => setDeptForm({ name: e.target.value })} required />
+                      <label htmlFor="deptName" className="text-muted fw-bold px-4">เช่น ช่างยนต์ ปวช.1/1</label>
                     </div>
-                    <button type="submit" className="btn btn-theme-dark rounded-pill fw-bold py-3 mt-2 shadow-sm">Save Department</button>
+                    <button type="submit" className="btn btn-theme-dark rounded-pill fw-bold py-3 mt-2 shadow-sm">บันทึกข้อมูล</button>
                   </form>
                 </div>
               </div>
               
               <div className="col-lg-7">
                 <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h5 className="fw-bold text-theme-dark m-0">Departments ({filteredDepts.length})</h5>
+                  <h5 className="fw-bold text-theme-dark m-0">รายการห้องเรียน ({filteredDepts.length})</h5>
                   <input 
                     type="text" 
-                    className="form-control theme-input bg-white py-2" 
-                    placeholder="🔍 Search..." 
+                    className="form-control theme-input bg-white py-2 text-dark" 
+                    placeholder="🔍 ค้นหาห้องเรียน..." 
                     style={{ maxWidth: '250px' }}
                     value={searchDept}
                     onChange={(e) => setSearchDept(e.target.value)}
@@ -590,14 +599,14 @@ export default function AdminDashboard({ session, handleLogout }) {
                     <table className="table table-hover align-middle mb-0">
                       <thead className="table-light sticky-top">
                         <tr>
-                          <th className="px-4 py-3 text-secondary">No.</th>
-                          <th className="py-3 text-secondary">Department Name</th>
-                          <th className="py-3 text-secondary text-center">Action</th>
+                          <th className="px-4 py-3 text-secondary">ลำดับ</th>
+                          <th className="py-3 text-secondary">ชื่อกลุ่มเรียน / แผนก</th>
+                          <th className="py-3 text-secondary text-center">จัดการ</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredDepts.length === 0 ? (
-                          <tr><td colSpan="3" className="text-center py-5 text-muted fw-bold">No departments found</td></tr>
+                          <tr><td colSpan="3" className="text-center py-5 text-muted fw-bold">ไม่พบข้อมูล</td></tr>
                         ) : (
                           filteredDepts.map((dept, index) => (
                             <tr key={dept.id}>
@@ -625,26 +634,26 @@ export default function AdminDashboard({ session, handleLogout }) {
               <div className="theme-card mb-4 p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border border-light">
                 <div>
                   <h5 className="fw-bold text-theme-dark m-0 d-flex align-items-center gap-2">
-                    <span className="fs-4">📥</span> Import Students Database
+                    <span className="fs-4">📥</span> นำเข้าฐานข้อมูลนักเรียน
                   </h5>
                   <p className="text-muted small mb-0 mt-1 fw-bold">
-                    Master list count: <strong className="text-theme-red">{masterCount} students</strong>
+                    จำนวนรายชื่อในระบบ: <strong className="text-theme-red">{masterCount} คน</strong>
                   </p>
                 </div>
                 <div>
                   <input type="file" accept=".xlsx, .xls, .csv" id="excelUpload" className="d-none" onChange={handleFileUpload} disabled={isUploading} />
                   <label htmlFor="excelUpload" className="btn btn-theme-dark rounded-pill fw-bold px-5 py-3 mb-0 shadow-sm" style={{cursor: 'pointer'}}>
-                    {isUploading ? '⏳ Uploading...' : '📄 Upload Excel/CSV'}
+                    {isUploading ? '⏳ กำลังนำเข้า...' : '📄 อัปโหลดไฟล์ Excel/CSV'}
                   </label>
                 </div>
               </div>
               
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
-                <h5 className="fw-bold text-theme-dark m-0">Students ({filteredStudents.length})</h5>
+                <h5 className="fw-bold text-theme-dark m-0">นักเรียนในระบบ ({filteredStudents.length})</h5>
                 <input 
                   type="text" 
-                  className="form-control theme-input bg-white py-2 shadow-sm" 
-                  placeholder="🔍 Search name, ID..." 
+                  className="form-control theme-input bg-white py-2 shadow-sm text-dark" 
+                  placeholder="🔍 ค้นหาชื่อ, รหัส..." 
                   style={{ maxWidth: '300px' }}
                   value={searchStudent}
                   onChange={(e) => setSearchStudent(e.target.value)}
@@ -652,24 +661,24 @@ export default function AdminDashboard({ session, handleLogout }) {
               </div>
 
               <div className="row g-4">
-                {filteredStudents.length === 0 && <p className="text-muted ps-3 fw-bold">No students found.</p>}
+                {filteredStudents.length === 0 && <p className="text-muted ps-3 fw-bold">ไม่พบข้อมูลนักเรียน</p>}
                 {filteredStudents.map(user => (
                   <div key={user.id} className="col-md-6 col-xl-4">
                     <div className="theme-card h-100 hover-card border border-light d-flex flex-column">
                       <div className="d-flex gap-3 mb-3">
                         <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👨‍🎓</div>
                         <div className="flex-grow-1 overflow-hidden">
-                          <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{user.full_name || 'Unknown'}</h6>
-                          <p className="mb-0 text-muted small fw-bold">ID: {user.student_code}</p>
-                          <span className="badge bg-theme-gray text-theme-dark border mt-2 text-truncate" style={{maxWidth: '100%'}}>{user.department || 'No Dept'}</span>
+                          <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{user.full_name || 'ไม่ระบุชื่อ'}</h6>
+                          <p className="mb-0 text-muted small fw-bold">รหัส: {user.student_code}</p>
+                          <span className="badge bg-theme-gray text-theme-dark border mt-2 text-truncate" style={{maxWidth: '100%'}}>{user.department || 'ไม่ระบุแผนก'}</span>
                         </div>
                       </div>
                       <div className="d-flex gap-2 mt-auto pt-3 border-top border-light">
-                         <button onClick={() => openEditModal(user)} className="btn btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-2 border">✏️ Edit</button>
-                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="Reset Password">🔑</button>
+                         <button onClick={() => openEditModal(user)} className="btn btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-2 border">✏️ แก้ไข</button>
+                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="รีเซ็ตรหัสผ่าน">🔑</button>
                          <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm border">🗑️</button>
                       </div>
-                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-theme-dark btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬆️ Upgrade to Teacher</button>
+                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-theme-dark btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬆️ อัปเกรดเป็นครู</button>
                     </div>
                   </div>
                 ))}
@@ -681,41 +690,41 @@ export default function AdminDashboard({ session, handleLogout }) {
           {activeTab === 'teachers' && (
             <div className="fade-in">
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
-                <h5 className="fw-bold mb-0 text-theme-dark">Teachers ({filteredTeachers.length})</h5>
+                <h5 className="fw-bold mb-0 text-theme-dark">ครูผู้สอน ({filteredTeachers.length})</h5>
                 <div className="d-flex gap-2">
                   <input 
                     type="text" 
-                    className="form-control theme-input bg-white py-2 shadow-sm" 
-                    placeholder="🔍 Search teachers..." 
+                    className="form-control theme-input bg-white py-2 shadow-sm text-dark" 
+                    placeholder="🔍 ค้นหาครูผู้สอน..." 
                     style={{ maxWidth: '200px' }}
                     value={searchTeacher}
                     onChange={(e) => setSearchTeacher(e.target.value)}
                   />
                   <button onClick={() => setShowAddTeacher(!showAddTeacher)} className={`btn fw-bold rounded-pill shadow-sm px-4 py-2 flex-shrink-0 ${showAddTeacher ? 'btn-light border text-theme-dark' : 'btn-theme-red'}`}>
-                    {showAddTeacher ? '✖ Close Form' : '➕ Add Teacher'}
+                    {showAddTeacher ? '✖ ปิดฟอร์ม' : '➕ เพิ่มบัญชีครู'}
                   </button>
                 </div>
               </div>
               
               {showAddTeacher && (
                 <div className="theme-card mb-5 border border-theme-red">
-                    <h5 className="fw-bold text-theme-dark mb-4">Create Teacher Account</h5>
+                    <h5 className="fw-bold text-theme-dark mb-4">สร้างบัญชีครูผู้สอน</h5>
                     <form onSubmit={handleCreateTeacher} className="row g-3">
                         <div className="col-md-6">
-                          <input type="text" className="form-control theme-input bg-white" placeholder="Teacher ID" value={addTeacherForm.teacherId} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherId: e.target.value})} required />
+                          <input type="text" className="form-control theme-input bg-white text-dark" placeholder="รหัสบุคลากร" value={addTeacherForm.teacherId} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherId: e.target.value})} required />
                         </div>
                         <div className="col-md-6">
-                          <input type="text" className="form-control theme-input bg-white" placeholder="Full Name" value={addTeacherForm.teacherName} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherName: e.target.value})} required />
+                          <input type="text" className="form-control theme-input bg-white text-dark" placeholder="ชื่อ-นามสกุล" value={addTeacherForm.teacherName} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherName: e.target.value})} required />
                         </div>
                         <div className="col-md-6">
-                          <input type="text" className="form-control theme-input bg-white" placeholder="Department" value={addTeacherForm.department} onChange={(e) => setAddTeacherForm({...addTeacherForm, department: e.target.value})} required />
+                          <input type="text" className="form-control theme-input bg-white text-dark" placeholder="แผนกวิชา" value={addTeacherForm.department} onChange={(e) => setAddTeacherForm({...addTeacherForm, department: e.target.value})} required />
                         </div>
                         <div className="col-md-6">
-                          <input type="text" className="form-control theme-input bg-white" placeholder="Temporary Password" value={addTeacherForm.password} onChange={(e) => setAddTeacherForm({...addTeacherForm, password: e.target.value})} required />
+                          <input type="text" className="form-control theme-input bg-white text-dark" placeholder="รหัสผ่านชั่วคราว" value={addTeacherForm.password} onChange={(e) => setAddTeacherForm({...addTeacherForm, password: e.target.value})} required />
                         </div>
                         <div className="col-12 mt-4 text-end">
                           <button type="submit" className="btn btn-theme-red rounded-pill px-5 fw-bold py-3 w-100 w-md-auto" disabled={isAdding}>
-                            {isAdding ? '⏳ Processing...' : 'Create Account'}
+                            {isAdding ? '⏳ กำลังดำเนินการ...' : 'สร้างบัญชี'}
                           </button>
                         </div>
                     </form>
@@ -726,7 +735,7 @@ export default function AdminDashboard({ session, handleLogout }) {
               )}
 
               <div className="row g-4">
-                {filteredTeachers.length === 0 && <p className="text-muted ps-3 fw-bold">No teachers found.</p>}
+                {filteredTeachers.length === 0 && <p className="text-muted ps-3 fw-bold">ไม่พบรายชื่อครูที่ค้นหา</p>}
                 {filteredTeachers.map(user => (
                   <div key={user.id} className="col-md-6 col-xl-4">
                     <div className="theme-card h-100 hover-card border border-light d-flex flex-column">
@@ -734,16 +743,16 @@ export default function AdminDashboard({ session, handleLogout }) {
                         <div className="bg-theme-dark text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👩‍🏫</div>
                         <div className="flex-grow-1 overflow-hidden">
                           <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{user.full_name}</h6>
-                          <p className="mb-0 text-muted small fw-bold">ID: {user.student_code}</p>
+                          <p className="mb-0 text-muted small fw-bold">รหัส: {user.student_code}</p>
                           <span className="badge bg-theme-gray text-theme-dark border mt-2 text-truncate" style={{maxWidth: '100%'}}>{user.department}</span>
                         </div>
                       </div>
                       <div className="d-flex gap-2 mt-auto pt-3 border-top border-light">
-                         <button onClick={() => openEditModal(user)} className="btn btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-2 border">✏️ Edit</button>
-                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="Reset Password">🔑</button>
+                         <button onClick={() => openEditModal(user)} className="btn btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-2 border">✏️ แก้ไข</button>
+                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="รีเซ็ตรหัสผ่าน">🔑</button>
                          <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm border">🗑️</button>
                       </div>
-                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-outline-danger btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬇️ Downgrade to Student</button>
+                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-outline-danger btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬇️ เปลี่ยนสิทธิ์เป็นนักเรียน</button>
                     </div>
                   </div>
                 ))}
@@ -756,19 +765,19 @@ export default function AdminDashboard({ session, handleLogout }) {
             <div className="fade-in">
                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
                   <h5 className="fw-bold m-0 text-theme-dark d-flex align-items-center gap-2">
-                    All Courses <span className="badge bg-theme-dark rounded-pill fs-6 px-3">{filteredCourses.length}</span>
+                    รายวิชาทั้งหมด <span className="badge bg-theme-dark rounded-pill fs-6 px-3">{filteredCourses.length} วิชา</span>
                   </h5>
                   <input 
                     type="text" 
-                    className="form-control theme-input bg-white py-2 shadow-sm" 
-                    placeholder="🔍 Search courses..." 
+                    className="form-control theme-input bg-white py-2 shadow-sm text-dark" 
+                    placeholder="🔍 ค้นหารายวิชา, ผู้สอน..." 
                     style={{ maxWidth: '350px' }}
                     value={searchCourse}
                     onChange={(e) => setSearchCourse(e.target.value)}
                   />
                </div>
                <div className="row g-4">
-                  {filteredCourses.length === 0 && <p className="text-muted ps-3 fw-bold">No courses found.</p>}
+                  {filteredCourses.length === 0 && <p className="text-muted ps-3 fw-bold">ไม่พบรายวิชาที่ค้นหา</p>}
                   {filteredCourses.map(c => (
                      <div key={c.id} className="col-md-6 col-lg-4">
                         <div className="theme-card h-100 hover-card border border-light">
@@ -777,8 +786,8 @@ export default function AdminDashboard({ session, handleLogout }) {
                               <button onClick={() => handleDeleteCourseAdmin(c.id, c.course_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
                            </div>
                            <h5 className="fw-bold mb-2 text-theme-dark text-truncate" title={c.course_name}>{c.course_name}</h5>
-                           <p className="text-muted small fw-bold mb-3 text-truncate">👨‍🏫 Teacher: <span className="text-theme-dark">{c.profiles?.full_name}</span></p>
-                           <span className="badge bg-theme-gray text-theme-dark border w-100 text-start py-2 px-3 text-truncate fs-6">Sec: {c.section} | Sem: {c.semester}</span>
+                           <p className="text-muted small fw-bold mb-3 text-truncate">👨‍🏫 ผู้สอน: <span className="text-theme-dark">{c.profiles?.full_name}</span></p>
+                           <span className="badge bg-theme-gray text-theme-dark border w-100 text-start py-2 px-3 text-truncate fs-6">กลุ่ม: {c.section} | ภาคเรียน: {c.semester}</span>
                         </div>
                      </div>
                   ))}
@@ -791,18 +800,18 @@ export default function AdminDashboard({ session, handleLogout }) {
             <div className="fade-in row g-4">
                <div className="col-lg-5">
                   <div className="theme-card">
-                     <h5 className="fw-bold text-theme-dark mb-4">Create Announcement</h5>
+                     <h5 className="fw-bold text-theme-dark mb-4">สร้างประกาศใหม่</h5>
                      <form onSubmit={handleCreateAnnouncement} className="d-flex flex-column gap-3">
-                        <input type="text" className="form-control theme-input bg-white fw-bold" placeholder="Title" value={annForm.title} onChange={e => setAnnForm({...annForm, title: e.target.value})} required />
-                        <textarea className="form-control theme-input bg-white" placeholder="Content details..." rows="4" value={annForm.content} onChange={e => setAnnForm({...annForm, content: e.target.value})} required></textarea>
-                        <button type="submit" className="btn btn-theme-red rounded-pill py-3 fw-bold shadow-sm mt-2">Publish Announcement</button>
+                        <input type="text" className="form-control theme-input bg-white fw-bold text-dark" placeholder="หัวข้อประกาศ" value={annForm.title} onChange={e => setAnnForm({...annForm, title: e.target.value})} required />
+                        <textarea className="form-control theme-input bg-white text-dark" placeholder="รายละเอียดประกาศ..." rows="4" value={annForm.content} onChange={e => setAnnForm({...annForm, content: e.target.value})} required></textarea>
+                        <button type="submit" className="btn btn-theme-red rounded-pill py-3 fw-bold shadow-sm mt-2">แจ้งประกาศ</button>
                      </form>
                   </div>
                </div>
                <div className="col-lg-7">
-                  <h5 className="fw-bold text-theme-dark mb-4">Active Announcements</h5>
+                  <h5 className="fw-bold text-theme-dark mb-4">ประกาศที่ใช้งานอยู่</h5>
                   <div className="d-flex flex-column gap-3">
-                     {announcements.length === 0 && <p className="text-muted fw-bold">No announcements yet.</p>}
+                     {announcements.length === 0 && <p className="text-muted fw-bold">ยังไม่มีประกาศ</p>}
                      {announcements.map(ann => (
                         <div key={ann.id} className="theme-card p-4 border-start border-4 border-theme-dark d-flex justify-content-between align-items-start hover-card">
                            <div>
@@ -821,16 +830,16 @@ export default function AdminDashboard({ session, handleLogout }) {
           {activeTab === 'settings' && (
             <div className="fade-in">
                <div className="theme-card mx-auto border border-light" style={{maxWidth: '600px'}}>
-                  <h4 className="fw-bold text-theme-dark mb-2 text-center">⚙️ System Settings</h4>
-                  <p className="text-muted text-center mb-4 fw-bold">Core configurations for the LMS</p>
+                  <h4 className="fw-bold text-theme-dark mb-2 text-center">⚙️ ตั้งค่าระบบ</h4>
+                  <p className="text-muted text-center mb-4 fw-bold">ตั้งค่าการทำงานหลักของระบบ</p>
                   
                   <form onSubmit={handleUpdateSettings}>
                      <div className="bg-theme-gray p-4 rounded-4 mb-4 border border-light">
-                        <label className="form-label fw-bold text-theme-dark mb-2">Current Semester / Academic Year</label>
-                        <p className="small text-muted mb-3 fw-bold">Automatically applied to newly created courses.</p>
-                        <input type="text" className="form-control theme-input bg-white text-center fs-5" value={semForm} onChange={e => setSemForm(e.target.value)} required placeholder="e.g. 1/2569" />
+                        <label className="form-label fw-bold text-theme-dark mb-2">ภาคเรียน / ปีการศึกษา ปัจจุบัน</label>
+                        <p className="small text-muted mb-3 fw-bold">ระบบจะนำค่านี้ไปใช้กับวิชาที่สร้างใหม่โดยอัตโนมัติ</p>
+                        <input type="text" className="form-control theme-input bg-white text-center fs-5 text-dark" value={semForm} onChange={e => setSemForm(e.target.value)} required placeholder="เช่น 1/2569" />
                      </div>
-                     <button type="submit" className="btn btn-theme-dark w-100 rounded-pill py-3 fw-bold shadow-sm fs-6">Save Configuration</button>
+                     <button type="submit" className="btn btn-theme-dark w-100 rounded-pill py-3 fw-bold shadow-sm fs-6">บันทึกการตั้งค่า</button>
                   </form>
                </div>
             </div>
