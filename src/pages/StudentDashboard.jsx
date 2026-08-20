@@ -226,7 +226,7 @@ export default function StudentDashboard({ session, handleLogout }) {
   }
 
   const handleUnsubmit = async (subId) => {
-    const result = await Swal.fire({ title: 'ยกเลิกการส่งงาน?', text: 'คุณต้องการยกเลิกการส่งงานนี้เพื่อส่งใหม่ใช่หรือไม่?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e30b17', cancelButtonColor: '#6c757d', confirmButtonText: 'ใช่, ยกเลิกการส่ง', cancelButtonText: 'ปิด' });
+    const result = await Swal.fire({ title: 'ยกเลิกการส่งงาน?', text: 'คุณต้องการยกเลิกการส่งงานนี้เพื่อส่งใหม่ใช่หรือไม่?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', cancelButtonColor: '#6c757d', confirmButtonText: 'ใช่, ยกเลิกการส่ง', cancelButtonText: 'ปิด' });
     if (!result.isConfirmed) return;
     try {
       await supabase.from('submissions').delete().eq('id', subId);
@@ -242,7 +242,7 @@ export default function StudentDashboard({ session, handleLogout }) {
 
   const handleQuizSubmit = async () => {
     if (Object.keys(quizAnswers).length < takingQuiz.questions.length) { 
-      const result = await Swal.fire({ title: 'ทำข้อสอบยังไม่ครบ!', text: 'ต้องการส่งคำตอบเลยหรือไม่?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e30b17', cancelButtonColor: '#6c757d', confirmButtonText: 'ส่งเลย', cancelButtonText: 'กลับไปทำต่อ' });
+      const result = await Swal.fire({ title: 'ทำข้อสอบยังไม่ครบ!', text: 'ต้องการส่งคำตอบเลยหรือไม่?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', cancelButtonColor: '#6c757d', confirmButtonText: 'ส่งเลย', cancelButtonText: 'กลับไปทำต่อ' });
       if (!result.isConfirmed) return;
     }
     let score = 0; takingQuiz.questions.forEach((q, index) => { if (quizAnswers[index] === q.correctOption) score++; });
@@ -324,7 +324,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                       <div className="d-flex flex-column gap-3">
                         {q.options.map((opt, optIndex) => (
                           <label key={optIndex} className={`d-flex align-items-center gap-3 border p-4 rounded-4 transition-all ${quizAnswers[qIndex] === optIndex ? 'border-theme-red bg-theme-red bg-opacity-10 fw-bold text-theme-red shadow-sm' : 'border-light bg-light hover-bg-gray'}`} style={{cursor: 'pointer'}}>
-                            <input type="radio" name={`q-${qIndex}`} className="form-check-input mt-0 flex-shrink-0" style={{width: '22px', height:'22px'}} checked={quizAnswers[qIndex] === optIndex} onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} />
+                            <input type="radio" name={`q-${qIndex}`} className="form-check-input mt-0 flex-shrink-0" style={{width: '22px', height:'22px', accentColor: 'var(--theme-red)'}} checked={quizAnswers[qIndex] === optIndex} onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} />
                             <span className="fs-6">{opt}</span>
                           </label>
                         ))}
@@ -678,78 +678,6 @@ export default function StudentDashboard({ session, handleLogout }) {
           <button onClick={() => setActiveTab('profile')} className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`}><span className="icon">👤</span>Me</button>
         </div>
       )}
-
-      {/* 🎨 Theme 1 CSS Rules */}
-      <style>{`
-        :root {
-          --theme-red: #E50914; 
-          --theme-red-hover: #b90710;
-          --theme-dark: #121212; 
-          --theme-gray: #F5F6FA; 
-        }
-        body { background-color: var(--theme-gray); }
-        .font-app { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
-        
-        .text-theme-red { color: var(--theme-red) !important; }
-        .text-theme-dark { color: var(--theme-dark) !important; }
-        .bg-theme-red { background-color: var(--theme-red) !important; color: white; }
-        .bg-theme-dark { background-color: var(--theme-dark) !important; color: white; }
-        .bg-theme-gray { background-color: var(--theme-gray) !important; }
-        
-        .btn-theme-red { background-color: var(--theme-red); color: white; border: none; transition: 0.3s; }
-        .btn-theme-red:hover { background-color: var(--theme-red-hover); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3) !important; }
-        .btn-theme-dark { background-color: var(--theme-dark); color: white; border: none; transition: 0.3s; }
-        .btn-theme-dark:hover { background-color: black; color: white; transform: translateY(-2px); }
-        .border-theme-red { border-color: var(--theme-red) !important; }
-
-        .app-layout { display: flex; min-height: 100vh; background-color: var(--theme-gray); }
-        
-        /* Desktop Sidebar */
-        .sidebar { width: 260px; background: white; border-right: 1px solid rgba(0,0,0,0.05); display: none; flex-direction: column; position: fixed; height: 100vh; z-index: 1000; padding: 24px; }
-        .nav-link-btn { display: flex; align-items: center; gap: 15px; width: 100%; padding: 15px 20px; border-radius: 16px; border: none; background: transparent; color: #6c757d; font-weight: 700; text-align: left; transition: 0.3s; margin-bottom: 8px; }
-        .nav-link-btn:hover { background: var(--theme-gray); color: var(--theme-dark); }
-        .nav-link-btn.active { background: var(--theme-red); color: white; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.2); }
-        
-        /* Main Content */
-        .main-content { flex-grow: 1; margin-left: 0; padding-bottom: 80px; min-height: 100vh; }
-        
-        /* Mobile Bottom Nav */
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; z-index: 1040; display: flex; justify-content: space-around; padding: 12px 10px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); }
-        .bottom-nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; background: none; border: none; color: #adb5bd; font-size: 11px; font-weight: 700; gap: 4px; transition: 0.3s; width: 60px; }
-        .bottom-nav-item .icon { font-size: 24px; margin-bottom: 2px; transition: 0.3s; filter: grayscale(1); opacity: 0.6; }
-        .bottom-nav-item.active { color: var(--theme-red); }
-        .bottom-nav-item.active .icon { transform: translateY(-3px); filter: grayscale(0); opacity: 1; }
-
-        /* Components */
-        .theme-card { background: white; border-radius: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.03); border: none; }
-        .hero-card { background: var(--theme-dark); color: white; border-radius: 28px; padding: 32px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .hero-card::after { content: ''; position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: var(--theme-red); border-radius: 50%; opacity: 0.2; filter: blur(40px); }
-        
-        .theme-input { background-color: var(--theme-gray) !important; border: 1px solid transparent !important; border-radius: 16px !important; padding: 16px 20px !important; transition: 0.3s; font-weight: 600; color: var(--theme-dark); }
-        .theme-input:focus { background-color: white !important; border-color: var(--theme-red) !important; box-shadow: 0 0 0 4px rgba(229, 9, 20, 0.1) !important; }
-        
-        .hover-card { transition: transform 0.2s, box-shadow 0.2s; } 
-        .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; } 
-        .app-icon-btn { transition: transform 0.2s; border: 1px solid rgba(0,0,0,0.02); } 
-        .app-icon-btn:active { transform: scale(0.95); } 
-        .hover-bg-gray:hover { background-color: var(--theme-gray) !important; border-color: #ddd !important; }
-
-        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
-        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
-        .slide-down { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } 
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } 
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Media Queries for Desktop */
-        @media (min-width: 992px) {
-          .sidebar { display: flex; }
-          .main-content { margin-left: 260px; padding-bottom: 20px; }
-          .bottom-nav { display: none !important; }
-          .mobile-only { display: none !important; }
-        }
-      `}</style>
     </div>
   )
 }

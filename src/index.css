@@ -1,111 +1,141 @@
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* 🎨 โทนสีหลักของระบบ (Black / White / Red) */
+  --theme-red: #E50914; 
+  --theme-red-hover: #b90710;
+  --theme-dark: #121212; 
+  --theme-gray: #F5F6FA; 
+  --theme-text-main: #121212;
+  --theme-text-muted: #6c757d;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-body {
+body { 
+  background-color: var(--theme-gray); 
+  font-family: 'Prompt', sans-serif;
   margin: 0;
+  padding: 0;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+/* =========================================
+   📱 โครงสร้าง Layout (Responsive)
+========================================= */
+.app-layout { 
+  display: flex; 
+  min-height: 100vh; 
+  background-color: var(--theme-gray); 
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* 🖥️ Sidebar สำหรับหน้าจอคอม (สไตล์รูปที่ 2) */
+.sidebar { 
+  width: 260px; 
+  background: #ffffff; 
+  border-right: 1px solid rgba(0,0,0,0.05); 
+  display: none; /* ซ่อนในมือถือ */
+  flex-direction: column; 
+  position: fixed; 
+  height: 100vh; 
+  z-index: 1000; 
+  padding: 24px; 
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+.nav-link-btn { 
+  display: flex; align-items: center; gap: 15px; width: 100%; padding: 15px 20px; 
+  border-radius: 16px; border: none; background: transparent; color: var(--theme-text-muted); 
+  font-weight: 600; text-align: left; transition: 0.3s; margin-bottom: 8px; 
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+.nav-link-btn:hover { background: var(--theme-gray); color: var(--theme-dark); }
+.nav-link-btn.active { background: var(--theme-red); color: white; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.2); }
+
+/* พื้นที่เนื้อหาหลัก */
+.main-content { 
+  flex-grow: 1; 
+  margin-left: 0; 
+  padding-bottom: 90px; /* เผื่อที่ให้เมนูด้านล่างในมือถือ */
+  min-height: 100vh; 
+  width: 100%; 
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* 📱 Bottom Navigation สำหรับมือถือ (สไตล์รูปที่ 1) */
+.bottom-nav { 
+  position: fixed; bottom: 0; width: 100%; background: white; z-index: 1040; 
+  display: flex; justify-content: space-around; 
+  padding: 12px 10px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
+  border-radius: 24px 24px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); 
+}
+.bottom-nav-item { 
+  display: flex; flex-direction: column; align-items: center; justify-content: center; 
+  background: none; border: none; color: #adb5bd; font-size: 11px; font-weight: 600; 
+  gap: 4px; transition: 0.3s; width: 60px; 
+}
+.bottom-nav-item .icon { font-size: 24px; margin-bottom: 2px; transition: 0.3s; filter: grayscale(1); opacity: 0.6; }
+.bottom-nav-item.active { color: var(--theme-red); }
+.bottom-nav-item.active .icon { transform: translateY(-3px); filter: grayscale(0); opacity: 1; }
+
+/* =========================================
+   🎨 UI Components (การ์ด, ปุ่ม, ฟอร์ม)
+========================================= */
+.theme-card { 
+  background: white; border-radius: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.03); 
+  border: 1px solid rgba(0,0,0,0.02); padding: 24px; 
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* การ์ดสีดำตัดแดง แบบรูปรถมอเตอร์ไซค์ */
+.hero-card { 
+  background: var(--theme-dark); color: white; border-radius: 28px; padding: 32px; 
+  position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+}
+.hero-card::after { 
+  content: ''; position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; 
+  background: var(--theme-red); border-radius: 50%; opacity: 0.2; filter: blur(40px); 
+}
+
+/* กล่อง Input สไตล์แอป */
+.theme-input { 
+  background-color: var(--theme-gray) !important; border: 1px solid transparent !important; 
+  border-radius: 16px !important; padding: 16px 20px !important; transition: 0.3s; 
+  font-weight: 500; color: var(--theme-dark); 
+}
+.theme-input:focus { 
+  background-color: white !important; border-color: var(--theme-red) !important; 
+  box-shadow: 0 0 0 4px rgba(229, 9, 20, 0.1) !important; 
+}
+
+/* เอฟเฟกต์ */
+.hover-card { transition: transform 0.2s, box-shadow 0.2s; } 
+.hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; } 
+.app-icon-btn { transition: transform 0.2s; border: 1px solid rgba(0,0,0,0.02); } 
+.app-icon-btn:active { transform: scale(0.95); } 
+.hover-bg-gray:hover { background-color: var(--theme-gray) !important; border-color: #ddd !important; }
+
+/* ปุ่มต่างๆ */
+.btn-theme-red { background-color: var(--theme-red); color: white; border: none; transition: 0.3s; }
+.btn-theme-red:hover { background-color: var(--theme-red-hover); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3) !important; }
+.btn-theme-dark { background-color: var(--theme-dark); color: white; border: none; transition: 0.3s; }
+.btn-theme-dark:hover { background-color: black; color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important; }
+
+/* Utilities Color */
+.text-theme-red { color: var(--theme-red) !important; }
+.text-theme-dark { color: var(--theme-dark) !important; }
+.bg-theme-red { background-color: var(--theme-red) !important; color: white; }
+.bg-theme-dark { background-color: var(--theme-dark) !important; color: white; }
+.bg-theme-gray { background-color: var(--theme-gray) !important; }
+.border-theme-red { border-color: var(--theme-red) !important; }
+
+/* Animations */
+.fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
+.slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
+.slide-down { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } 
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } 
+@keyframes slideDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+
+/* =========================================
+   🖥️ Media Query: ปรับเป็น Desktop Mode
+========================================= */
+@media (min-width: 992px) {
+  .sidebar { display: flex; }
+  .main-content { margin-left: 260px; padding-bottom: 20px; }
+  .bottom-nav { display: none !important; }
+  .mobile-only { display: none !important; }
 }

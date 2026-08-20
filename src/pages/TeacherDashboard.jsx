@@ -31,6 +31,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
   
   const [quizForm, setQuizForm] = useState({ course_id: "", module_id: "", title: "", time_limit: "" });
   const [questions, setQuestions] = useState([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
+  
+  // 🌟 State สำหรับจัดเก็บข้อสอบที่กำลังแก้ไข
   const [editingQuiz, setEditingQuiz] = useState(null);
   
   const [gradeForm, setGradeForm] = useState({ id: "", score: "", feedback: "" }); 
@@ -135,8 +137,10 @@ export default function TeacherDashboard({ session, handleLogout }) {
             const assign = assignList.find(a => a.id === sub.assignment_id);
             const course = coursesList.find(c => c.id === assign?.course_id);
             const student = profilesList.find(p => p.id === sub.student_id);
+
             return {
-              ...sub, assignments: { ...assign, courses: course || {} },
+              ...sub,
+              assignments: { ...assign, courses: course || {} },
               profiles: student || { student_code: "-", full_name: "ไม่ระบุชื่อ", telegram_chat_id: student?.telegram_chat_id || "" }
             };
           });
@@ -158,26 +162,33 @@ export default function TeacherDashboard({ session, handleLogout }) {
         if (myQuizIds.length > 0) {
            const { data: qsData } = await supabase.from("quiz_submissions").select("*").in("quiz_id", myQuizIds);
            const qsList = qsData || [];
+           
            const qsStudentIds = [...new Set(qsList.map(qs => qs.student_id).filter(Boolean))];
            let qsProfilesList = [];
            if (qsStudentIds.length > 0) {
               const { data: qsProfData } = await supabase.from("profiles").select("*").in("id", qsStudentIds);
               qsProfilesList = qsProfData || [];
            }
+
            const enrichedQS = qsList.map(qs => {
               const quiz = quizList.find(q => q.id === qs.quiz_id);
               const course = coursesList.find(c => c.id === quiz?.course_id);
               const student = qsProfilesList.find(p => p.id === qs.student_id);
               return {
-                ...qs, quizzes: { ...quiz, courses: course || {} },
+                ...qs,
+                quizzes: { ...quiz, courses: course || {} },
                 profiles: student || { student_code: "-", full_name: "ไม่ระบุชื่อ" }
               }
            });
            enrichedQS.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
            setQuizSubmissions(enrichedQS);
-        } else { setQuizSubmissions([]); }
+        } else {
+           setQuizSubmissions([]);
+        }
       }
-    } catch (err) { console.error("Fetch Data Error:", err); }
+    } catch (err) {
+      console.error("Fetch Data Error:", err);
+    }
   };
 
   const handleTabChange = (tab) => { setActiveTab(tab); setIsMenuOpen(false); setViewingCourseStudents(null); };
@@ -188,21 +199,30 @@ export default function TeacherDashboard({ session, handleLogout }) {
       setUploadingAvatar(true);
       const file = e.target.files[0];
       if (!file) return;
+
       const fileExt = file.name.split('.').pop();
       const fileName = `user_${session.user.id}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${fileName}`;
+
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
       if (uploadError) throw uploadError;
+
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setProfileForm({ ...profileForm, avatar_url: publicUrl });
+      
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปโหลดรูปภาพสำเร็จ!', showConfirmButton: false, timer: 3000 });
-    } catch (error) { Swal.fire('ข้อผิดพลาด', `ไม่สามารถอัปโหลดรูปได้: ${error.message}`, 'error'); } finally { setUploadingAvatar(false); }
+    } catch (error) {
+      Swal.fire('ข้อผิดพลาด', `ไม่สามารถอัปโหลดรูปได้: ${error.message}`, 'error');
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleUpdateProfile = async (e) => { 
     e.preventDefault(); 
     await supabase.from("profiles").update({ 
-      full_name: profileForm.full_name, nickname: profileForm.nickname, phone: profileForm.phone, avatar_url: profileForm.avatar_url, telegram_chat_id: profileForm.telegram_chat_id 
+      full_name: profileForm.full_name, nickname: profileForm.nickname, phone: profileForm.phone, avatar_url: profileForm.avatar_url,
+      telegram_chat_id: profileForm.telegram_chat_id 
     }).eq("id", session.user.id); 
     fetchData(); Swal.fire('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อย', 'success'); 
   };
@@ -210,7 +230,10 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const handleCreateCourse = async (e) => {
     e.preventDefault();
     if (!courseForm.section) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกกลุ่มเรียน/แผนก', 'warning'); return; }
-    await supabase.from("courses").insert([{ course_code: courseForm.code, course_name: courseForm.name, section: courseForm.section, semester: courseForm.semester, credits: courseForm.credits, teacher_id: session.user.id }]);
+    await supabase.from("courses").insert([{ 
+      course_code: courseForm.code, course_name: courseForm.name, section: courseForm.section, 
+      semester: courseForm.semester, credits: courseForm.credits, teacher_id: session.user.id 
+    }]);
     setCourseForm(prev => ({ code: "", name: "", section: "", semester: prev.semester, credits: "" })); 
     fetchData(); Swal.fire('สำเร็จ!', 'เปิดรายวิชาใหม่เรียบร้อยแล้ว', 'success');
   };
@@ -219,33 +242,49 @@ export default function TeacherDashboard({ session, handleLogout }) {
     e.preventDefault();
     if (!moduleForm.course_id || !moduleForm.title) return;
     await supabase.from("modules").insert([{ course_id: moduleForm.course_id, title: moduleForm.title }]);
-    setModuleForm({ course_id: "", title: "" }); fetchData(); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'สร้างบทเรียนสำเร็จ!', showConfirmButton: false, timer: 1500 });
+    setModuleForm({ course_id: "", title: "" });
+    fetchData();
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'สร้างบทเรียนสำเร็จ!', showConfirmButton: false, timer: 1500 });
   };
 
   const handleDeleteModule = async (id) => {
-    const result = await Swal.fire({ title: 'ลบบทเรียน?', text: "เอกสารและงานในบทนี้จะถูกนำออกจากหมวดหมู่ (แต่ไม่ถูกลบ)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบทิ้ง' });
+    const result = await Swal.fire({ title: 'ลบบทเรียน?', text: "เอกสารและงานในบทนี้จะถูกนำออกจากหมวดหมู่ (แต่ไม่ถูกลบ)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบทิ้ง' });
     if (!result.isConfirmed) return;
-    await supabase.from("modules").delete().eq("id", id); fetchData();
+    await supabase.from("modules").delete().eq("id", id);
+    fetchData();
   };
 
   const handleCreateAssignment = async (e) => { 
     e.preventDefault(); 
     if (!assignForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
-    await supabase.from("assignments").insert([{ course_id: assignForm.course_id, module_id: assignForm.module_id || null, title: assignForm.title, description: assignForm.description }]); 
+    
+    await supabase.from("assignments").insert([{ 
+      course_id: assignForm.course_id, 
+      module_id: assignForm.module_id || null, 
+      title: assignForm.title, 
+      description: assignForm.description 
+    }]); 
+    
     const targetCourse = courses.find(c => c.id === assignForm.course_id);
     const courseName = targetCourse ? targetCourse.course_name : "วิชาของคุณ";
+    
     const { data: enrolledStudents } = await supabase.from("enrollments").select("profiles(telegram_chat_id)").eq("course_id", assignForm.course_id);
+
     let notifyCount = 0;
     if (enrolledStudents && enrolledStudents.length > 0) {
       enrolledStudents.forEach(student => {
          const chatId = student.profiles?.telegram_chat_id;
          if (chatId) {
             const msg = `📢 แจ้งเตือนงานใหม่!\nวิชา: ${courseName}\nเรื่อง: ${assignForm.title}\nคำชี้แจง: ${assignForm.description}\n\nอย่าลืมเข้าไปดูรายละเอียดและส่งงานในระบบนะครับ ✌️`;
-            sendTelegramNotify(chatId, msg); notifyCount++;
+            sendTelegramNotify(chatId, msg);
+            notifyCount++;
          }
       });
     }
-    setAssignForm({ course_id: "", module_id: "", title: "", description: "" }); fetchData(); Swal.fire('สำเร็จ!', `สั่งงานเรียบร้อย\nส่งแจ้งเตือน Telegram ${notifyCount} คน`, 'success'); 
+
+    setAssignForm({ course_id: "", module_id: "", title: "", description: "" }); 
+    fetchData(); 
+    Swal.fire('สำเร็จ!', `สั่งงานเรียบร้อย\nส่งแจ้งเตือนผ่าน Telegram ให้นักเรียน ${notifyCount} คน`, 'success'); 
   };
 
   const handleCloneAssignment = (e) => {
@@ -255,6 +294,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
     if (target) setAssignForm(prev => ({ ...prev, title: target.title, description: target.description, module_id: target.module_id || "" }));
   };
 
+  // 🌟 ฟังก์ชันจัดการข้อสอบ (รองรับทั้งการสร้างใหม่ และ การแก้ไข)
   const handleSaveQuiz = async (e) => { 
     e.preventDefault(); 
     if (!quizForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
@@ -262,26 +302,68 @@ export default function TeacherDashboard({ session, handleLogout }) {
       if (!questions[i].question) { Swal.fire('แจ้งเตือน', `กรุณากรอกโจทย์ข้อที่ ${i + 1}`, 'warning'); return; }
       if (questions[i].options.some((opt) => opt.trim() === "")) { Swal.fire('แจ้งเตือน', `กรุณากรอกตัวเลือกให้ครบในข้อที่ ${i + 1}`, 'warning'); return; }
     } 
+    
     if (editingQuiz) {
-       await supabase.from("quizzes").update({ course_id: quizForm.course_id, module_id: quizForm.module_id || null, title: quizForm.title, time_limit: parseInt(quizForm.time_limit) || 0, questions: questions }).eq("id", editingQuiz.id); 
+       // โหมดแก้ไข
+       await supabase.from("quizzes").update({ 
+         course_id: quizForm.course_id, 
+         module_id: quizForm.module_id || null, 
+         title: quizForm.title, 
+         time_limit: parseInt(quizForm.time_limit) || 0,
+         questions: questions 
+       }).eq("id", editingQuiz.id); 
        Swal.fire('สำเร็จ!', 'อัปเดตแบบทดสอบเรียบร้อยแล้ว', 'success'); 
     } else {
-       await supabase.from("quizzes").insert([{ course_id: quizForm.course_id, module_id: quizForm.module_id || null, title: quizForm.title, time_limit: parseInt(quizForm.time_limit) || 0, questions: questions }]); 
+       // โหมดสร้างใหม่
+       await supabase.from("quizzes").insert([{ 
+         course_id: quizForm.course_id, 
+         module_id: quizForm.module_id || null, 
+         title: quizForm.title, 
+         time_limit: parseInt(quizForm.time_limit) || 0,
+         questions: questions 
+       }]); 
        Swal.fire('สำเร็จ!', 'สร้างแบบทดสอบเรียบร้อยแล้ว', 'success'); 
     }
-    setEditingQuiz(null); setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" }); setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); fetchData(); 
+    
+    setEditingQuiz(null);
+    setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" }); 
+    setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); 
+    fetchData(); 
   };
 
+  // 🌟 ดึงข้อมูลข้อสอบมาเตรียมแก้ไข
   const handleEditQuizClick = (quiz) => {
-    setEditingQuiz(quiz); setQuizForm({ course_id: quiz.course_id, module_id: quiz.module_id || "", title: quiz.title, time_limit: quiz.time_limit || "" });
-    setQuestions(JSON.parse(JSON.stringify(quiz.questions))); window.scrollTo({ top: 0, behavior: 'smooth' });
+    setEditingQuiz(quiz);
+    setQuizForm({
+      course_id: quiz.course_id,
+      module_id: quiz.module_id || "",
+      title: quiz.title,
+      time_limit: quiz.time_limit || ""
+    });
+    setQuestions(JSON.parse(JSON.stringify(quiz.questions)));
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // เลื่อนหน้าจอขึ้นไปบนสุด
   };
-  const cancelEditQuiz = () => { setEditingQuiz(null); setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" }); setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); };
 
+  const cancelEditQuiz = () => {
+    setEditingQuiz(null);
+    setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" });
+    setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
+  };
+
+  // 🌟 ฟังก์ชันลบข้อสอบ
   const handleDeleteQuiz = async (id) => {
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบแบบทดสอบนี้หรือไม่? คำเตือน: คะแนนสอบของนักเรียนจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบทิ้ง' });
+    const result = await Swal.fire({ 
+       title: 'ยืนยันการลบ', 
+       text: "ลบแบบทดสอบนี้หรือไม่? คำเตือน: คะแนนสอบของนักเรียนจะถูกลบไปด้วย", 
+       icon: 'warning', 
+       showCancelButton: true, 
+       confirmButtonColor: '#d33', 
+       confirmButtonText: 'ลบทิ้ง' 
+    });
     if (!result.isConfirmed) return;
-    await supabase.from("quizzes").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบแบบทดสอบเรียบร้อยแล้ว', 'success');
+    await supabase.from("quizzes").delete().eq("id", id);
+    fetchData();
+    Swal.fire('ลบแล้ว!', 'ลบแบบทดสอบเรียบร้อยแล้ว', 'success');
   };
 
   const handleCloneQuiz = (e) => {
@@ -294,16 +376,25 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const handleUploadMaterial = async (e) => { 
     e.preventDefault(); 
     if (!materialForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
+    
     let finalUrl = ""; setUploading(true); 
+    
     if (uploadMode === "file") { 
       if (!materialForm.file) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์', 'warning'); setUploading(false); return; } 
-      const file = materialForm.file; const fileExt = file.name.split(".").pop(); const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`; const filePath = `${materialForm.course_id}/${fileName}`; 
+      const file = materialForm.file; 
+      const fileExt = file.name.split(".").pop(); 
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`; 
+      const filePath = `${materialForm.course_id}/${fileName}`; 
+      
       const { error: uploadError } = await supabase.storage.from("course_materials").upload(filePath, file); 
       if (uploadError) { Swal.fire('ข้อผิดพลาด', `อัปโหลดไม่สำเร็จ: ${uploadError.message}`, 'error'); setUploading(false); return; } 
-      const { data: { publicUrl } } = supabase.storage.from("course_materials").getPublicUrl(filePath); finalUrl = publicUrl; 
+      const { data: { publicUrl } } = supabase.storage.from("course_materials").getPublicUrl(filePath); 
+      finalUrl = publicUrl; 
     } else { 
-      if (!materialForm.link) { Swal.fire('แจ้งเตือน', 'กรุณาวางลิงก์', 'warning'); setUploading(false); return; } finalUrl = materialForm.link; 
+      if (!materialForm.link) { Swal.fire('แจ้งเตือน', 'กรุณาวางลิงก์', 'warning'); setUploading(false); return; } 
+      finalUrl = materialForm.link; 
     } 
+    
     await supabase.from("materials").insert([{ course_id: materialForm.course_id, module_id: materialForm.module_id || null, title: materialForm.title, file_url: finalUrl }]); 
     setMaterialForm({ course_id: "", module_id: "", title: "", file: null, link: "" }); fetchData(); Swal.fire('สำเร็จ!', 'อัปโหลดเอกสารสำเร็จ!', 'success'); setUploading(false); 
   };
@@ -311,20 +402,27 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const handleGradeSubmit = async (e, subId) => { 
     e.preventDefault(); 
     await supabase.from("submissions").update({ score: gradeForm.score, teacher_feedback: gradeForm.feedback }).eq("id", subId); 
+    
     const targetSub = submissions.find(s => s.id === subId);
     if (targetSub && targetSub.profiles?.telegram_chat_id) {
        const msg = `✅ ตรวจงานแล้ว!\nวิชา: ${targetSub.assignments?.courses?.course_name}\nงาน: ${targetSub.assignments?.title}\nได้คะแนน: ${gradeForm.score}\nคอมเมนต์: ${gradeForm.feedback || '-'}`;
        sendTelegramNotify(targetSub.profiles.telegram_chat_id, msg);
     }
-    setGradeForm({ id: "", score: "", feedback: "" }); setEditingGrade(null); fetchData(); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกคะแนนและคำแนะนำสำเร็จ', showConfirmButton: false, timer: 1500 }); 
+
+    setGradeForm({ id: "", score: "", feedback: "" }); 
+    setEditingGrade(null); 
+    fetchData(); 
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกคะแนนและคำแนะนำสำเร็จ', showConfirmButton: false, timer: 1500 }); 
   };
 
   const handleBatchGradeSubmit = async (e) => {
     e.preventDefault();
     if (selectedSubIds.length === 0) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกงานที่ต้องการให้คะแนน', 'warning'); return; }
     if (!batchScore) { Swal.fire('แจ้งเตือน', 'กรุณาระบุคะแนนที่ต้องการให้', 'warning'); return; }
+    
     await supabase.from("submissions").update({ score: batchScore }).in("id", selectedSubIds);
     const count = selectedSubIds.length;
+    
     selectedSubIds.forEach(subId => {
        const targetSub = submissions.find(s => s.id === subId);
        if (targetSub && targetSub.profiles?.telegram_chat_id) {
@@ -332,24 +430,29 @@ export default function TeacherDashboard({ session, handleLogout }) {
            sendTelegramNotify(targetSub.profiles.telegram_chat_id, msg);
        }
     });
-    setSelectedSubIds([]); setBatchScore(""); fetchData(); Swal.fire('บันทึกสำเร็จ!', `บันทึกคะแนน ${batchScore} ให้กับ ${count} รายการ สำเร็จ!`, 'success');
+
+    setSelectedSubIds([]); setBatchScore(""); fetchData();
+    Swal.fire('บันทึกสำเร็จ!', `บันทึกคะแนน ${batchScore} ให้กับ ${count} รายการ สำเร็จ!`, 'success');
   };
 
   const toggleSubSelection = (id) => setSelectedSubIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
   const handleDeleteCourse = async (id) => { 
-    const result = await Swal.fire({ title: 'คำเตือน', text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบวิชา' });
-    if (!result.isConfirmed) return; await supabase.from("courses").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบวิชาเรียบร้อยแล้ว', 'success');
+    const result = await Swal.fire({ title: 'คำเตือน', text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบวิชา' });
+    if (!result.isConfirmed) return; 
+    await supabase.from("courses").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบวิชาเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteMaterial = async (id) => { 
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบเอกสารประกอบการสอนนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบเอกสาร' });
-    if (!result.isConfirmed) return; await supabase.from("materials").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบเอกสารเรียบร้อยแล้ว', 'success');
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบเอกสารประกอบการสอนนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบเอกสาร' });
+    if (!result.isConfirmed) return; 
+    await supabase.from("materials").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบเอกสารเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteAssignment = async (id) => { 
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบคำสั่งงานนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบงาน' });
-    if (!result.isConfirmed) return; await supabase.from("assignments").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบคำสั่งงานเรียบร้อยแล้ว', 'success');
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบคำสั่งงานนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบงาน' });
+    if (!result.isConfirmed) return; 
+    await supabase.from("assignments").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบคำสั่งงานเรียบร้อยแล้ว', 'success');
   };
 
   const handleUpdateCourse = async (e) => { 
@@ -369,19 +472,32 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const updateOption = (qIndex, optIndex, value) => { const newQs = [...questions]; newQs[qIndex].options[optIndex] = value; setQuestions(newQs); };
 
   const handleQuestionImageUpload = async (qIndex, e) => {
-    const file = e.target.files[0]; if (!file) return;
-    const fileExt = file.name.split('.').pop(); const fileName = `quiz_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `quiz_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
     const { error: uploadError } = await supabase.storage.from('quiz_images').upload(fileName, file);
-    if (uploadError) { Swal.fire('ข้อผิดพลาด', `อัปโหลดรูปไม่สำเร็จ: ${uploadError.message}`, 'error'); return; }
+    if (uploadError) {
+      Swal.fire('ข้อผิดพลาด', `อัปโหลดรูปไม่สำเร็จ: ${uploadError.message}`, 'error');
+      return;
+    }
+
     const { data: { publicUrl } } = supabase.storage.from('quiz_images').getPublicUrl(fileName);
-    const newQs = [...questions]; newQs[qIndex].imageUrl = publicUrl; setQuestions(newQs);
+    
+    const newQs = [...questions];
+    newQs[qIndex].imageUrl = publicUrl;
+    setQuestions(newQs);
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปโหลดรูปภาพสำเร็จ!', showConfirmButton: false, timer: 1500 });
   };
 
   const loadAttendanceRecords = () => {
     if (!attCourse || !attDate) return;
     const existing = attendances.filter(a => a.course_id === attCourse && a.date === attDate);
-    const newRecords = {}; existing.forEach(a => newRecords[a.student_id] = a.status); setAttRecords(newRecords);
+    const newRecords = {};
+    existing.forEach(a => newRecords[a.student_id] = a.status);
+    setAttRecords(newRecords);
   };
   
   useEffect(() => { loadAttendanceRecords(); }, [attCourse, attDate, attendances]);
@@ -390,10 +506,18 @@ export default function TeacherDashboard({ session, handleLogout }) {
     if (!attCourse) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกวิชา', 'warning');
     const studentsInCourse = enrollments.filter(e => e.course_id === attCourse);
     if (studentsInCourse.length === 0) return Swal.fire('แจ้งเตือน', 'ไม่มีนักเรียนในวิชานี้', 'warning');
+
     await supabase.from("attendances").delete().eq("course_id", attCourse).eq("date", attDate);
-    const inserts = Object.keys(attRecords).map(sId => ({ course_id: attCourse, student_id: sId, date: attDate, status: attRecords[sId] }));
-    if (inserts.length > 0) await supabase.from("attendances").insert(inserts);
-    fetchData(); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกการเช็คชื่อสำเร็จ', showConfirmButton: false, timer: 1500 });
+
+    const inserts = Object.keys(attRecords).map(sId => ({
+      course_id: attCourse, student_id: sId, date: attDate, status: attRecords[sId]
+    }));
+
+    if (inserts.length > 0) {
+      await supabase.from("attendances").insert(inserts);
+    }
+    fetchData();
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกการเช็คชื่อสำเร็จ', showConfirmButton: false, timer: 1500 });
   };
 
   const handleExportCSV = () => { 
@@ -421,44 +545,66 @@ export default function TeacherDashboard({ session, handleLogout }) {
   };
 
   const getFileIcon = (url) => {
-    if (!url) return '🔗'; const lowerUrl = url.toLowerCase();
-    if (lowerUrl.includes('.pdf')) return '📕'; if (lowerUrl.includes('.doc') || lowerUrl.includes('.docx')) return '📝';
-    if (lowerUrl.includes('.xls') || lowerUrl.includes('.xlsx')) return '📊'; if (lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx')) return '📽️';
-    if (lowerUrl.includes('.jpg') || lowerUrl.includes('.png') || lowerUrl.includes('.jpeg')) return '🖼️'; return '📎';
+    if (!url) return '🔗';
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('.pdf')) return '📕';
+    if (lowerUrl.includes('.doc') || lowerUrl.includes('.docx')) return '📝';
+    if (lowerUrl.includes('.xls') || lowerUrl.includes('.xlsx')) return '📊';
+    if (lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx')) return '📽️';
+    if (lowerUrl.includes('.jpg') || lowerUrl.includes('.png') || lowerUrl.includes('.jpeg')) return '🖼️';
+    return '📎';
   };
 
   const gradedCount = submissions.filter((s) => s.score !== null).length;
   const ungradedCount = submissions.filter((s) => s.score === null).length;
+
   const filteredSubmissions = gradeFilter ? submissions.filter(s => `${s.assignments?.courses?.course_name} (${s.assignments?.courses?.section})` === gradeFilter) : submissions;
   const ungradedFiltered = filteredSubmissions.filter((s) => s.score === null);
   const gradeFilterOptions = Array.from(new Set(submissions.map(s => `${s.assignments?.courses?.course_name} (${s.assignments?.courses?.section})`)));
+
   const selectAllFiltered = () => {
     const allIds = ungradedFiltered.map(s => s.id);
-    if (selectedSubIds.length === allIds.length && allIds.length > 0) setSelectedSubIds([]); else setSelectedSubIds(allIds);
+    if (selectedSubIds.length === allIds.length && allIds.length > 0) setSelectedSubIds([]);
+    else setSelectedSubIds(allIds);
   };
 
   const getGradeSummary = () => {
     if (!gradeSummaryCourse) return [];
     const studentsInCourse = enrollments.filter(e => e.course_id === gradeSummaryCourse);
     const courseStudentIds = studentsInCourse.map(e => e.student_id);
+    
     const allKnownProfiles = {};
     submissions.forEach(s => { if (s.profiles && s.student_id) allKnownProfiles[s.student_id] = s.profiles; });
     quizSubmissions.forEach(q => { if (q.profiles && q.student_id) allKnownProfiles[q.student_id] = q.profiles; });
+
     const summary = courseStudentIds.map(sId => {
       const assignScores = submissions.filter(s => s.student_id === sId && s.assignments?.course_id === gradeSummaryCourse && s.score !== null).reduce((sum, s) => sum + s.score, 0);
       const quizScores = quizSubmissions.filter(qs => qs.student_id === sId && qs.quizzes?.course_id === gradeSummaryCourse && qs.score !== null).reduce((sum, qs) => sum + qs.score, 0);
+      
       const total = assignScores + quizScores;
       let grade = "รอประเมิน";
-      if (total >= 80) grade = "4"; else if (total >= 75) grade = "3.5"; else if (total >= 70) grade = "3"; else if (total >= 65) grade = "2.5"; else if (total >= 60) grade = "2"; else if (total >= 55) grade = "1.5"; else if (total >= 50) grade = "1"; else if (total > 0) grade = "0";
-      return { student_id: sId, profile: allKnownProfiles[sId] || { student_code: '-', full_name: 'กำลังโหลด..' }, assignScores, quizScores, total, grade };
+      if (total >= 80) grade = "4";
+      else if (total >= 75) grade = "3.5";
+      else if (total >= 70) grade = "3";
+      else if (total >= 65) grade = "2.5";
+      else if (total >= 60) grade = "2";
+      else if (total >= 55) grade = "1.5";
+      else if (total >= 50) grade = "1";
+      else if (total > 0) grade = "0";
+
+      return {
+        student_id: sId, profile: allKnownProfiles[sId] || { student_code: '-', full_name: 'กำลังโหลด..' },
+        assignScores, quizScores, total, grade
+      };
     });
+    
     summary.sort((a, b) => (a.profile.student_code || "").localeCompare(b.profile.student_code || ""));
     return summary;
   };
 
   if (!session || session.role !== "teacher") return <Navigate to="/" />;
 
-  // 🌟 รายการเมนูทั้งหมด
+  // 🌟 รายการเมนูทั้งหมดของครู
   const menuItems = [
     { id: 'analytics', icon: '📊', label: 'Dashboard' }, 
     { id: 'courses', icon: '📚', label: 'Courses' }, 
@@ -535,12 +681,12 @@ export default function TeacherDashboard({ session, handleLogout }) {
               <div className="col-12 col-xl-8">
                 <div className="hero-card mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
                   <div className="d-flex align-items-center gap-3" style={{zIndex:2}}>
-                     <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center border border-2 border-theme-red" style={{width: '60px', height: '60px', fontSize: '25px'}}>
+                     <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center border border-4 border-white" style={{width: '70px', height: '70px', fontSize: '30px'}}>
                         {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
                      </div>
                      <div><h3 className="fw-bold mb-1">สวัสดี, ครู{profileForm.full_name || ""}</h3><p className="text-white-50 mb-0">Overview of your classes today.</p></div>
                   </div>
-                  <button onClick={handleExportCSV} className="btn btn-theme-red fw-bold rounded-pill px-4 py-3 shadow-sm d-flex align-items-center gap-2" style={{zIndex:2}}><span>📥</span> Export CSV</button>
+                  <button onClick={handleExportCSV} className="btn btn-light text-theme-red fw-bold rounded-pill px-4 py-3 shadow-sm d-flex align-items-center gap-2" style={{zIndex:2}}><span>📥</span> Export CSV</button>
                 </div>
 
                 <div className="row g-3">
@@ -952,7 +1098,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         
                         <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>📋</span> Questions</h6>
                         {questions.map((q, qIndex) => (
-                          <div key={qIndex} className="bg-theme-gray p-4 rounded-4 mb-4 position-relative border border-light slide-down">
+                          <div className="bg-theme-gray p-4 rounded-4 mb-4 position-relative border border-light slide-down" key={qIndex}>
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <span className="fw-bold text-theme-dark bg-white px-3 py-1 rounded-pill shadow-sm">Q {qIndex + 1}</span>
                               {questions.length > 1 && (<button type="button" className="btn btn-white text-theme-red btn-sm rounded-pill shadow-sm px-3 fw-bold" onClick={() => setQuestions(questions.filter((_, i) => i !== qIndex))}>Delete</button>)}
@@ -1211,66 +1357,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
         </div>
       </div>
-
-      {/* 🎨 Theme 1 CSS Rules */}
-      <style>{`
-        :root {
-          --theme-red: #E50914; 
-          --theme-red-hover: #b90710;
-          --theme-dark: #121212; 
-          --theme-gray: #F5F6FA; 
-        }
-        body { background-color: var(--theme-gray); }
-        .font-app { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
-        
-        .text-theme-red { color: var(--theme-red) !important; }
-        .text-theme-dark { color: var(--theme-dark) !important; }
-        .bg-theme-red { background-color: var(--theme-red) !important; color: white; }
-        .bg-theme-dark { background-color: var(--theme-dark) !important; color: white; }
-        .bg-theme-gray { background-color: var(--theme-gray) !important; }
-        
-        .btn-theme-red { background-color: var(--theme-red); color: white; border: none; transition: 0.3s; }
-        .btn-theme-red:hover { background-color: var(--theme-red-hover); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3) !important; }
-        .btn-theme-dark { background-color: var(--theme-dark); color: white; border: none; transition: 0.3s; }
-        .btn-theme-dark:hover { background-color: black; color: white; transform: translateY(-2px); }
-
-        .app-layout { display: flex; min-height: 100vh; background-color: var(--theme-gray); }
-        
-        /* Desktop Sidebar */
-        .sidebar { width: 260px; background: white; border-right: 1px solid rgba(0,0,0,0.05); display: none; flex-direction: column; position: fixed; height: 100vh; z-index: 1000; padding: 24px; }
-        .nav-link-btn { display: flex; align-items: center; gap: 15px; width: 100%; padding: 15px 20px; border-radius: 16px; border: none; background: transparent; color: #6c757d; font-weight: 700; text-align: left; transition: 0.3s; margin-bottom: 8px; }
-        .nav-link-btn:hover { background: var(--theme-gray); color: var(--theme-dark); }
-        .nav-link-btn.active { background: var(--theme-red); color: white; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.2); }
-        
-        /* Main Content */
-        .main-content { flex-grow: 1; margin-left: 0; padding-bottom: 80px; min-height: 100vh; }
-        
-        /* Components */
-        .theme-card { background: white; border-radius: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.03); border: none; padding: 24px; }
-        .hero-card { background: var(--theme-dark); color: white; border-radius: 28px; padding: 32px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .hero-card::after { content: ''; position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: var(--theme-red); border-radius: 50%; opacity: 0.2; filter: blur(40px); }
-        
-        .theme-input { background-color: var(--theme-gray) !important; border: 1px solid transparent !important; border-radius: 16px !important; padding: 16px 20px !important; transition: 0.3s; font-weight: 600; color: var(--theme-dark); }
-        .theme-input:focus { background-color: white !important; border-color: var(--theme-red) !important; box-shadow: 0 0 0 4px rgba(229, 9, 20, 0.1) !important; }
-        
-        .hover-card { transition: transform 0.2s, box-shadow 0.2s; } 
-        .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; } 
-
-        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
-        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
-        .slide-down { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } 
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } 
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Media Queries for Desktop */
-        @media (min-width: 992px) {
-          .sidebar { display: flex; }
-          .main-content { margin-left: 260px; padding-bottom: 20px; }
-          .mobile-only { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

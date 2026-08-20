@@ -129,8 +129,8 @@ export default function AdminDashboard({ session, handleLogout }) {
       text: `ต้องการลบวิชา "${courseName}" จริงหรือไม่? ข้อมูลการส่งงานของนักเรียนในวิชานี้จะหายไปด้วย`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonColor: '#e50914',
+      cancelButtonColor: '#6c757d',
       confirmButtonText: 'ใช่, ลบเลย!',
       cancelButtonText: 'ยกเลิก'
     })
@@ -157,8 +157,8 @@ export default function AdminDashboard({ session, handleLogout }) {
       text: "คุณต้องการลบประกาศนี้หรือไม่?",
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonColor: '#e50914',
+      cancelButtonColor: '#6c757d',
       confirmButtonText: 'ใช่, ลบเลย'
     })
 
@@ -184,8 +184,8 @@ export default function AdminDashboard({ session, handleLogout }) {
       text: `ต้องการเปลี่ยนสิทธิ์ผู้ใช้นี้เป็น ${roleText} หรือไม่?`,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
+      confirmButtonColor: '#121212',
+      cancelButtonColor: '#e50914',
       confirmButtonText: 'ยืนยันการเปลี่ยน'
     })
 
@@ -201,8 +201,8 @@ export default function AdminDashboard({ session, handleLogout }) {
       text: `ต้องการลบ "${name}" ออกจากระบบจริงหรือไม่? ข้อมูลทั้งหมดที่เกี่ยวข้องจะถูกลบถาวร`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonColor: '#e50914',
+      cancelButtonColor: '#6c757d',
       confirmButtonText: 'ลบถาวร',
       cancelButtonText: 'ยกเลิก'
     })
@@ -267,7 +267,8 @@ export default function AdminDashboard({ session, handleLogout }) {
       icon: 'info',
       showCancelButton: true,
       confirmButtonText: 'นำเข้าเลย',
-      cancelButtonText: 'ยกเลิก'
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#E50914'
     })
 
     if (!result.isConfirmed) {
@@ -346,12 +347,7 @@ export default function AdminDashboard({ session, handleLogout }) {
        setDeptForm({ name: "" })
        fetchClassroomData()
        Swal.fire({
-         toast: true,
-         position: 'top-end',
-         icon: 'success',
-         title: 'บันทึกข้อมูลห้องเรียนสำเร็จ!',
-         showConfirmButton: false,
-         timer: 2000
+         toast: true, position: 'top-end', icon: 'success', title: 'บันทึกข้อมูลห้องเรียนสำเร็จ!', showConfirmButton: false, timer: 2000
        })
     }
   }
@@ -362,8 +358,8 @@ export default function AdminDashboard({ session, handleLogout }) {
       text: `ต้องการลบข้อมูลกลุ่มเรียน/แผนก: "${name}" หรือไม่?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
+      confirmButtonColor: '#e50914',
+      cancelButtonColor: '#6c757d',
       confirmButtonText: 'ลบข้อมูล'
     })
 
@@ -406,446 +402,442 @@ export default function AdminDashboard({ session, handleLogout }) {
 
   if (!session || session.role !== 'admin') return <Navigate to="/" />
 
+  const menuItems = [
+    { id: 'overview', icon: '📊', label: 'Overview' },
+    { id: 'classrooms', icon: '🏢', label: 'Classrooms' },
+    { id: 'students', icon: '👨‍🎓', label: 'Students' },
+    { id: 'teachers', icon: '👨‍🏫', label: 'Teachers' },
+    { id: 'courses', icon: '📚', label: 'Courses' },
+    { id: 'announcements', icon: '📢', label: 'Announcements' },
+    { id: 'settings', icon: '⚙️', label: 'Settings' }
+  ];
+
   return (
-    <div className="bg-light min-vh-100 font-app">
+    <div className="app-layout font-app">
       
       {/* ---------------- โมดอลสำหรับแก้ไขข้อมูล ---------------- */}
       {editingUser && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1050, backdropFilter: 'blur(5px)' }}>
-          <div className="bg-white rounded-4 shadow-lg p-4 w-100 slide-up mx-3" style={{ maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h5 className="fw-bold mb-4 border-bottom pb-3 text-primary">✏️ แก้ไขข้อมูล {editingUser.role === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'}</h5>
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1050, backdropFilter: 'blur(5px)' }}>
+          <div className="theme-card w-100 slide-up mx-3" style={{ maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h5 className="fw-bold mb-4 border-bottom border-light pb-3 text-theme-dark">✏️ Edit {editingUser.role === 'teacher' ? 'Teacher' : 'Student'}</h5>
             <form onSubmit={handleSaveEdit}>
               <div className="mb-3">
-                <label className="form-label small fw-bold text-muted">ชื่อ - นามสกุล</label>
-                <input type="text" className="form-control custom-input bg-light border-0 rounded-3 p-2" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
+                <label className="form-label small fw-bold text-muted px-2">Full Name</label>
+                <input type="text" className="form-control theme-input bg-white" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
               </div>
               <div className="row mb-3">
                 <div className="col-6">
-                  <label className="form-label small fw-bold text-muted">ชื่อเล่น</label>
-                  <input type="text" className="form-control custom-input bg-light border-0 rounded-3 p-2" value={editForm.nickname} onChange={e => setEditForm({...editForm, nickname: e.target.value})} />
+                  <label className="form-label small fw-bold text-muted px-2">Nickname</label>
+                  <input type="text" className="form-control theme-input bg-white" value={editForm.nickname} onChange={e => setEditForm({...editForm, nickname: e.target.value})} />
                 </div>
                 <div className="col-6">
-                  <label className="form-label small fw-bold text-muted">เบอร์โทรศัพท์</label>
-                  <input type="text" className="form-control custom-input bg-light border-0 rounded-3 p-2" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                  <label className="form-label small fw-bold text-muted px-2">Phone</label>
+                  <input type="text" className="form-control theme-input bg-white" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                 </div>
               </div>
               <div className="mb-3">
-                <label className="form-label small fw-bold text-muted">แผนกวิชา</label>
-                <input type="text" className="form-control custom-input bg-light border-0 rounded-3 p-2" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} />
+                <label className="form-label small fw-bold text-muted px-2">Department</label>
+                <input type="text" className="form-control theme-input bg-white" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} />
               </div>
               {editingUser.role === 'student' && (
                 <div className="mb-3">
-                  <label className="form-label small fw-bold text-muted">ระดับชั้น</label>
-                  <input type="text" className="form-control custom-input bg-light border-0 rounded-3 p-2" value={editForm.grade_level} onChange={e => setEditForm({...editForm, grade_level: e.target.value})} />
+                  <label className="form-label small fw-bold text-muted px-2">Grade Level</label>
+                  <input type="text" className="form-control theme-input bg-white" value={editForm.grade_level} onChange={e => setEditForm({...editForm, grade_level: e.target.value})} />
                 </div>
               )}
               <div className="mb-4">
-                <label className="form-label small fw-bold text-muted">ลิงก์รูปโปรไฟล์ (URL)</label>
-                <input type="url" className="form-control custom-input bg-light border-0 rounded-3 p-2" value={editForm.avatar_url} onChange={e => setEditForm({...editForm, avatar_url: e.target.value})} />
+                <label className="form-label small fw-bold text-muted px-2">Avatar URL</label>
+                <input type="url" className="form-control theme-input bg-white" value={editForm.avatar_url} onChange={e => setEditForm({...editForm, avatar_url: e.target.value})} />
               </div>
               <div className="d-flex gap-2">
-                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-light w-50 rounded-pill fw-bold py-2">ยกเลิก</button>
-                <button type="submit" className="btn btn-primary w-50 rounded-pill fw-bold shadow-sm py-2">บันทึกข้อมูล</button>
+                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-light w-50 rounded-pill fw-bold py-3 text-muted">Cancel</button>
+                <button type="submit" className="btn btn-theme-red w-50 rounded-pill fw-bold shadow-sm py-3">Save Changes</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* 🔵 Top Navigation */}
-      <div className="bg-white shadow-sm sticky-top px-4 py-3 d-flex align-items-center justify-content-between mb-4 z-3">
-        <div className="d-flex align-items-center gap-3">
-          <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-primary rounded-circle p-0" style={{ width: '40px', height: '40px' }}><span className="fs-5">☰</span></button>
-          <h5 className="fw-bold text-primary m-0">Admin Hub</h5>
+      {/* 🖥️ Desktop Sidebar */}
+      <div className="sidebar shadow-sm">
+        <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
+          <div className="bg-theme-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style={{width:'45px', height:'45px'}}>🛡️</div>
+          <h4 className="fw-bold m-0 text-theme-dark">LMS Admin</h4>
         </div>
-        <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '35px', height: '35px' }}>🛡️</div>
+        <div className="d-flex flex-column gap-1 flex-grow-1" style={{overflowY: 'auto'}}>
+          {menuItems.map(item => (
+            <button key={item.id} className={`nav-link-btn ${activeTab === item.id ? "active" : ""}`} onClick={() => handleTabChange(item.id)}>
+              <span className="fs-5">{item.icon}</span> {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 border-top pt-3">
+          <button onClick={handleLogout} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> Logout</button>
+        </div>
       </div>
 
-      {/* 🔵 Drawer Menu */}
+      {/* 📱 Mobile Menu (Offcanvas) */}
       {isMenuOpen && (
         <>
-          <div className="offcanvas-backdrop fade show" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
-          <div className="offcanvas offcanvas-start show shadow-lg border-0" style={{ visibility: "visible", zIndex: 1045, width: "280px" }}>
-            <div className="offcanvas-header p-4 text-white" style={{ background: 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)' }}>
-              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🛡️</span> ศูนย์ควบคุม</h5>
+          <div className="offcanvas-backdrop fade show d-lg-none" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
+          <div className="offcanvas offcanvas-start show shadow-lg border-0 d-lg-none" style={{ visibility: "visible", zIndex: 1045, width: "280px" }}>
+            <div className="offcanvas-header p-4 bg-theme-dark text-white">
+              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🛡️</span> Admin Menu</h5>
               <button type="button" className="btn-close btn-close-white" onClick={() => setIsMenuOpen(false)}></button>
             </div>
             <div className="offcanvas-body d-flex flex-column p-3 bg-white gap-1" style={{ overflowY: 'auto' }}>
-              {[
-                { id: 'overview', icon: '📊', label: 'สถิติภาพรวม' },
-                { id: 'classrooms', icon: '🏢', label: 'จัดการข้อมูลห้องเรียน' },
-                { id: 'students', icon: '👨‍🎓', label: 'จัดการนักเรียน' },
-                { id: 'teachers', icon: '👨‍🏫', label: 'จัดการครูผู้สอน' },
-                { id: 'courses', icon: '📚', label: 'รายวิชาทั้งหมด' },
-                { id: 'announcements', icon: '📢', label: 'ประกาศข่าวสาร' },
-                { id: 'settings', icon: '⚙️', label: 'ตั้งค่าระบบ' }
-              ].map(item => (
-                <button key={item.id} className={`btn text-start fw-bold py-3 px-4 rounded-4 transition-all ${activeTab === item.id ? "bg-primary bg-opacity-10 text-primary" : "bg-white text-muted border-0 hover-bg-light"}`} onClick={() => handleTabChange(item.id)}>
-                  <span className="me-3">{item.icon}</span> {item.label}
+              {menuItems.map(item => (
+                <button key={item.id} className={`nav-link-btn ${activeTab === item.id ? "active" : ""}`} onClick={() => handleTabChange(item.id)}>
+                  <span className="fs-5">{item.icon}</span> {item.label}
                 </button>
               ))}
-              <div className="mt-auto pt-3 border-top">
-                <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="btn btn-light text-danger w-100 rounded-pill fw-bold py-3">ออกจากระบบ</button>
+              <div className="mt-auto pt-3 border-top border-light">
+                <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> Logout</button>
               </div>
             </div>
           </div>
         </>
       )}
 
-      <div className="container position-relative" style={{ maxWidth: '1100px', paddingBottom: '120px' }}>
+      {/* 📱 Main Content Area */}
+      <div className="main-content">
         
-        {/* TAB 1: 📊 สถิติภาพรวม */}
-        {activeTab === 'overview' && (
-          <div className="fade-in">
-             <div className="card shadow-sm border-0 rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #0d6efd 0%, #084298 100%)' }}>
-                <div className="card-body p-4 p-md-5 text-white position-relative overflow-hidden">
-                    <div className="position-relative z-2">
-                        <h3 className="fw-bold mb-2">ยินดีต้อนรับ, ผู้ดูแลระบบ 👋</h3>
-                        <p className="text-white-50 mb-0">ภาคเรียนปัจจุบัน: {sysSettings.current_semester}</p>
-                    </div>
-                    <div className="position-absolute opacity-25" style={{ top: '-20px', right: '-20px', fontSize: '150px' }}>🛡️</div>
-                </div>
-             </div>
-             <div className="row g-3">
-               <div className="col-6 col-md-3">
-                 <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-white">
-                   <div className="bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-3 p-3 fs-3">👨‍🏫</div>
-                   <h2 className="fw-bold text-dark mb-0">{teachers.length}</h2>
-                   <small className="text-muted fw-bold">ครูผู้สอน</small>
-                 </div>
-               </div>
-               <div className="col-6 col-md-3">
-                 <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-white">
-                   <div className="bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-3 p-3 fs-3">👨‍🎓</div>
-                   <h2 className="fw-bold text-dark mb-0">{students.length}</h2>
-                   <small className="text-muted fw-bold">นักเรียน</small>
-                 </div>
-               </div>
-               <div className="col-6 col-md-3">
-                 <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-white">
-                   <div className="bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3 p-3 fs-3">📚</div>
-                   <h2 className="fw-bold text-dark mb-0">{stats.totalCourses}</h2>
-                   <small className="text-muted fw-bold">รายวิชา</small>
-                 </div>
-               </div>
-               <div className="col-6 col-md-3">
-                 <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-white">
-                   <div className="bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-3 p-3 fs-3">📈</div>
-                   <h2 className="fw-bold text-dark mb-0">{stats.submissionRate}%</h2>
-                   <small className="text-muted fw-bold">ส่งงาน</small>
-                 </div>
-               </div>
-             </div>
+        {/* Mobile Header */}
+        <div className="mobile-only d-flex justify-content-between align-items-center p-4 bg-white shadow-sm sticky-top z-3">
+          <div className="d-flex align-items-center gap-3">
+            <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-circle p-2 fs-5 border-0">☰</button>
+            <h5 className="fw-bold text-theme-dark m-0">Admin Hub</h5>
           </div>
-        )}
+          <div className="bg-theme-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style={{width:'35px', height:'35px'}}>🛡️</div>
+        </div>
 
-        {/* 🌟 TAB: 🏢 จัดการห้องเรียน */}
-        {activeTab === 'classrooms' && (
-          <div className="fade-in row g-4">
-            <div className="col-lg-5">
-              <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
-                <div className="card-body p-4 p-md-5">
-                  <h5 className="fw-bold mb-4 text-dark d-flex align-items-center gap-2"><span>➕</span> เพิ่มข้อมูลห้องเรียน</h5>
-                  <p className="text-muted small mb-4">พิมพ์รูปแบบสำเร็จรูป เพื่อให้คุณครูคลิกเลือกในหน้าสร้างวิชาได้ทันที</p>
+        <div className="container-fluid p-4" style={{ maxWidth: '1200px' }}>
+          
+          {/* TAB 1: 📊 สถิติภาพรวม */}
+          {activeTab === 'overview' && (
+            <div className="fade-in">
+               <div className="hero-card mb-4">
+                  <div className="position-relative z-2">
+                      <h3 className="fw-bold mb-2">Welcome, Admin 👋</h3>
+                      <p className="text-white-50 mb-0">Current Semester: {sysSettings.current_semester}</p>
+                  </div>
+               </div>
+               <div className="row g-4">
+                 <div className="col-6 col-md-3">
+                   <div className="theme-card text-center h-100">
+                     <div className="bg-theme-dark bg-opacity-10 text-theme-dark rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>👨‍🏫</div>
+                     <h2 className="fw-bold text-theme-dark mb-0">{teachers.length}</h2>
+                     <small className="text-muted fw-bold">Teachers</small>
+                   </div>
+                 </div>
+                 <div className="col-6 col-md-3">
+                   <div className="theme-card text-center h-100">
+                     <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>👨‍🎓</div>
+                     <h2 className="fw-bold text-theme-dark mb-0">{students.length}</h2>
+                     <small className="text-muted fw-bold">Students</small>
+                   </div>
+                 </div>
+                 <div className="col-6 col-md-3">
+                   <div className="theme-card text-center h-100">
+                     <div className="bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>📚</div>
+                     <h2 className="fw-bold text-theme-dark mb-0">{stats.totalCourses}</h2>
+                     <small className="text-muted fw-bold">Courses</small>
+                   </div>
+                 </div>
+                 <div className="col-6 col-md-3">
+                   <div className="theme-card text-center h-100">
+                     <div className="bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>📈</div>
+                     <h2 className="fw-bold text-theme-dark mb-0">{stats.submissionRate}%</h2>
+                     <small className="text-muted fw-bold">Task Rate</small>
+                   </div>
+                 </div>
+               </div>
+            </div>
+          )}
+
+          {/* 🌟 TAB: 🏢 จัดการห้องเรียน */}
+          {activeTab === 'classrooms' && (
+            <div className="fade-in row g-4">
+              <div className="col-lg-5">
+                <div className="theme-card h-100">
+                  <h5 className="fw-bold mb-4 text-theme-dark d-flex align-items-center gap-2"><span>➕</span> Add Department</h5>
+                  <p className="text-muted small mb-4 fw-bold">Add sections for teachers to select when creating courses.</p>
                   
                   <form onSubmit={handleCreateDepartment} className="d-flex flex-column gap-3">
                     <div className="form-floating">
-                      <input type="text" className="form-control custom-input bg-light border-0 rounded-4" id="deptName" placeholder="เช่น แผนกวิชาช่างยนต์ ปวช.1/1" value={deptForm.name} onChange={(e) => setDeptForm({ name: e.target.value })} required />
-                      <label htmlFor="deptName" className="text-muted fw-bold">เช่น แผนกวิชาช่างยนต์ ปวช.1/1</label>
+                      <input type="text" className="form-control theme-input bg-white" id="deptName" placeholder="e.g. IT Year 1" value={deptForm.name} onChange={(e) => setDeptForm({ name: e.target.value })} required />
+                      <label htmlFor="deptName" className="text-muted fw-bold px-4">e.g. IT Year 1</label>
                     </div>
-                    <button type="submit" className="btn btn-primary rounded-4 fw-bold py-3 mt-2 shadow-sm custom-btn">บันทึกข้อมูล</button>
+                    <button type="submit" className="btn btn-theme-dark rounded-pill fw-bold py-3 mt-2 shadow-sm">Save Department</button>
                   </form>
                 </div>
               </div>
-            </div>
-            
-            <div className="col-lg-7">
-              <div className="d-flex justify-content-between align-items-center mb-4">
-                <h5 className="fw-bold text-dark m-0">รายการห้องเรียน ({filteredDepts.length})</h5>
-                <input 
-                  type="text" 
-                  className="form-control border-0 bg-white shadow-sm rounded-pill px-4" 
-                  placeholder="🔍 ค้นหาห้องเรียน..." 
-                  style={{ maxWidth: '250px' }}
-                  value={searchDept}
-                  onChange={(e) => setSearchDept(e.target.value)}
-                />
-              </div>
-              <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
-                <div className="table-responsive" style={{ maxHeight: '500px' }}>
-                  <table className="table table-hover align-middle mb-0">
-                    <thead className="table-light sticky-top">
-                      <tr>
-                        <th className="px-4 py-3 text-secondary">ลำดับ</th>
-                        <th className="py-3 text-secondary">ชื่อแผนกและกลุ่มเรียน</th>
-                        <th className="py-3 text-secondary text-center">จัดการ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredDepts.length === 0 ? (
-                        <tr><td colSpan="3" className="text-center py-4 text-muted">ไม่พบข้อมูลที่ค้นหา</td></tr>
-                      ) : (
-                        filteredDepts.map((dept, index) => (
-                          <tr key={dept.id}>
-                            <td className="px-4 text-muted">{index + 1}</td>
-                            <td className="fw-bold text-dark">{dept.name}</td>
-                            <td className="text-center">
-                              <button onClick={() => handleDeleteDepartment(dept.id, dept.name)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm hover-bg-danger">
-                                <span style={{fontSize:'12px'}}>🗑️</span>
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+              
+              <div className="col-lg-7">
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h5 className="fw-bold text-theme-dark m-0">Departments ({filteredDepts.length})</h5>
+                  <input 
+                    type="text" 
+                    className="form-control theme-input bg-white py-2" 
+                    placeholder="🔍 Search..." 
+                    style={{ maxWidth: '250px' }}
+                    value={searchDept}
+                    onChange={(e) => setSearchDept(e.target.value)}
+                  />
+                </div>
+                <div className="theme-card p-0 overflow-hidden">
+                  <div className="table-responsive" style={{ maxHeight: '500px' }}>
+                    <table className="table table-hover align-middle mb-0">
+                      <thead className="table-light sticky-top">
+                        <tr>
+                          <th className="px-4 py-3 text-secondary">No.</th>
+                          <th className="py-3 text-secondary">Department Name</th>
+                          <th className="py-3 text-secondary text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredDepts.length === 0 ? (
+                          <tr><td colSpan="3" className="text-center py-5 text-muted fw-bold">No departments found</td></tr>
+                        ) : (
+                          filteredDepts.map((dept, index) => (
+                            <tr key={dept.id}>
+                              <td className="px-4 text-muted fw-bold">{index + 1}</td>
+                              <td className="fw-bold text-theme-dark">{dept.name}</td>
+                              <td className="text-center">
+                                <button onClick={() => handleDeleteDepartment(dept.id, dept.name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm hover-bg-gray">
+                                  <span style={{fontSize:'12px'}}>🗑️</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB: 👨‍🎓 จัดการนักเรียน */}
-        {activeTab === 'students' && (
-          <div className="fade-in">
-            <div className="card shadow-sm border-0 rounded-4 mb-4 bg-white overflow-hidden">
-              <div className="card-body p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+          {/* TAB: 👨‍🎓 จัดการนักเรียน */}
+          {activeTab === 'students' && (
+            <div className="fade-in">
+              <div className="theme-card mb-4 p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border border-light">
                 <div>
-                  <h5 className="fw-bold text-dark m-0 d-flex align-items-center gap-2">
-                    <span className="fs-4">📥</span> นำเข้าฐานข้อมูลนักเรียน
+                  <h5 className="fw-bold text-theme-dark m-0 d-flex align-items-center gap-2">
+                    <span className="fs-4">📥</span> Import Students Database
                   </h5>
-                  <p className="text-muted small mb-0 mt-1">
-                    รอนักเรียนเข้าระบบ: <strong className="text-primary">{masterCount} คน</strong>
+                  <p className="text-muted small mb-0 mt-1 fw-bold">
+                    Master list count: <strong className="text-theme-red">{masterCount} students</strong>
                   </p>
                 </div>
                 <div>
                   <input type="file" accept=".xlsx, .xls, .csv" id="excelUpload" className="d-none" onChange={handleFileUpload} disabled={isUploading} />
-                  <label htmlFor="excelUpload" className="btn btn-primary rounded-pill fw-bold px-4 py-2 mb-0" style={{cursor: 'pointer'}}>
-                    {isUploading ? '⏳ กำลังนำเข้า...' : '📄 อัปโหลด Excel/CSV'}
+                  <label htmlFor="excelUpload" className="btn btn-theme-dark rounded-pill fw-bold px-5 py-3 mb-0 shadow-sm" style={{cursor: 'pointer'}}>
+                    {isUploading ? '⏳ Uploading...' : '📄 Upload Excel/CSV'}
                   </label>
                 </div>
               </div>
-            </div>
-            
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 px-2 gap-3">
-              <h5 className="fw-bold text-dark m-0">นักเรียนในระบบ ({filteredStudents.length})</h5>
-              <input 
-                type="text" 
-                className="form-control border-0 bg-white shadow-sm rounded-pill px-4" 
-                placeholder="🔍 ค้นหาชื่อ, รหัส, แผนก..." 
-                style={{ maxWidth: '300px' }}
-                value={searchStudent}
-                onChange={(e) => setSearchStudent(e.target.value)}
-              />
-            </div>
-
-            <div className="row g-3">
-              {filteredStudents.length === 0 && <p className="text-muted ps-3">ไม่พบรายชื่อนักเรียนที่ค้นหา</p>}
-              {filteredStudents.map(user => (
-                <div key={user.id} className="col-md-6 col-xl-4">
-                  <div className="card border-0 shadow-sm rounded-4 h-100 bg-white hover-card">
-                    <div className="card-body p-4 d-flex flex-column">
-                      <div className="d-flex gap-3 mb-3">
-                        <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👨‍🎓</div>
-                        <div className="flex-grow-1 overflow-hidden">
-                          <h6 className="fw-bold mb-1 text-truncate text-dark">{user.full_name || 'ไม่ระบุชื่อ'}</h6>
-                          <p className="mb-0 text-muted small">รหัส: {user.student_code}</p>
-                          <span className="badge bg-light text-secondary border mt-1 text-truncate" style={{maxWidth: '100%'}}>{user.department || '-'}</span>
-                        </div>
-                      </div>
-                      <div className="d-flex gap-2 mt-auto pt-3 border-top">
-                         <button onClick={() => openEditModal(user)} className="btn btn-light text-primary flex-grow-1 rounded-pill fw-bold py-2">✏️ แก้ไข</button>
-                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="รีเซ็ตรหัสผ่าน">🔑</button>
-                         <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm">🗑️</button>
-                      </div>
-                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-outline-success btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬆️ อัปเกรดเป็นครู</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: 👨‍🏫 จัดการครูผู้สอน */}
-        {activeTab === 'teachers' && (
-          <div className="fade-in">
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
-              <h5 className="fw-bold mb-0 text-dark">ครูผู้สอน ({filteredTeachers.length})</h5>
-              <div className="d-flex gap-2">
+              
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
+                <h5 className="fw-bold text-theme-dark m-0">Students ({filteredStudents.length})</h5>
                 <input 
                   type="text" 
-                  className="form-control border-0 bg-white shadow-sm rounded-pill px-4" 
-                  placeholder="🔍 ค้นหาครู..." 
-                  style={{ maxWidth: '200px' }}
-                  value={searchTeacher}
-                  onChange={(e) => setSearchTeacher(e.target.value)}
+                  className="form-control theme-input bg-white py-2 shadow-sm" 
+                  placeholder="🔍 Search name, ID..." 
+                  style={{ maxWidth: '300px' }}
+                  value={searchStudent}
+                  onChange={(e) => setSearchStudent(e.target.value)}
                 />
-                <button onClick={() => setShowAddTeacher(!showAddTeacher)} className={`btn fw-bold rounded-pill shadow-sm px-4 py-2 flex-shrink-0 ${showAddTeacher ? 'btn-secondary' : 'btn-primary'}`}>
-                  {showAddTeacher ? '✖ ปิดฟอร์ม' : '➕ เพิ่มบัญชี'}
-                </button>
               </div>
-            </div>
-            
-            {showAddTeacher && (
-              <div className="card shadow-sm border-0 rounded-4 mb-5 bg-white p-4">
-                  <h5 className="fw-bold text-primary mb-3">ฟอร์มสร้างบัญชีบุคลากร</h5>
-                  <form onSubmit={handleCreateTeacher} className="row g-3">
-                      <div className="col-md-6">
-                        <input type="text" className="form-control bg-light border-0 p-3 rounded-3" placeholder="รหัสบุคลากร" value={addTeacherForm.teacherId} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherId: e.target.value})} required />
-                      </div>
-                      <div className="col-md-6">
-                        <input type="text" className="form-control bg-light border-0 p-3 rounded-3" placeholder="ชื่อ-สกุล" value={addTeacherForm.teacherName} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherName: e.target.value})} required />
-                      </div>
-                      <div className="col-md-6">
-                        <input type="text" className="form-control bg-light border-0 p-3 rounded-3" placeholder="แผนก" value={addTeacherForm.department} onChange={(e) => setAddTeacherForm({...addTeacherForm, department: e.target.value})} required />
-                      </div>
-                      <div className="col-md-6">
-                        <input type="text" className="form-control bg-light border-0 p-3 rounded-3" placeholder="รหัสผ่านชั่วคราว" value={addTeacherForm.password} onChange={(e) => setAddTeacherForm({...addTeacherForm, password: e.target.value})} required />
-                      </div>
-                      <div className="col-12 text-end">
-                        <button type="submit" className="btn btn-primary rounded-pill px-5 fw-bold py-2" disabled={isAdding}>
-                          {isAdding ? '⏳ กำลังประมวลผล...' : 'สร้างบัญชี'}
-                        </button>
-                      </div>
-                  </form>
-              </div>
-            )}
 
-            <div className="row g-3">
-              {filteredTeachers.length === 0 && <p className="text-muted ps-3">ไม่พบรายชื่อครูที่ค้นหา</p>}
-              {filteredTeachers.map(user => (
-                <div key={user.id} className="col-md-6 col-xl-4">
-                  <div className="card border-0 shadow-sm rounded-4 h-100 bg-white hover-card">
-                    <div className="card-body p-4 d-flex flex-column">
+              <div className="row g-4">
+                {filteredStudents.length === 0 && <p className="text-muted ps-3 fw-bold">No students found.</p>}
+                {filteredStudents.map(user => (
+                  <div key={user.id} className="col-md-6 col-xl-4">
+                    <div className="theme-card h-100 hover-card border border-light d-flex flex-column">
                       <div className="d-flex gap-3 mb-3">
-                        <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👩‍🏫</div>
+                        <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👨‍🎓</div>
                         <div className="flex-grow-1 overflow-hidden">
-                          <h6 className="fw-bold mb-1 text-truncate text-dark">{user.full_name}</h6>
-                          <p className="mb-0 text-muted small">{user.student_code}</p>
-                          <span className="badge bg-light text-secondary border mt-1 text-truncate" style={{maxWidth: '100%'}}>{user.department}</span>
+                          <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{user.full_name || 'Unknown'}</h6>
+                          <p className="mb-0 text-muted small fw-bold">ID: {user.student_code}</p>
+                          <span className="badge bg-theme-gray text-theme-dark border mt-2 text-truncate" style={{maxWidth: '100%'}}>{user.department || 'No Dept'}</span>
                         </div>
                       </div>
-                      <div className="d-flex gap-2 mt-auto pt-3 border-top">
-                         <button onClick={() => openEditModal(user)} className="btn btn-light text-primary flex-grow-1 rounded-pill fw-bold py-2">✏️ แก้ไข</button>
-                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="รีเซ็ตรหัสผ่าน">🔑</button>
-                         <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm">🗑️</button>
+                      <div className="d-flex gap-2 mt-auto pt-3 border-top border-light">
+                         <button onClick={() => openEditModal(user)} className="btn btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-2 border">✏️ Edit</button>
+                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="Reset Password">🔑</button>
+                         <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm border">🗑️</button>
                       </div>
-                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-outline-danger btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬇️ เปลี่ยนเป็นนักเรียน</button>
+                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-theme-dark btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬆️ Upgrade to Teacher</button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: 📚 จัดการรายวิชาทั้งหมด */}
-        {activeTab === 'courses' && (
-          <div className="fade-in">
-             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
-                <h5 className="fw-bold m-0 text-dark d-flex align-items-center gap-2">
-                  รายวิชาในระบบ <span className="badge bg-primary rounded-pill fs-6 px-3">{filteredCourses.length} วิชา</span>
-                </h5>
-                <input 
-                  type="text" 
-                  className="form-control border-0 bg-white shadow-sm rounded-pill px-4" 
-                  placeholder="🔍 ค้นหาวิชา, รหัส, ครู, หรือกลุ่มเรียน..." 
-                  style={{ maxWidth: '350px' }}
-                  value={searchCourse}
-                  onChange={(e) => setSearchCourse(e.target.value)}
-                />
-             </div>
-             <div className="row g-3">
-                {filteredCourses.length === 0 && <p className="text-muted ps-3">ไม่พบรายวิชาที่ค้นหา</p>}
-                {filteredCourses.map(c => (
-                   <div key={c.id} className="col-md-6 col-lg-4">
-                      <div className="card border-0 shadow-sm rounded-4 h-100 bg-white hover-card">
-                         <div className="card-body p-4">
-                            <div className="d-flex justify-content-between align-items-start mb-2">
-                               <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2">{c.course_code}</span>
-                               <button onClick={() => handleDeleteCourseAdmin(c.id, c.course_name)} className="btn btn-light text-danger rounded-circle p-1"><span style={{fontSize:'12px'}}>🗑️</span></button>
-                            </div>
-                            <h5 className="fw-bold mb-1 text-dark text-truncate" title={c.course_name}>{c.course_name}</h5>
-                            <p className="text-muted small fw-bold mb-2 text-truncate">👨‍🏫 ผู้สอน: <span className="text-primary">{c.profiles?.full_name}</span></p>
-                            <span className="badge bg-light text-dark border w-100 text-start py-2 text-truncate">กลุ่ม: {c.section} | ภาคเรียน: {c.semester}</span>
-                         </div>
-                      </div>
-                   </div>
                 ))}
-             </div>
-          </div>
-        )}
+              </div>
+            </div>
+          )}
 
-        {/* TAB: 📢 ประกาศข่าวสาร */}
-        {activeTab === 'announcements' && (
-          <div className="fade-in row g-4">
-             <div className="col-lg-5">
-                <div className="card border-0 shadow-sm rounded-4 bg-white">
-                   <div className="card-body p-4">
-                      <h5 className="fw-bold text-dark mb-4">สร้างประกาศใหม่</h5>
-                      <form onSubmit={handleCreateAnnouncement} className="d-flex flex-column gap-3">
-                         <input type="text" className="form-control bg-light border-0 rounded-3 p-3 fw-bold" placeholder="หัวข้อประกาศ" value={annForm.title} onChange={e => setAnnForm({...annForm, title: e.target.value})} required />
-                         <textarea className="form-control bg-light border-0 rounded-3 p-3" placeholder="รายละเอียด..." rows="4" value={annForm.content} onChange={e => setAnnForm({...annForm, content: e.target.value})} required></textarea>
-                         <button type="submit" className="btn btn-primary rounded-pill py-3 fw-bold shadow-sm">ส่งประกาศ</button>
-                      </form>
-                   </div>
+          {/* TAB: 👨‍🏫 จัดการครูผู้สอน */}
+          {activeTab === 'teachers' && (
+            <div className="fade-in">
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
+                <h5 className="fw-bold mb-0 text-theme-dark">Teachers ({filteredTeachers.length})</h5>
+                <div className="d-flex gap-2">
+                  <input 
+                    type="text" 
+                    className="form-control theme-input bg-white py-2 shadow-sm" 
+                    placeholder="🔍 Search teachers..." 
+                    style={{ maxWidth: '200px' }}
+                    value={searchTeacher}
+                    onChange={(e) => setSearchTeacher(e.target.value)}
+                  />
+                  <button onClick={() => setShowAddTeacher(!showAddTeacher)} className={`btn fw-bold rounded-pill shadow-sm px-4 py-2 flex-shrink-0 ${showAddTeacher ? 'btn-light border text-theme-dark' : 'btn-theme-red'}`}>
+                    {showAddTeacher ? '✖ Close Form' : '➕ Add Teacher'}
+                  </button>
                 </div>
-             </div>
-             <div className="col-lg-7">
-                <h5 className="fw-bold text-dark mb-4">ประกาศที่ใช้งานอยู่</h5>
-                <div className="d-flex flex-column gap-3">
-                   {announcements.length === 0 && <p className="text-muted">ยังไม่มีประกาศ</p>}
-                   {announcements.map(ann => (
-                      <div key={ann.id} className="bg-white p-4 rounded-4 shadow-sm border-start border-4 border-warning d-flex justify-content-between align-items-start hover-card">
-                         <div>
-                            <h5 className="fw-bold text-dark mb-1">{ann.title}</h5>
-                            <p className="text-muted small mb-0 bg-light p-2 rounded-3 mt-2">{ann.content}</p>
-                         </div>
-                         <button onClick={() => handleDeleteAnnouncement(ann.id)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+              </div>
+              
+              {showAddTeacher && (
+                <div className="theme-card mb-5 border border-theme-red">
+                    <h5 className="fw-bold text-theme-dark mb-4">Create Teacher Account</h5>
+                    <form onSubmit={handleCreateTeacher} className="row g-3">
+                        <div className="col-md-6">
+                          <input type="text" className="form-control theme-input bg-white" placeholder="Teacher ID" value={addTeacherForm.teacherId} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherId: e.target.value})} required />
+                        </div>
+                        <div className="col-md-6">
+                          <input type="text" className="form-control theme-input bg-white" placeholder="Full Name" value={addTeacherForm.teacherName} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherName: e.target.value})} required />
+                        </div>
+                        <div className="col-md-6">
+                          <input type="text" className="form-control theme-input bg-white" placeholder="Department" value={addTeacherForm.department} onChange={(e) => setAddTeacherForm({...addTeacherForm, department: e.target.value})} required />
+                        </div>
+                        <div className="col-md-6">
+                          <input type="text" className="form-control theme-input bg-white" placeholder="Temporary Password" value={addTeacherForm.password} onChange={(e) => setAddTeacherForm({...addTeacherForm, password: e.target.value})} required />
+                        </div>
+                        <div className="col-12 mt-4 text-end">
+                          <button type="submit" className="btn btn-theme-red rounded-pill px-5 fw-bold py-3 w-100 w-md-auto" disabled={isAdding}>
+                            {isAdding ? '⏳ Processing...' : 'Create Account'}
+                          </button>
+                        </div>
+                    </form>
+                    {addStatus.message && (
+                      <div className={`mt-3 alert alert-${addStatus.type} fw-bold rounded-4`}>{addStatus.message}</div>
+                    )}
+                </div>
+              )}
+
+              <div className="row g-4">
+                {filteredTeachers.length === 0 && <p className="text-muted ps-3 fw-bold">No teachers found.</p>}
+                {filteredTeachers.map(user => (
+                  <div key={user.id} className="col-md-6 col-xl-4">
+                    <div className="theme-card h-100 hover-card border border-light d-flex flex-column">
+                      <div className="d-flex gap-3 mb-3">
+                        <div className="bg-theme-dark text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👩‍🏫</div>
+                        <div className="flex-grow-1 overflow-hidden">
+                          <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{user.full_name}</h6>
+                          <p className="mb-0 text-muted small fw-bold">ID: {user.student_code}</p>
+                          <span className="badge bg-theme-gray text-theme-dark border mt-2 text-truncate" style={{maxWidth: '100%'}}>{user.department}</span>
+                        </div>
                       </div>
-                   ))}
-                </div>
-             </div>
-          </div>
-        )}
-
-        {/* TAB: ⚙️ ตั้งค่าระบบ */}
-        {activeTab === 'settings' && (
-          <div className="fade-in">
-             <div className="card border-0 shadow-sm rounded-4 bg-white mx-auto" style={{maxWidth: '600px'}}>
-                <div className="card-body p-4 p-md-5">
-                   <h4 className="fw-bold text-dark mb-2 text-center">⚙️ ตั้งค่าระบบ</h4>
-                   <p className="text-muted text-center mb-4">ควบคุมการทำงานหลักของระบบ LMS</p>
-                   
-                   <form onSubmit={handleUpdateSettings}>
-                      <div className="bg-light p-4 rounded-4 mb-4">
-                         <label className="form-label fw-bold text-dark mb-2">ปีการศึกษา / ภาคเรียน ปัจจุบัน</label>
-                         <p className="small text-muted mb-3">เมื่อครูสร้างวิชาใหม่ ระบบจะดึงค่านี้ไปใช้โดยอัตโนมัติ</p>
-                         <input type="text" className="form-control border-0 rounded-3 p-3 fw-bold fs-5 text-primary text-center" value={semForm} onChange={e => setSemForm(e.target.value)} required placeholder="เช่น 1/2569" />
+                      <div className="d-flex gap-2 mt-auto pt-3 border-top border-light">
+                         <button onClick={() => openEditModal(user)} className="btn btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-2 border">✏️ Edit</button>
+                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="Reset Password">🔑</button>
+                         <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm border">🗑️</button>
                       </div>
-                      <button type="submit" className="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm fs-6">บันทึกการตั้งค่า</button>
-                   </form>
-                </div>
-             </div>
-          </div>
-        )}
+                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-outline-danger btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬇️ Downgrade to Student</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
+          {/* TAB: 📚 จัดการรายวิชาทั้งหมด */}
+          {activeTab === 'courses' && (
+            <div className="fade-in">
+               <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
+                  <h5 className="fw-bold m-0 text-theme-dark d-flex align-items-center gap-2">
+                    All Courses <span className="badge bg-theme-dark rounded-pill fs-6 px-3">{filteredCourses.length}</span>
+                  </h5>
+                  <input 
+                    type="text" 
+                    className="form-control theme-input bg-white py-2 shadow-sm" 
+                    placeholder="🔍 Search courses..." 
+                    style={{ maxWidth: '350px' }}
+                    value={searchCourse}
+                    onChange={(e) => setSearchCourse(e.target.value)}
+                  />
+               </div>
+               <div className="row g-4">
+                  {filteredCourses.length === 0 && <p className="text-muted ps-3 fw-bold">No courses found.</p>}
+                  {filteredCourses.map(c => (
+                     <div key={c.id} className="col-md-6 col-lg-4">
+                        <div className="theme-card h-100 hover-card border border-light">
+                           <div className="d-flex justify-content-between align-items-start mb-3">
+                              <span className="badge bg-theme-dark text-white rounded-pill px-3 py-2">{c.course_code}</span>
+                              <button onClick={() => handleDeleteCourseAdmin(c.id, c.course_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                           </div>
+                           <h5 className="fw-bold mb-2 text-theme-dark text-truncate" title={c.course_name}>{c.course_name}</h5>
+                           <p className="text-muted small fw-bold mb-3 text-truncate">👨‍🏫 Teacher: <span className="text-theme-dark">{c.profiles?.full_name}</span></p>
+                           <span className="badge bg-theme-gray text-theme-dark border w-100 text-start py-2 px-3 text-truncate fs-6">Sec: {c.section} | Sem: {c.semester}</span>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            </div>
+          )}
+
+          {/* TAB: 📢 ประกาศข่าวสาร */}
+          {activeTab === 'announcements' && (
+            <div className="fade-in row g-4">
+               <div className="col-lg-5">
+                  <div className="theme-card">
+                     <h5 className="fw-bold text-theme-dark mb-4">Create Announcement</h5>
+                     <form onSubmit={handleCreateAnnouncement} className="d-flex flex-column gap-3">
+                        <input type="text" className="form-control theme-input bg-white fw-bold" placeholder="Title" value={annForm.title} onChange={e => setAnnForm({...annForm, title: e.target.value})} required />
+                        <textarea className="form-control theme-input bg-white" placeholder="Content details..." rows="4" value={annForm.content} onChange={e => setAnnForm({...annForm, content: e.target.value})} required></textarea>
+                        <button type="submit" className="btn btn-theme-red rounded-pill py-3 fw-bold shadow-sm mt-2">Publish Announcement</button>
+                     </form>
+                  </div>
+               </div>
+               <div className="col-lg-7">
+                  <h5 className="fw-bold text-theme-dark mb-4">Active Announcements</h5>
+                  <div className="d-flex flex-column gap-3">
+                     {announcements.length === 0 && <p className="text-muted fw-bold">No announcements yet.</p>}
+                     {announcements.map(ann => (
+                        <div key={ann.id} className="theme-card p-4 border-start border-4 border-theme-dark d-flex justify-content-between align-items-start hover-card">
+                           <div>
+                              <h5 className="fw-bold text-theme-dark mb-2">{ann.title}</h5>
+                              <p className="text-muted small mb-0 bg-theme-gray p-3 rounded-4 fw-bold">{ann.content}</p>
+                           </div>
+                           <button onClick={() => handleDeleteAnnouncement(ann.id)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* TAB: ⚙️ ตั้งค่าระบบ */}
+          {activeTab === 'settings' && (
+            <div className="fade-in">
+               <div className="theme-card mx-auto border border-light" style={{maxWidth: '600px'}}>
+                  <h4 className="fw-bold text-theme-dark mb-2 text-center">⚙️ System Settings</h4>
+                  <p className="text-muted text-center mb-4 fw-bold">Core configurations for the LMS</p>
+                  
+                  <form onSubmit={handleUpdateSettings}>
+                     <div className="bg-theme-gray p-4 rounded-4 mb-4 border border-light">
+                        <label className="form-label fw-bold text-theme-dark mb-2">Current Semester / Academic Year</label>
+                        <p className="small text-muted mb-3 fw-bold">Automatically applied to newly created courses.</p>
+                        <input type="text" className="form-control theme-input bg-white text-center fs-5" value={semForm} onChange={e => setSemForm(e.target.value)} required placeholder="e.g. 1/2569" />
+                     </div>
+                     <button type="submit" className="btn btn-theme-dark w-100 rounded-pill py-3 fw-bold shadow-sm fs-6">Save Configuration</button>
+                  </form>
+               </div>
+            </div>
+          )}
+
+        </div>
       </div>
-      <style>{`
-        .font-app { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; } 
-        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .slide-down { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .transition-all { transition: all 0.3s ease; }
-        .hover-bg-light:hover { background-color: #f8f9fa !important; }
-        .hover-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; }
-        .custom-input { transition: all 0.3s; }
-        .custom-input:focus { box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15) !important; background-color: #fff !important; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   )
 }
