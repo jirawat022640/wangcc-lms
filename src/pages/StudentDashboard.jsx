@@ -253,7 +253,6 @@ export default function StudentDashboard({ session, handleLogout }) {
 
   const navigateToService = (tab, subTab) => { setActiveTab(tab); if (subTab) { tab === 'classroom' ? setClassSubTab(subTab) : setTaskSubTab(subTab); } }
 
-  // 🌟 (กู้คืนโค้ดส่วนที่หายไป) คำนวณความเสี่ยงและงานค้างของนักเรียน
   const totalAssignments = assignments.length; 
   const completedAssignments = submissions.length; 
   const missingCount = totalAssignments - completedAssignments;
@@ -272,7 +271,7 @@ export default function StudentDashboard({ session, handleLogout }) {
       {/* 🖥️ Desktop Sidebar */}
       <div className={`sidebar ${takingQuiz ? 'd-none' : ''} shadow-sm`}>
         <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
-          {/* 🌟 ใส่โลโก้วิทยาลัย */}
+          {/* 🌟 เปลี่ยนไอคอนเป็นโลโก้วิทยาลัย */}
           <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'50px', height:'50px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
           <h4 className="fw-bold m-0 text-theme-dark">สมาร์ท LMS</h4>
         </div>
@@ -302,7 +301,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                 <small className="text-muted fw-bold">พร้อมเรียนรู้หรือยัง!</small>
               </div>
             </div>
-            {/* 🌟 ใส่โลโก้วิทยาลัย */}
+            {/* 🌟 เปลี่ยนไอคอนเป็นโลโก้วิทยาลัย */}
             <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'40px', height:'40px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
           </div>
         )}
@@ -315,7 +314,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                   <h4 className="mb-1 fw-bold">{takingQuiz.title}</h4>
                   <small className="text-white-50 mt-1 d-block fw-bold">⚠️ ห้ามสลับหน้าจอหรือย่อแอปขณะสอบ</small>
                   {timeLeft !== null && (
-                    <div className="bg-theme-red text-white fw-bold px-4 py-2 rounded-pill shadow-lg mt-3 d-inline-block border border-white">
+                    <div className="bg-danger text-white fw-bold px-4 py-2 rounded-pill shadow-lg mt-3 d-inline-block border border-white">
                       ⏳ เหลือเวลา: {formatTime(timeLeft)} นาที
                     </div>
                   )}
@@ -331,7 +330,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                       )}
                       <div className="d-flex flex-column gap-3">
                         {q.options.map((opt, optIndex) => (
-                          <label key={optIndex} className={`d-flex align-items-center gap-3 border p-4 rounded-4 transition-all ${quizAnswers[qIndex] === optIndex ? 'border-theme-red bg-theme-red bg-opacity-10 fw-bold text-theme-red shadow-sm' : 'border-light bg-light hover-bg-gray'}`} style={{cursor: 'pointer'}}>
+                          <label key={optIndex} className={`d-flex align-items-center gap-3 border p-4 rounded-4 transition-all ${quizAnswers[qIndex] === optIndex ? 'border-danger bg-danger bg-opacity-10 fw-bold text-danger shadow-sm' : 'border-light bg-light hover-bg-gray'}`} style={{cursor: 'pointer'}}>
                             <input type="radio" name={`q-${qIndex}`} className="form-check-input mt-0 flex-shrink-0" style={{width: '22px', height:'22px', accentColor: 'var(--theme-red)'}} checked={quizAnswers[qIndex] === optIndex} onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} />
                             <span className="fs-6">{opt}</span>
                           </label>
@@ -377,12 +376,13 @@ export default function StudentDashboard({ session, handleLogout }) {
                     <div className="d-flex flex-column gap-3">
                       {assignments.filter(a => !submissions.find(s => s.assignment_id === a.id)).slice(0, 3).map(a => (
                         <div key={a.id} className="theme-card p-3 d-flex align-items-center gap-3">
-                          <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-3 p-3 fs-5">📝</div>
+                          {/* 🌟 แก้ไข: ใช้ bg-danger มาตรฐาน */}
+                          <div className="bg-danger bg-opacity-10 text-danger border border-danger rounded-3 p-3 fs-5">📝</div>
                           <div className="flex-grow-1 overflow-hidden">
                             <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{a.title}</h6>
                             <small className="text-muted fw-bold">{a.courses.course_name}</small>
                           </div>
-                          <button onClick={() => navigateToService('tasks', 'assignments')} className="btn btn-light rounded-circle text-theme-red fw-bold shadow-sm p-2">→</button>
+                          <button onClick={() => navigateToService('tasks', 'assignments')} className="btn btn-light rounded-circle text-danger fw-bold shadow-sm p-2">→</button>
                         </div>
                       ))}
                       {assignments.filter(a => !submissions.find(s => s.assignment_id === a.id)).length === 0 && (
@@ -409,9 +409,10 @@ export default function StudentDashboard({ session, handleLogout }) {
                        
                        {/* Alert Banner */}
                        {isAtRisk ? (
-                         <div className="bg-theme-red bg-opacity-10 rounded-4 p-3 mt-3 d-flex align-items-center gap-3">
-                            <div className="fs-2 text-theme-red">⚠️</div>
-                            <div><h6 className="text-theme-red fw-bold mb-1">แจ้งเตือน!</h6><p className="small text-theme-red mb-0 lh-sm">คุณมีงานค้างหรือคะแนนต่ำกว่าเกณฑ์</p></div>
+                         /* 🌟 แก้ไข: ใช้ bg-danger มาตรฐาน */
+                         <div className="bg-danger bg-opacity-10 border border-danger rounded-4 p-3 mt-3 d-flex align-items-center gap-3">
+                            <div className="fs-2 text-danger">⚠️</div>
+                            <div><h6 className="text-danger fw-bold mb-1">แจ้งเตือน!</h6><p className="small text-danger mb-0 lh-sm">คุณมีงานค้างหรือคะแนนต่ำกว่าเกณฑ์</p></div>
                          </div>
                        ) : (
                          <div className="bg-theme-dark rounded-4 p-3 mt-3 d-flex align-items-center gap-3">
@@ -460,11 +461,12 @@ export default function StudentDashboard({ session, handleLogout }) {
                               {ytThumb ? (
                                 <div className="rounded-3 overflow-hidden shadow-sm" style={{ width: '80px', height: '60px', flexShrink: 0 }}><img src={ytThumb} alt="youtube thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
                               ) : (
-                                <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-3 d-flex align-items-center justify-content-center p-3 fs-3" style={{flexShrink: 0}}>📎</div>
+                                /* 🌟 แก้ไขไอคอนไฟล์: ใช้ bg-danger มาตรฐาน */
+                                <div className="bg-danger bg-opacity-10 text-danger border border-danger rounded-3 d-flex align-items-center justify-content-center p-3 fs-3" style={{flexShrink: 0}}>📎</div>
                               )}
                               <div className="flex-grow-1 overflow-hidden">
                                 <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{m.title}</h6>
-                                <p className="text-muted small mb-0 text-truncate fw-bold">{m.courses.course_name} {moduleName && <span className="text-theme-red">[{moduleName}]</span>}</p>
+                                <p className="text-muted small mb-0 text-truncate fw-bold">{m.courses.course_name} {moduleName && <span className="text-danger">[{moduleName}]</span>}</p>
                               </div>
                               <div className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm fw-bold">⬇️</div>
                             </a>
@@ -482,7 +484,8 @@ export default function StudentDashboard({ session, handleLogout }) {
                           <div key={c.id} className="col-12 col-md-6 col-xl-4">
                             <div className="theme-card p-4 h-100 d-flex flex-column">
                               <div className="d-flex justify-content-between align-items-start mb-3">
-                                <span className="badge bg-theme-red bg-opacity-10 text-theme-red rounded-pill px-3 py-2">{c.course_code}</span>
+                                {/* 🌟 แก้ไขป้ายวิชา (รูปที่ 1): ใช้ bg-danger มาตรฐาน */}
+                                <span className="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-3 py-2">{c.course_code}</span>
                                 <span className="badge bg-theme-dark text-white rounded-pill px-3 py-2">{c.section}</span>
                               </div>
                               <h5 className="fw-bold mb-2 text-theme-dark">{c.course_name}</h5>
@@ -521,7 +524,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                             <div className="theme-card p-0 overflow-hidden h-100 d-flex flex-column border border-light">
                               <div className={`p-1 ${mySub ? 'bg-success' : 'bg-theme-red'}`}></div>
                               <div className="p-4 d-flex flex-column flex-grow-1">
-                                <p className="text-muted small mb-2 fw-bold">{a.courses.course_name} {moduleName && <span className="text-theme-red">[{moduleName}]</span>}</p>
+                                <p className="text-muted small mb-2 fw-bold">{a.courses.course_name} {moduleName && <span className="text-danger">[{moduleName}]</span>}</p>
                                 <h5 className="fw-bold mb-3 text-theme-dark">{a.title}</h5>
                                 <p className="text-theme-dark small mb-4 bg-theme-gray p-3 rounded-4 fw-bold">{a.description}</p>
                                 
@@ -546,8 +549,9 @@ export default function StudentDashboard({ session, handleLogout }) {
                                         <span className="badge bg-theme-dark rounded-pill px-3 py-2 fs-6">{mySub.score !== null ? `ได้คะแนน: ${mySub.score}` : 'สถานะ: รอตรวจ'}</span>
                                       </div>
 
+                                      {/* 🌟 แก้ไขป้ายคอมเมนต์ครู (รูปที่ 2): ใช้ bg-danger มาตรฐาน */}
                                       {mySub.teacher_feedback && (
-                                        <div className="bg-theme-red bg-opacity-10 p-3 rounded-4 border mt-3 small text-theme-red shadow-sm">
+                                        <div className="bg-danger bg-opacity-10 p-3 rounded-4 border border-danger mt-3 small text-danger shadow-sm slide-down">
                                           <span className="fw-bold d-block mb-1">💬 ความคิดเห็นจากครู:</span>
                                           <span className="fw-bold">{mySub.teacher_feedback}</span>
                                         </div>
@@ -562,8 +566,8 @@ export default function StudentDashboard({ session, handleLogout }) {
                                   ) : (
                                     <form onSubmit={(e) => handleWorkSubmit(e, a.id)} className="bg-theme-gray p-3 rounded-4 border border-light">
                                       <div className="d-flex flex-column gap-2 mb-3">
-                                        <textarea className="theme-input form-control" placeholder="💬 พิมพ์คำตอบ..." value={isCurrentForm ? submitForm.text : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, text: e.target.value })} rows="2" />
-                                        <input type="url" className="theme-input form-control" placeholder="🔗 แนบลิงก์เว็บ / YouTube" value={isCurrentForm ? submitForm.link : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, link: e.target.value })} />
+                                        <textarea className="theme-input form-control bg-white" placeholder="💬 พิมพ์คำตอบ..." value={isCurrentForm ? submitForm.text : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, text: e.target.value })} rows="2" />
+                                        <input type="url" className="theme-input form-control bg-white" placeholder="🔗 แนบลิงก์เว็บ / YouTube" value={isCurrentForm ? submitForm.link : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, link: e.target.value })} />
                                         <div className="bg-white p-2 rounded-4 border border-light mt-1">
                                           <label className="small fw-bold text-muted mb-1 px-2">📂 แนบไฟล์ / รูปภาพ</label>
                                           <input type="file" className="form-control border-0 shadow-none bg-transparent fw-bold" onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, file: e.target.files[0] })} />
@@ -593,7 +597,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                             <div className="theme-card p-4 h-100 d-flex flex-column border border-light">
                               <span className="badge bg-theme-dark text-white rounded-pill px-3 py-1 align-self-start mb-3 fs-6">แบบทดสอบ</span>
                               <h5 className="fw-bold mb-2 text-theme-dark">{q.title}</h5>
-                              <p className="text-muted small mb-3 fw-bold">{q.courses.course_name} {moduleName && <span className="text-theme-red">[{moduleName}]</span>}</p>
+                              <p className="text-muted small mb-3 fw-bold">{q.courses.course_name} {moduleName && <span className="text-danger">[{moduleName}]</span>}</p>
                               
                               {q.time_limit > 0 && <p className="text-theme-red fw-bold small mb-4">⏳ เวลาทำข้อสอบ: {q.time_limit} นาที</p>}
 
@@ -601,7 +605,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                                 {isDone ? (
                                   <div className="bg-light text-theme-dark fw-bold text-center p-3 rounded-pill w-100 border">
                                     ✅ ทำแล้ว ({isDone.score}/{isDone.total_score} คะแนน)
-                                    {isDone.is_cheated && <span className="d-block mt-1 text-theme-red small">🚨 โดนตัดสิทธิ์ (ทุจริต)</span>}
+                                    {isDone.is_cheated && <span className="d-block mt-1 text-danger small">🚨 โดนตัดสิทธิ์ (ทุจริต)</span>}
                                   </div>
                                 ) : (
                                   <button onClick={() => handleStartQuiz(q)} className="btn btn-theme-red rounded-pill fw-bold py-3 shadow-sm w-100">✍️ เริ่มทำแบบทดสอบ</button>
@@ -636,13 +640,13 @@ export default function StudentDashboard({ session, handleLogout }) {
                     <div className="theme-card mb-4">
                       <h5 className="fw-bold mb-4 text-theme-dark text-center">แก้ไขข้อมูลส่วนตัว</h5>
                       <form onSubmit={handleUpdateProfile}>
-                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">ชื่อ - นามสกุล</label><input type="text" className="theme-input form-control" value={profileForm.full_name} onChange={e => setProfileForm({...profileForm, full_name: e.target.value})} required /></div>
-                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">ชื่อเล่น</label><input type="text" className="theme-input form-control" value={profileForm.nickname} onChange={e => setProfileForm({...profileForm, nickname: e.target.value})} /></div>
-                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">เบอร์โทรศัพท์</label><input type="text" className="theme-input form-control" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} /></div>
+                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">ชื่อ - นามสกุล</label><input type="text" className="theme-input form-control bg-white text-dark" value={profileForm.full_name} onChange={e => setProfileForm({...profileForm, full_name: e.target.value})} required /></div>
+                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">ชื่อเล่น</label><input type="text" className="theme-input form-control bg-white text-dark" value={profileForm.nickname} onChange={e => setProfileForm({...profileForm, nickname: e.target.value})} /></div>
+                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">เบอร์โทรศัพท์</label><input type="text" className="theme-input form-control bg-white text-dark" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} /></div>
                         <div className="mb-4">
                           <label className="form-label text-muted small fw-bold px-2">อัปโหลดรูปโปรไฟล์</label>
                           <input type="file" accept="image/*" className="theme-input form-control bg-white" onChange={handleUploadAvatar} disabled={uploadingAvatar} />
-                          {uploadingAvatar && <small className="text-theme-red mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
+                          {uploadingAvatar && <small className="text-danger mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
                         </div>
 
                         <hr className="my-4 border-light" />
@@ -652,7 +656,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                            <p className="small mb-3 text-white-50">1. กดปุ่มด้านล่างเพื่อเปิด Telegram และรับรหัส Chat ID จาก @getmyid_bot</p>
                            <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-theme-red rounded-pill px-4 py-2 shadow-sm mb-4 fw-bold">👉 เปิดเพื่อรับรหัส Chat ID</a>
                            <p className="small mb-2 text-white-50">2. นำตัวเลข Chat ID มาวางที่นี่</p>
-                           <input type="text" className="form-control bg-white border-0 rounded-pill px-4 py-3 fw-bold" placeholder="ตัวอย่าง 123456789" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
+                           <input type="text" className="form-control bg-white text-dark border-0 rounded-pill px-4 py-3 fw-bold" placeholder="ตัวอย่าง 123456789" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
                            {profileForm.telegram_chat_id && <small className="text-success fw-bold d-block mt-3">✅ ข้อมูล Chat ID พร้อมใช้งานแล้ว</small>}
                         </div>
                         

@@ -134,25 +134,24 @@ export default function Login({ setSession }) {
         </div>
 
         <div className="card-body px-4 pb-5 pt-0">
-          <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
+          <form onSubmit={handleSubmit} className="d-flex flex-column gap-2">
+            
+            {/* 🌟 แก้ไข: ย้าย Label ไว้ด้านบน Input ป้องกันการซ้อนทับ */}
             {!isLogin && (
-              <div className="form-floating mb-1 slide-down">
-                {/* 🌟 บังคับใช้คลาส bg-white และ text-dark เพื่อให้อ่านง่าย 100% */}
-                <input type="text" className="form-control rounded-4 theme-input bg-white text-dark shadow-none" id="fullName" placeholder="ชื่อ - นามสกุล" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                <label htmlFor="fullName" className="text-muted fw-bold">👤 ชื่อ-สกุล (เว้นว่างถ้าระบบมีชื่อแล้ว)</label>
+              <div className="mb-2 text-start slide-down">
+                <label htmlFor="fullName" className="text-muted fw-bold small ms-2 mb-1">👤 ชื่อ-สกุล (เว้นว่างถ้าระบบมีชื่อแล้ว)</label>
+                <input type="text" className="form-control rounded-4 theme-input bg-white text-dark shadow-none py-3" id="fullName" placeholder="พิมพ์ชื่อ - นามสกุล..." value={fullName} onChange={(e) => setFullName(e.target.value)} />
               </div>
             )}
 
-            <div className="form-floating mb-1">
-              {/* 🌟 บังคับใช้คลาส bg-white และ text-dark */}
-              <input type="text" className="form-control rounded-4 theme-input bg-white text-dark shadow-none" id="identifier" placeholder="รหัสประจำตัว หรือ อีเมล" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
-              <label htmlFor="identifier" className="text-muted fw-bold">{isLogin ? '🧑‍💻 รหัสผู้ใช้งาน (เช่น 6620001)' : '🧑‍💻 รหัสประจำตัว (ใช้เข้าระบบ)'}</label>
+            <div className="mb-2 text-start">
+              <label htmlFor="identifier" className="text-muted fw-bold small ms-2 mb-1">{isLogin ? '🧑‍💻 รหัสผู้ใช้งาน (เช่น 6620001)' : '🧑‍💻 รหัสประจำตัว (ใช้เข้าระบบ)'}</label>
+              <input type="text" className="form-control rounded-4 theme-input bg-white text-dark shadow-none py-3" id="identifier" placeholder="พิมพ์รหัสประจำตัว หรือ อีเมล..." value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
             </div>
 
-            <div className="form-floating mb-4">
-              {/* 🌟 บังคับใช้คลาส bg-white และ text-dark */}
-              <input type="password" className="form-control rounded-4 theme-input bg-white text-dark shadow-none" id="password" placeholder="รหัสผ่าน" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-              <label htmlFor="password" className="text-muted fw-bold">🔒 รหัสผ่าน (เช่น เลข ปชช.)</label>
+            <div className="mb-4 text-start">
+              <label htmlFor="password" className="text-muted fw-bold small ms-2 mb-1">🔒 รหัสผ่าน (เช่น เลข ปชช.)</label>
+              <input type="password" className="form-control rounded-4 theme-input bg-white text-dark shadow-none py-3" id="password" placeholder="พิมพ์รหัสผ่าน..." value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-theme-red btn-lg rounded-pill fw-bold shadow-lg w-100 mb-2" style={{ padding: '14px', transition: 'all 0.3s' }}>
@@ -162,7 +161,6 @@ export default function Login({ setSession }) {
           </form>
         </div>
       </div>
-      
     </div>
   )
 }
