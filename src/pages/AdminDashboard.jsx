@@ -407,7 +407,6 @@ export default function AdminDashboard({ session, handleLogout }) {
 
   if (!session || session.role !== 'admin') return <Navigate to="/" />
 
-  // 🌟 แปลงเมนูเป็นภาษาไทย 100%
   const menuItems = [
     { id: 'overview', icon: '📊', label: 'ภาพรวมระบบ' },
     { id: 'classrooms', icon: '🏢', label: 'จัดการห้องเรียน' },
@@ -513,7 +512,7 @@ export default function AdminDashboard({ session, handleLogout }) {
         <div className="mobile-only d-flex justify-content-between align-items-center p-4 bg-white shadow-sm sticky-top z-3">
           <div className="d-flex align-items-center gap-3">
             <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-circle p-2 fs-5 border-0">☰</button>
-            <h5 className="fw-bold text-theme-dark m-0">ศูนย์ควบคุม</h5>
+            <h5 className="fw-bold text-theme-dark m-0">ศูนย์ควบคุม (Admin)</h5>
           </div>
           {/* 🌟 แสดงโลโก้วิทยาลัยใน Header มือถือ */}
           <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'40px', height:'40px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
@@ -665,7 +664,7 @@ export default function AdminDashboard({ session, handleLogout }) {
                   <div key={user.id} className="col-md-6 col-xl-4">
                     <div className="theme-card h-100 hover-card border border-light d-flex flex-column">
                       <div className="d-flex gap-3 mb-3">
-                        <div className="bg-danger bg-opacity-10 text-danger border border-danger rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👨‍🎓</div>
+                        <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👨‍🎓</div>
                         <div className="flex-grow-1 overflow-hidden">
                           <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{user.full_name || 'ไม่ระบุชื่อ'}</h6>
                           <p className="mb-0 text-muted small fw-bold">รหัส: {user.student_code}</p>

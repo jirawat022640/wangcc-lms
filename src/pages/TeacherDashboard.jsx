@@ -1060,7 +1060,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                               
                               <div className="bg-white border border-light rounded-4 p-3 mb-4 flex-grow-1 shadow-sm">
                                 <strong className="text-theme-dark small d-block mb-2 border-bottom border-light pb-2">{sub.assignments?.courses?.course_name || "-"} : {sub.assignments?.title || "-"}</strong>
-                                {sub.submitted_text && <p className="mb-2 text-theme-dark bg-theme-gray p-3 rounded-4 fw-bold">"{sub.submitted_text}"</p>}
+                                {sub.submitted_text && <p className="mb-2 text-theme-dark bg-theme-gray p-3 rounded-4 fw-bold shadow-sm">"{sub.submitted_text}"</p>}
                                 {sub.link_url && (
                                   <div className="mb-2">
                                     {ytThumb && <img src={ytThumb} alt="Preview" className="w-100 object-fit-cover rounded-4 mb-2 shadow-sm" />}
@@ -1189,7 +1189,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                            <span className="badge bg-theme-dark text-white px-3 py-2 rounded-pill fs-6">{q.courses?.course_name || "-"}</span>
                            <div className="d-flex gap-1">
                              <button onClick={() => handleEditQuizClick(q)} className="btn btn-light text-warning rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
-                             <button onClick={() => handleDeleteQuiz(q.id)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                             <button onClick={() => handleDeleteQuiz(q.id)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
                            </div>
                         </div>
                         <h5 className="fw-bold mb-2 text-theme-dark">{q.title}</h5>
@@ -1403,12 +1403,13 @@ export default function TeacherDashboard({ session, handleLogout }) {
       {/* 📱 Mobile Bottom Nav */}
       {!takingQuiz && (
         <div className="bottom-nav d-md-none">
-          <button onClick={() => setActiveTab('home')} className={`bottom-nav-item ${activeTab === 'home' ? 'active' : ''}`}><span className="icon">🏠</span>หน้าหลัก</button>
-          <button onClick={() => setActiveTab('classroom')} className={`bottom-nav-item ${activeTab === 'classroom' ? 'active' : ''}`}><span className="icon">📚</span>ห้องเรียน</button>
-          <button onClick={() => setActiveTab('tasks')} className={`bottom-nav-item ${activeTab === 'tasks' ? 'active' : ''}`}><span className="icon">📝</span>งาน/สอบ</button>
+          {/* 🌟 แก้ไข: เมนู Navigation ด้านล่างของครู */}
+          <button onClick={() => setActiveTab('analytics')} className={`bottom-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}><span className="icon">📊</span>หน้าหลัก</button>
+          <button onClick={() => setActiveTab('courses')} className={`bottom-nav-item ${activeTab === 'courses' ? 'active' : ''}`}><span className="icon">📚</span>วิชาเรียน</button>
+          <button onClick={() => setActiveTab('assignments')} className={`bottom-nav-item ${activeTab === 'assignments' ? 'active' : ''}`}><span className="icon">📝</span>ตรวจงาน</button>
           <button onClick={() => setActiveTab('profile')} className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`}><span className="icon">👤</span>ฉัน</button>
         </div>
       )}
     </div>
-  )
+  );
 }
