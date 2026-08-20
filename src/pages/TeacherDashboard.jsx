@@ -29,10 +29,11 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [moduleForm, setModuleForm] = useState({ course_id: "", title: "" }); 
   const [assignForm, setAssignForm] = useState({ course_id: "", module_id: "", title: "", description: "" });
   
-  // 🌟 เพิ่ม time_limit ในฟอร์มสร้างข้อสอบ
   const [quizForm, setQuizForm] = useState({ course_id: "", module_id: "", title: "", time_limit: "" });
-  
   const [questions, setQuestions] = useState([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
+  
+  // 🌟 State สำหรับจัดเก็บข้อสอบที่กำลังแก้ไข
+  const [editingQuiz, setEditingQuiz] = useState(null);
   
   const [gradeForm, setGradeForm] = useState({ id: "", score: "", feedback: "" }); 
   const [editingGrade, setEditingGrade] = useState(null); 
@@ -293,7 +294,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
     if (target) setAssignForm(prev => ({ ...prev, title: target.title, description: target.description, module_id: target.module_id || "" }));
   };
 
-  const handleCreateQuiz = async (e) => { 
+  // 🌟 ฟังก์ชันจัดการข้อสอบ (รองรับทั้งการสร้างใหม่ และ การแก้ไข)
+  const handleSaveQuiz = async (e) => { 
     e.preventDefault(); 
     if (!quizForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
     for (let i = 0; i < questions.length; i++) { 
@@ -301,18 +303,67 @@ export default function TeacherDashboard({ session, handleLogout }) {
       if (questions[i].options.some((opt) => opt.trim() === "")) { Swal.fire('แจ้งเตือน', `กรุณากรอกตัวเลือกให้ครบในข้อที่ ${i + 1}`, 'warning'); return; }
     } 
     
-    // 🌟 บันทึกเวลาสอบ (time_limit) ลงไปด้วย
-    await supabase.from("quizzes").insert([{ 
-      course_id: quizForm.course_id, 
-      module_id: quizForm.module_id || null, 
-      title: quizForm.title, 
-      time_limit: parseInt(quizForm.time_limit) || 0,
-      questions: questions 
-    }]); 
+    if (editingQuiz) {
+       // โหมดแก้ไข
+       await supabase.from("quizzes").update({ 
+         course_id: quizForm.course_id, 
+         module_id: quizForm.module_id || null, 
+         title: quizForm.title, 
+         time_limit: parseInt(quizForm.time_limit) || 0,
+         questions: questions 
+       }).eq("id", editingQuiz.id); 
+       Swal.fire('สำเร็จ!', 'อัปเดตแบบทดสอบเรียบร้อยแล้ว', 'success'); 
+    } else {
+       // โหมดสร้างใหม่
+       await supabase.from("quizzes").insert([{ 
+         course_id: quizForm.course_id, 
+         module_id: quizForm.module_id || null, 
+         title: quizForm.title, 
+         time_limit: parseInt(quizForm.time_limit) || 0,
+         questions: questions 
+       }]); 
+       Swal.fire('สำเร็จ!', 'สร้างแบบทดสอบเรียบร้อยแล้ว', 'success'); 
+    }
     
+    setEditingQuiz(null);
     setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" }); 
     setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); 
-    fetchData(); Swal.fire('สำเร็จ!', 'สร้างแบบทดสอบเรียบร้อยแล้ว', 'success'); 
+    fetchData(); 
+  };
+
+  // 🌟 ดึงข้อมูลข้อสอบมาเตรียมแก้ไข
+  const handleEditQuizClick = (quiz) => {
+    setEditingQuiz(quiz);
+    setQuizForm({
+      course_id: quiz.course_id,
+      module_id: quiz.module_id || "",
+      title: quiz.title,
+      time_limit: quiz.time_limit || ""
+    });
+    setQuestions(JSON.parse(JSON.stringify(quiz.questions)));
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // เลื่อนหน้าจอขึ้นไปบนสุด
+  };
+
+  const cancelEditQuiz = () => {
+    setEditingQuiz(null);
+    setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" });
+    setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
+  };
+
+  // 🌟 ฟังก์ชันลบข้อสอบ
+  const handleDeleteQuiz = async (id) => {
+    const result = await Swal.fire({ 
+       title: 'ยืนยันการลบ', 
+       text: "ลบแบบทดสอบนี้หรือไม่? คำเตือน: คะแนนสอบของนักเรียนจะถูกลบไปด้วย", 
+       icon: 'warning', 
+       showCancelButton: true, 
+       confirmButtonColor: '#d33', 
+       confirmButtonText: 'ลบทิ้ง' 
+    });
+    if (!result.isConfirmed) return;
+    await supabase.from("quizzes").delete().eq("id", id);
+    fetchData();
+    Swal.fire('ลบแล้ว!', 'ลบแบบทดสอบเรียบร้อยแล้ว', 'success');
   };
 
   const handleCloneQuiz = (e) => {
@@ -960,11 +1011,11 @@ export default function TeacherDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* 🌟 TAB 5: 📝 ข้อสอบ (พร้อมฟีเจอร์แนบรูปภาพในโจทย์ และกำหนดเวลา) */}
+        {/* 🌟 TAB 5: 📝 ข้อสอบ (ฟีเจอร์เพิ่ม/แก้ไขข้อสอบ) */}
         {activeTab === "quizzes" && (
           <div className="fade-in">
              <div className="d-flex bg-white p-1 rounded-pill shadow-sm mb-4 mx-auto" style={{ maxWidth: "400px" }}>
-              <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "create" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => setQuizSubTab("create")}>➕ สร้างข้อสอบ</button>
+              <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "create" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => { setQuizSubTab("create"); cancelEditQuiz(); }}>➕ สร้างข้อสอบ</button>
               <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "scores" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => setQuizSubTab("scores")}>📊 ดูคะแนนสอบ</button>
             </div>
             
@@ -972,9 +1023,11 @@ export default function TeacherDashboard({ session, handleLogout }) {
               <>
                 <div className="card border-0 shadow-sm rounded-4 mb-5 bg-white">
                   <div className="card-body p-4 p-md-5">
-                    <h5 className="fw-bold mb-4 text-dark">✨ สร้างแบบทดสอบใหม่</h5>
+                    {/* 🌟 แสดงหัวข้อตามสถานะว่า กำลังแก้ไข หรือ สร้างใหม่ */}
+                    <h5 className="fw-bold mb-4 text-dark">{editingQuiz ? '✏️ แก้ไขแบบทดสอบ' : '✨ สร้างแบบทดสอบใหม่'}</h5>
                     
-                    {quizzes.length > 0 && (
+                    {/* 🌟 ซ่อนกล่องคัดลอกโจทย์ ถ้ากำลังอยู่ในโหมดแก้ไข */}
+                    {!editingQuiz && quizzes.length > 0 && (
                       <div className="mb-4 p-3 bg-light rounded-4 border">
                         <label className="form-label small fw-bold text-success mb-2">🔄 คัดลอกชุดคำถามจากข้อสอบเดิม</label>
                         <select className="form-select border-0 shadow-sm rounded-3" onChange={handleCloneQuiz}>
@@ -984,8 +1037,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                       </div>
                     )}
 
-                    <form onSubmit={handleCreateQuiz}>
-                      {/* 🌟 เพิ่มช่องเวลาสอบ */}
+                    <form onSubmit={handleSaveQuiz}>
                       <div className="row g-3 mb-4">
                         <div className="col-md-4">
                           <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary fw-bold" value={quizForm.course_id} onChange={(e) => setQuizForm({ ...quizForm, course_id: e.target.value })} required>
@@ -1037,9 +1089,16 @@ export default function TeacherDashboard({ session, handleLogout }) {
                           </div>
                         </div>
                       ))}
+                      
+                      {/* 🌟 ปุ่มบันทึก เปลี่ยนคำตามโหมด และเพิ่มปุ่มยกเลิกถ้ากำลังแก้ไข */}
                       <div className="d-flex flex-column flex-md-row gap-3 mt-4">
                         <button type="button" className="btn btn-light text-success border border-success rounded-pill fw-bold py-3 px-5 custom-btn-outline" onClick={addQuestion}>+ เพิ่มโจทย์ข้อต่อไป</button>
-                        <button type="submit" className="btn btn-success rounded-pill fw-bold flex-grow-1 py-3 shadow-sm custom-btn">💾 บันทึกแบบทดสอบ</button>
+                        <button type="submit" className="btn btn-success rounded-pill fw-bold flex-grow-1 py-3 shadow-sm custom-btn">
+                          {editingQuiz ? '💾 บันทึกการแก้ไข' : '💾 บันทึกแบบทดสอบ'}
+                        </button>
+                        {editingQuiz && (
+                          <button type="button" className="btn btn-secondary rounded-pill fw-bold py-3 px-4 shadow-sm" onClick={cancelEditQuiz}>ยกเลิก</button>
+                        )}
                       </div>
                     </form>
                   </div>
@@ -1050,11 +1109,20 @@ export default function TeacherDashboard({ session, handleLogout }) {
                 {quizzes.length === 0 && <p className="text-muted">ยังไม่มีแบบทดสอบ</p>}
                 {quizzes.map((q) => (
                   <div key={q.id} className="col-md-6 col-lg-4">
-                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white hover-card">
-                      <strong className="text-success small mb-3 bg-success bg-opacity-10 d-inline-block px-3 py-2 rounded-pill align-self-start">{q.courses?.course_name || "-"} ({q.courses?.section || "-"})</strong>
+                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white hover-card d-flex flex-column">
+                      
+                      {/* 🌟 ปุ่มแก้ไขและลบข้อสอบ */}
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                         <strong className="text-success small bg-success bg-opacity-10 px-3 py-2 rounded-pill align-self-start">{q.courses?.course_name || "-"} ({q.courses?.section || "-"})</strong>
+                         <div className="d-flex gap-1">
+                           <button onClick={() => handleEditQuizClick(q)} className="btn btn-light text-warning rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
+                           <button onClick={() => handleDeleteQuiz(q.id)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                         </div>
+                      </div>
+
                       <span className="fw-bold fs-5 mb-2 text-dark">{q.title}</span>
                       <span className="text-muted small mt-auto fw-bold d-block">จำนวน {q.questions.length} ข้อ</span>
-                      {q.time_limit > 0 && <span className="badge bg-warning text-dark mt-2">⏳ {q.time_limit} นาที</span>}
+                      {q.time_limit > 0 && <span className="badge bg-warning text-dark mt-2 align-self-start">⏳ {q.time_limit} นาที</span>}
                     </div>
                   </div>
                 ))}
