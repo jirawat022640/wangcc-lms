@@ -258,6 +258,12 @@ export default function StudentDashboard({ session, handleLogout }) {
   const missingCount = totalAssignments - completedAssignments;
   const progressPercentage = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
   
+  // 🌟 (กู้คืนโค้ดส่วนที่หายไป) คำนวณความเสี่ยงของนักเรียน
+  let totalScore = 0; let gradedCount = 0; 
+  submissions.forEach(s => { if(s.score !== null){ totalScore += s.score; gradedCount++; } });
+  const avgScore = gradedCount > 0 ? (totalScore / (gradedCount * 10)) * 100 : 100; 
+  const isAtRisk = missingCount >= 2 || avgScore < 50;
+  
   if (!session || session.role !== 'student') return <Navigate to="/" />
 
   return (
@@ -273,7 +279,7 @@ export default function StudentDashboard({ session, handleLogout }) {
           <button className={`nav-link-btn ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}><span className="fs-5">🏠</span> หน้าหลัก</button>
           <button className={`nav-link-btn ${activeTab === 'classroom' ? 'active' : ''}`} onClick={() => setActiveTab('classroom')}><span className="fs-5">📚</span> ห้องเรียน</button>
           <button className={`nav-link-btn ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}><span className="fs-5">📝</span> งานและสอบ</button>
-          <button className={`nav-link-btn ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}><span className="fs-5">👤</span> โปรไฟล์</button>
+          <button className={`nav-link-btn ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}><span className="fs-5">👤</span> บัญชีผู้ใช้</button>
         </div>
         <div className="mt-auto border-top pt-3">
           <button onClick={handleLogout} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> ออกจากระบบ</button>
@@ -292,7 +298,7 @@ export default function StudentDashboard({ session, handleLogout }) {
               </div>
               <div>
                 <h6 className="fw-bold mb-0 text-theme-dark">สวัสดี, {profileForm.full_name || 'นักศึกษา'}</h6>
-                <small className="text-muted fw-bold">Let's learn today!</small>
+                <small className="text-muted fw-bold">พร้อมเรียนรู้หรือยัง!</small>
               </div>
             </div>
             <div className="bg-theme-red text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style={{width:'40px', height:'40px'}}>R</div>
@@ -324,7 +330,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                       <div className="d-flex flex-column gap-3">
                         {q.options.map((opt, optIndex) => (
                           <label key={optIndex} className={`d-flex align-items-center gap-3 border p-4 rounded-4 transition-all ${quizAnswers[qIndex] === optIndex ? 'border-theme-red bg-theme-red bg-opacity-10 fw-bold text-theme-red shadow-sm' : 'border-light bg-light hover-bg-gray'}`} style={{cursor: 'pointer'}}>
-                            <input type="radio" name={`q-${qIndex}`} className="form-check-input mt-0 flex-shrink-0" style={{width: '22px', height:'22px', accentColor: 'var(--theme-red)'}} checked={quizAnswers[qIndex] === optIndex} onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} />
+                            <input type="radio" name={`q-${qIndex}`} className="form-check-input mt-0 flex-shrink-0" style={{width: '22px', height:'22px'}} checked={quizAnswers[qIndex] === optIndex} onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} />
                             <span className="fs-6">{opt}</span>
                           </label>
                         ))}
@@ -347,25 +353,25 @@ export default function StudentDashboard({ session, handleLogout }) {
                     {/* Hero Card */}
                     <div className="hero-card mb-4 d-flex flex-column justify-content-center">
                       <div style={{zIndex: 2, position: 'relative'}}>
-                        <h2 className="fw-bold mb-2">Unleash<br/>The Power</h2>
-                        <p className="text-white-50 mb-4" style={{maxWidth: '80%'}}>Your knowledge is ready for the road. Track your progress and crush your goals.</p>
-                        <button onClick={() => navigateToService('tasks', 'assignments')} className="btn btn-theme-red rounded-pill px-4 py-2 fw-bold shadow-sm">View Assignments ➔</button>
+                        <h2 className="fw-bold mb-2">เตรียมพร้อม<br/>สู่ความสำเร็จ</h2>
+                        <p className="text-white-50 mb-4" style={{maxWidth: '80%'}}>ติดตามความคืบหน้า งานที่ได้รับมอบหมาย และเป้าหมายของคุณได้ที่นี่</p>
+                        <button onClick={() => navigateToService('tasks', 'assignments')} className="btn btn-theme-red rounded-pill px-4 py-2 fw-bold shadow-sm">ดูงานที่ค้างส่ง ➔</button>
                       </div>
                     </div>
 
                     {/* Quick Services */}
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h5 className="fw-bold mb-0 text-theme-dark">Services</h5>
+                      <h5 className="fw-bold mb-0 text-theme-dark">บริการต่างๆ</h5>
                     </div>
                     <div className="row g-3 text-center mb-4">
-                      <div className="col-3"><button onClick={() => navigateToService('classroom', 'enroll')} className="theme-card p-3 w-100 d-flex flex-column align-items-center app-icon-btn"><span className="fs-3 mb-2">➕</span><span className="text-muted fw-bold" style={{fontSize:'12px'}}>Enroll</span></button></div>
-                      <div className="col-3"><button onClick={() => navigateToService('classroom', 'materials')} className="theme-card p-3 w-100 d-flex flex-column align-items-center app-icon-btn"><span className="fs-3 mb-2">📎</span><span className="text-muted fw-bold" style={{fontSize:'12px'}}>Files</span></button></div>
-                      <div className="col-3"><button onClick={() => navigateToService('tasks', 'assignments')} className="theme-card p-3 w-100 d-flex flex-column align-items-center app-icon-btn"><span className="fs-3 mb-2">📝</span><span className="text-muted fw-bold" style={{fontSize:'12px'}}>Tasks</span></button></div>
-                      <div className="col-3"><button onClick={() => navigateToService('tasks', 'quizzes')} className="theme-card p-3 w-100 d-flex flex-column align-items-center app-icon-btn"><span className="fs-3 mb-2">✍️</span><span className="text-muted fw-bold" style={{fontSize:'12px'}}>Quiz</span></button></div>
+                      <div className="col-3"><button onClick={() => navigateToService('classroom', 'enroll')} className="theme-card p-3 w-100 d-flex flex-column align-items-center app-icon-btn"><span className="fs-3 mb-2">➕</span><span className="text-muted fw-bold" style={{fontSize:'12px'}}>ลงทะเบียน</span></button></div>
+                      <div className="col-3"><button onClick={() => navigateToService('classroom', 'materials')} className="theme-card p-3 w-100 d-flex flex-column align-items-center app-icon-btn"><span className="fs-3 mb-2">📎</span><span className="text-muted fw-bold" style={{fontSize:'12px'}}>เอกสาร</span></button></div>
+                      <div className="col-3"><button onClick={() => navigateToService('tasks', 'assignments')} className="theme-card p-3 w-100 d-flex flex-column align-items-center app-icon-btn"><span className="fs-3 mb-2">📝</span><span className="text-muted fw-bold" style={{fontSize:'12px'}}>ส่งงาน</span></button></div>
+                      <div className="col-3"><button onClick={() => navigateToService('tasks', 'quizzes')} className="theme-card p-3 w-100 d-flex flex-column align-items-center app-icon-btn"><span className="fs-3 mb-2">✍️</span><span className="text-muted fw-bold" style={{fontSize:'12px'}}>แบบทดสอบ</span></button></div>
                     </div>
 
                     {/* Recent Tasks */}
-                    <h5 className="fw-bold mb-3 text-theme-dark">Recent Tasks</h5>
+                    <h5 className="fw-bold mb-3 text-theme-dark">งานล่าสุด</h5>
                     <div className="d-flex flex-column gap-3">
                       {assignments.filter(a => !submissions.find(s => s.assignment_id === a.id)).slice(0, 3).map(a => (
                         <div key={a.id} className="theme-card p-3 d-flex align-items-center gap-3">
@@ -378,7 +384,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                         </div>
                       ))}
                       {assignments.filter(a => !submissions.find(s => s.assignment_id === a.id)).length === 0 && (
-                        <div className="theme-card p-4 text-center"><span className="text-muted fw-bold">✅ You're all caught up!</span></div>
+                        <div className="theme-card p-4 text-center"><span className="text-muted fw-bold">✅ ไม่มีงานค้างในขณะนี้!</span></div>
                       )}
                     </div>
                   </div>
@@ -386,16 +392,16 @@ export default function StudentDashboard({ session, handleLogout }) {
                   <div className="col-12 col-xl-4">
                      {/* Stats Panel */}
                      <div className="theme-card bg-white border border-light mb-4 p-4">
-                       <h6 className="fw-bold text-theme-dark mb-4">My Stats</h6>
+                       <h6 className="fw-bold text-theme-dark mb-4">สถิติของฉัน</h6>
                        <div className="d-flex justify-content-between text-center mb-3">
                          <div className="flex-grow-1 border-end">
-                           <div className="text-theme-red fs-4 mb-1">📚</div><h4 className="fw-bold text-theme-dark mb-0">{enrolledCourses.length}</h4><small className="text-muted fw-bold" style={{fontSize: '11px'}}>Courses</small>
+                           <div className="text-theme-red fs-4 mb-1">📚</div><h4 className="fw-bold text-theme-dark mb-0">{enrolledCourses.length}</h4><small className="text-muted fw-bold" style={{fontSize: '11px'}}>วิชาเรียน</small>
                          </div>
                          <div className="flex-grow-1 border-end">
-                           <div className="text-theme-red fs-4 mb-1">⏳</div><h4 className="fw-bold text-theme-dark mb-0">{missingCount}</h4><small className="text-muted fw-bold" style={{fontSize: '11px'}}>Missing</small>
+                           <div className="text-theme-red fs-4 mb-1">⏳</div><h4 className="fw-bold text-theme-dark mb-0">{missingCount}</h4><small className="text-muted fw-bold" style={{fontSize: '11px'}}>ค้างส่ง</small>
                          </div>
                          <div className="flex-grow-1">
-                           <div className="text-theme-red fs-4 mb-1">📈</div><h4 className="fw-bold text-theme-dark mb-0">{progressPercentage}%</h4><small className="text-muted fw-bold" style={{fontSize: '11px'}}>Progress</small>
+                           <div className="text-theme-red fs-4 mb-1">📈</div><h4 className="fw-bold text-theme-dark mb-0">{progressPercentage}%</h4><small className="text-muted fw-bold" style={{fontSize: '11px'}}>ก้าวหน้า</small>
                          </div>
                        </div>
                        
@@ -403,12 +409,12 @@ export default function StudentDashboard({ session, handleLogout }) {
                        {isAtRisk ? (
                          <div className="bg-theme-red bg-opacity-10 rounded-4 p-3 mt-3 d-flex align-items-center gap-3">
                             <div className="fs-2 text-theme-red">⚠️</div>
-                            <div><h6 className="text-theme-red fw-bold mb-1">Attention!</h6><p className="small text-theme-red mb-0 lh-sm">You have missing tasks or low grades.</p></div>
+                            <div><h6 className="text-theme-red fw-bold mb-1">แจ้งเตือน!</h6><p className="small text-theme-red mb-0 lh-sm">คุณมีงานค้างหรือคะแนนต่ำกว่าเกณฑ์</p></div>
                          </div>
                        ) : (
                          <div className="bg-theme-dark rounded-4 p-3 mt-3 d-flex align-items-center gap-3">
                             <div className="fs-2">🚀</div>
-                            <div><h6 className="text-white fw-bold mb-1">Great Job!</h6><p className="small text-white-50 mb-0 lh-sm">Keep up the good work and stay focused.</p></div>
+                            <div><h6 className="text-white fw-bold mb-1">เยี่ยมมาก!</h6><p className="small text-white-50 mb-0 lh-sm">ตั้งใจเรียนและรักษามาตรฐานนี้ไว้นะ</p></div>
                          </div>
                        )}
                      </div>
@@ -416,7 +422,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                      {/* Announcements */}
                      {announcements.length > 0 && (
                         <>
-                          <h6 className="fw-bold mb-3 text-theme-dark">Announcements</h6>
+                          <h6 className="fw-bold mb-3 text-theme-dark">ประกาศข่าวสาร</h6>
                           <div className="d-flex flex-column gap-2">
                             {announcements.map(ann => (
                               <div key={ann.id} className="theme-card p-3 d-flex gap-3">
@@ -435,10 +441,10 @@ export default function StudentDashboard({ session, handleLogout }) {
               {/* TAB 2: ห้องเรียน */}
               {activeTab === 'classroom' && (
                 <div className="fade-in">
-                  <h4 className="fw-bold text-theme-dark mb-4">Classroom</h4>
+                  <h4 className="fw-bold text-theme-dark mb-4">ห้องเรียน</h4>
                   <div className="d-flex bg-white p-2 rounded-pill shadow-sm mb-4">
-                    <button className={`btn rounded-pill flex-grow-1 fw-bold ${classSubTab === 'enroll' ? 'btn-theme-dark shadow-sm' : 'btn-white text-muted'}`} onClick={() => setClassSubTab('enroll')}>Enroll</button>
-                    <button className={`btn rounded-pill flex-grow-1 fw-bold ${classSubTab === 'materials' ? 'btn-theme-dark shadow-sm' : 'btn-white text-muted'}`} onClick={() => setClassSubTab('materials')}>Materials</button>
+                    <button className={`btn rounded-pill flex-grow-1 fw-bold ${classSubTab === 'enroll' ? 'btn-theme-dark shadow-sm' : 'btn-white text-muted'}`} onClick={() => setClassSubTab('enroll')}>ลงทะเบียน</button>
+                    <button className={`btn rounded-pill flex-grow-1 fw-bold ${classSubTab === 'materials' ? 'btn-theme-dark shadow-sm' : 'btn-white text-muted'}`} onClick={() => setClassSubTab('materials')}>เอกสารประกอบ</button>
                   </div>
                   
                   {classSubTab === 'materials' && (
@@ -478,10 +484,10 @@ export default function StudentDashboard({ session, handleLogout }) {
                                 <span className="badge bg-theme-dark text-white rounded-pill px-3 py-2">{c.section}</span>
                               </div>
                               <h5 className="fw-bold mb-2 text-theme-dark">{c.course_name}</h5>
-                              <p className="mb-2 text-theme-dark fw-bold small">👨‍🏫 Teacher: <span className="text-muted">{c.profiles?.full_name || '-'}</span></p>
-                              <p className="text-muted small mb-4 fw-bold">Semester: {c.semester||'-'} | Credits: {c.credits||'-'}</p>
+                              <p className="mb-2 text-theme-dark fw-bold small">👨‍🏫 ผู้สอน: <span className="text-muted">{c.profiles?.full_name || '-'}</span></p>
+                              <p className="text-muted small mb-4 fw-bold">ภาคเรียน: {c.semester||'-'} | หน่วยกิต: {c.credits||'-'}</p>
                               <button onClick={() => handleEnroll(c.id)} disabled={isEnrolled} className={`btn w-100 rounded-pill fw-bold py-3 mt-auto ${isEnrolled ? 'btn-light text-success border-0 shadow-none' : 'btn-theme-red shadow-sm'}`}>
-                                {isEnrolled ? '✅ Enrolled' : 'Enroll Now'}
+                                {isEnrolled ? '✅ ลงทะเบียนแล้ว' : '➕ ลงทะเบียนเรียน'}
                               </button>
                             </div>
                           </div>
@@ -495,10 +501,10 @@ export default function StudentDashboard({ session, handleLogout }) {
               {/* TAB 3: งานและแบบทดสอบ */}
               {activeTab === 'tasks' && (
                 <div className="fade-in">
-                  <h4 className="fw-bold text-theme-dark mb-4">Tasks & Quizzes</h4>
+                  <h4 className="fw-bold text-theme-dark mb-4">งานและสอบ</h4>
                   <div className="d-flex bg-white p-2 rounded-pill shadow-sm mb-4">
-                    <button className={`btn rounded-pill flex-grow-1 fw-bold ${taskSubTab === 'assignments' ? 'btn-theme-dark shadow-sm' : 'btn-white text-muted'}`} onClick={() => setTaskSubTab('assignments')}>Assignments</button>
-                    <button className={`btn rounded-pill flex-grow-1 fw-bold ${taskSubTab === 'quizzes' ? 'btn-theme-dark shadow-sm' : 'btn-white text-muted'}`} onClick={() => setTaskSubTab('quizzes')}>Quizzes</button>
+                    <button className={`btn rounded-pill flex-grow-1 fw-bold ${taskSubTab === 'assignments' ? 'btn-theme-dark shadow-sm' : 'btn-white text-muted'}`} onClick={() => setTaskSubTab('assignments')}>ส่งงาน</button>
+                    <button className={`btn rounded-pill flex-grow-1 fw-bold ${taskSubTab === 'quizzes' ? 'btn-theme-dark shadow-sm' : 'btn-white text-muted'}`} onClick={() => setTaskSubTab('quizzes')}>แบบทดสอบ</button>
                   </div>
                   
                   {taskSubTab === 'assignments' && (
@@ -520,49 +526,49 @@ export default function StudentDashboard({ session, handleLogout }) {
                                 <div className="mt-auto">
                                   {mySub ? (
                                     <div className="bg-light p-3 rounded-4 position-relative border border-light">
-                                      <h6 className="fw-bold text-success mb-3 d-flex align-items-center gap-2"><span>✅</span> Submitted</h6>
+                                      <h6 className="fw-bold text-success mb-3 d-flex align-items-center gap-2"><span>✅</span> ส่งงานแล้ว</h6>
                                       {mySub.submitted_text && <p className="small mb-2 text-theme-dark bg-white p-2 rounded-3 border fw-bold">"{mySub.submitted_text}"</p>}
                                       {mySub.link_url && (
                                         <div className="mb-2">
                                           {getYoutubeThumbnail(mySub.link_url) ? (
                                             <div className="mb-2 overflow-hidden rounded-3 shadow-sm"><img src={getYoutubeThumbnail(mySub.link_url)} alt="youtube preview" className="w-100 object-fit-cover" /></div>
                                           ) : null}
-                                          <a href={mySub.link_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-dark rounded-pill px-3 shadow-sm fw-bold">🔗 Open Link</a>
+                                          <a href={mySub.link_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-dark rounded-pill px-3 shadow-sm fw-bold">🔗 เปิดลิงก์ที่ส่ง</a>
                                         </div>
                                       )}
                                       {mySub.file_url && (
-                                        <div className="mb-2"><a href={mySub.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-dark rounded-pill px-3 shadow-sm fw-bold">📂 View File</a></div>
+                                        <div className="mb-2"><a href={mySub.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-dark rounded-pill px-3 shadow-sm fw-bold">📂 ดูไฟล์ที่แนบ</a></div>
                                       )}
                                       
                                       <div className="mt-3">
-                                        <span className="badge bg-theme-dark rounded-pill px-3 py-2 fs-6">{mySub.score !== null ? `Score: ${mySub.score}` : 'Status: Pending'}</span>
+                                        <span className="badge bg-theme-dark rounded-pill px-3 py-2 fs-6">{mySub.score !== null ? `ได้คะแนน: ${mySub.score}` : 'สถานะ: รอตรวจ'}</span>
                                       </div>
 
                                       {mySub.teacher_feedback && (
                                         <div className="bg-theme-red bg-opacity-10 p-3 rounded-4 border mt-3 small text-theme-red shadow-sm">
-                                          <span className="fw-bold d-block mb-1">💬 Teacher Feedback:</span>
+                                          <span className="fw-bold d-block mb-1">💬 ความคิดเห็นจากครู:</span>
                                           <span className="fw-bold">{mySub.teacher_feedback}</span>
                                         </div>
                                       )}
 
                                       {mySub.score === null && (
                                         <button onClick={() => handleUnsubmit(mySub.id)} className="btn btn-sm btn-outline-danger rounded-pill fw-bold w-100 mt-3 py-2">
-                                          ❌ Unsubmit
+                                          ❌ ยกเลิกการส่ง
                                         </button>
                                       )}
                                     </div>
                                   ) : (
                                     <form onSubmit={(e) => handleWorkSubmit(e, a.id)} className="bg-theme-gray p-3 rounded-4 border border-light">
                                       <div className="d-flex flex-column gap-2 mb-3">
-                                        <textarea className="theme-input form-control bg-white" placeholder="💬 Type your answer..." value={isCurrentForm ? submitForm.text : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, text: e.target.value })} rows="2" />
-                                        <input type="url" className="theme-input form-control bg-white" placeholder="🔗 Paste Link / YouTube" value={isCurrentForm ? submitForm.link : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, link: e.target.value })} />
+                                        <textarea className="theme-input form-control bg-white" placeholder="💬 พิมพ์คำตอบ..." value={isCurrentForm ? submitForm.text : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, text: e.target.value })} rows="2" />
+                                        <input type="url" className="theme-input form-control bg-white" placeholder="🔗 แนบลิงก์เว็บ / YouTube" value={isCurrentForm ? submitForm.link : ''} onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, link: e.target.value })} />
                                         <div className="bg-white p-2 rounded-4">
-                                          <label className="small fw-bold text-muted mb-1 px-2">📂 Upload File / Image</label>
+                                          <label className="small fw-bold text-muted mb-1 px-2">📂 แนบไฟล์ / รูปภาพ</label>
                                           <input type="file" className="form-control border-0 shadow-none bg-transparent fw-bold" onChange={(e) => setSubmitForm({ ...submitForm, assign_id: a.id, file: e.target.files[0] })} />
                                         </div>
                                       </div>
                                       <button type="submit" className="btn btn-theme-red w-100 rounded-pill fw-bold py-3 shadow-sm" disabled={uploadingWork}>
-                                        {uploadingWork && isCurrentForm ? '⏳ Uploading...' : 'Submit Work'}
+                                        {uploadingWork && isCurrentForm ? '⏳ กำลังส่งงาน...' : 'ส่งคำตอบ'}
                                       </button>
                                     </form>
                                   )}
@@ -583,20 +589,20 @@ export default function StudentDashboard({ session, handleLogout }) {
                         return (
                           <div key={q.id} className="col-12 col-md-6 col-xl-4">
                             <div className="theme-card p-4 h-100 d-flex flex-column border border-light">
-                              <span className="badge bg-theme-dark text-white rounded-pill px-3 py-1 align-self-start mb-3 fs-6">Quiz</span>
+                              <span className="badge bg-theme-dark text-white rounded-pill px-3 py-1 align-self-start mb-3 fs-6">แบบทดสอบ</span>
                               <h5 className="fw-bold mb-2 text-theme-dark">{q.title}</h5>
                               <p className="text-muted small mb-3 fw-bold">{q.courses.course_name} {moduleName && <span className="text-theme-red">[{moduleName}]</span>}</p>
                               
-                              {q.time_limit > 0 && <p className="text-theme-red fw-bold small mb-4">⏳ Time Limit: {q.time_limit} Mins</p>}
+                              {q.time_limit > 0 && <p className="text-theme-red fw-bold small mb-4">⏳ เวลาทำข้อสอบ: {q.time_limit} นาที</p>}
 
                               <div className="mt-auto">
                                 {isDone ? (
                                   <div className="bg-light text-theme-dark fw-bold text-center p-3 rounded-pill w-100 border">
-                                    ✅ Done ({isDone.score}/{isDone.total_score})
-                                    {isDone.is_cheated && <span className="d-block mt-1 text-theme-red small">🚨 Disqualified</span>}
+                                    ✅ ทำแล้ว ({isDone.score}/{isDone.total_score} คะแนน)
+                                    {isDone.is_cheated && <span className="d-block mt-1 text-theme-red small">🚨 โดนตัดสิทธิ์ (ทุจริต)</span>}
                                   </div>
                                 ) : (
-                                  <button onClick={() => handleStartQuiz(q)} className="btn btn-theme-red rounded-pill fw-bold py-3 shadow-sm w-100">✍️ Start Quiz</button>
+                                  <button onClick={() => handleStartQuiz(q)} className="btn btn-theme-red rounded-pill fw-bold py-3 shadow-sm w-100">✍️ เริ่มทำแบบทดสอบ</button>
                                 )}
                               </div>
                             </div>
@@ -612,7 +618,7 @@ export default function StudentDashboard({ session, handleLogout }) {
               {activeTab === 'profile' && (
                 <div className="fade-in row justify-content-center">
                   <div className="col-12 col-md-8 col-xl-6">
-                    <h4 className="fw-bold text-theme-dark mb-4">Profile</h4>
+                    <h4 className="fw-bold text-theme-dark mb-4">บัญชีผู้ใช้</h4>
                     
                     {/* User Card */}
                     <div className="hero-card mb-4 text-center">
@@ -620,44 +626,44 @@ export default function StudentDashboard({ session, handleLogout }) {
                          {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👨‍🎓'}
                       </div>
                       <div style={{zIndex: 2, position: 'relative'}}>
-                        <h4 className="fw-bold mb-1">{profileForm.full_name || 'Student'}</h4>
+                        <h4 className="fw-bold mb-1">{profileForm.full_name || 'นักศึกษา'}</h4>
                         <p className="text-white-50 mb-0">{session?.user?.email}</p>
                       </div>
                     </div>
                     
                     <div className="theme-card mb-4">
-                      <h5 className="fw-bold mb-4 text-theme-dark text-center">Edit Profile</h5>
+                      <h5 className="fw-bold mb-4 text-theme-dark text-center">แก้ไขข้อมูลส่วนตัว</h5>
                       <form onSubmit={handleUpdateProfile}>
-                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Full Name</label><input type="text" className="theme-input form-control" value={profileForm.full_name} onChange={e => setProfileForm({...profileForm, full_name: e.target.value})} required /></div>
-                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Nickname</label><input type="text" className="theme-input form-control" value={profileForm.nickname} onChange={e => setProfileForm({...profileForm, nickname: e.target.value})} /></div>
-                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Phone</label><input type="text" className="theme-input form-control" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} /></div>
+                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">ชื่อ - นามสกุล</label><input type="text" className="theme-input form-control" value={profileForm.full_name} onChange={e => setProfileForm({...profileForm, full_name: e.target.value})} required /></div>
+                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">ชื่อเล่น</label><input type="text" className="theme-input form-control" value={profileForm.nickname} onChange={e => setProfileForm({...profileForm, nickname: e.target.value})} /></div>
+                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">เบอร์โทรศัพท์</label><input type="text" className="theme-input form-control" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} /></div>
                         <div className="mb-4">
-                          <label className="form-label text-muted small fw-bold px-2">Avatar Upload</label>
+                          <label className="form-label text-muted small fw-bold px-2">อัปโหลดรูปโปรไฟล์</label>
                           <input type="file" accept="image/*" className="theme-input form-control bg-white" onChange={handleUploadAvatar} disabled={uploadingAvatar} />
-                          {uploadingAvatar && <small className="text-theme-red mt-2 ms-2 d-block fw-bold">⏳ Uploading...</small>}
+                          {uploadingAvatar && <small className="text-theme-red mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
                         </div>
 
                         <hr className="my-4 border-light" />
                         
-                        <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>✈️</span> Telegram Notifications</h6>
+                        <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>✈️</span> แจ้งเตือนผ่าน Telegram</h6>
                         <div className="bg-theme-dark text-white p-4 rounded-4 mb-4 shadow-sm">
-                           <p className="small mb-3 text-white-50">1. Click below to open Telegram and get your Chat ID from @getmyid_bot</p>
-                           <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-theme-red rounded-pill px-4 py-2 shadow-sm mb-4 fw-bold">👉 Get Chat ID</a>
-                           <p className="small mb-2 text-white-50">2. Paste your Chat ID here</p>
-                           <input type="text" className="form-control bg-white border-0 rounded-pill px-4 py-3 fw-bold" placeholder="E.g., 123456789" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
-                           {profileForm.telegram_chat_id && <small className="text-success fw-bold d-block mt-3">✅ Chat ID Ready</small>}
+                           <p className="small mb-3 text-white-50">1. กดปุ่มด้านล่างเพื่อเปิด Telegram และรับรหัส Chat ID จาก @getmyid_bot</p>
+                           <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-theme-red rounded-pill px-4 py-2 shadow-sm mb-4 fw-bold">👉 เปิดเพื่อรับรหัส Chat ID</a>
+                           <p className="small mb-2 text-white-50">2. นำตัวเลข Chat ID มาวางที่นี่</p>
+                           <input type="text" className="form-control bg-white border-0 rounded-pill px-4 py-3 fw-bold" placeholder="ตัวอย่าง 123456789" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
+                           {profileForm.telegram_chat_id && <small className="text-success fw-bold d-block mt-3">✅ ข้อมูล Chat ID พร้อมใช้งานแล้ว</small>}
                         </div>
                         
                         <hr className="my-4 border-light" />
-                        <h6 className="fw-bold mb-3 text-theme-dark">System Info (Read-only)</h6>
+                        <h6 className="fw-bold mb-3 text-theme-dark">ข้อมูลระบบ (แก้ไขไม่ได้)</h6>
                         
-                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Student ID</label><input type="text" className="theme-input form-control" value={profileForm.student_code} disabled /></div>
+                        <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">รหัสประจำตัว</label><input type="text" className="theme-input form-control" value={profileForm.student_code} disabled /></div>
                         <div className="row mb-4 g-3">
-                          <div className="col-6"><label className="form-label text-muted small fw-bold px-2">Level</label><input type="text" className="theme-input form-control" value={profileForm.grade_level} disabled /></div>
-                          <div className="col-6"><label className="form-label text-muted small fw-bold px-2">Department</label><input type="text" className="theme-input form-control text-truncate" value={profileForm.department} disabled title={profileForm.department} /></div>
+                          <div className="col-6"><label className="form-label text-muted small fw-bold px-2">ระดับชั้น</label><input type="text" className="theme-input form-control" value={profileForm.grade_level} disabled /></div>
+                          <div className="col-6"><label className="form-label text-muted small fw-bold px-2">แผนกวิชา</label><input type="text" className="theme-input form-control text-truncate" value={profileForm.department} disabled title={profileForm.department} /></div>
                         </div>
 
-                        <button type="submit" className="btn btn-theme-dark w-100 rounded-pill fw-bold py-3 shadow-sm">💾 Save Profile</button>
+                        <button type="submit" className="btn btn-theme-dark w-100 rounded-pill fw-bold py-3 shadow-sm">💾 บันทึกข้อมูล</button>
                       </form>
                     </div>
                   </div>
@@ -672,10 +678,10 @@ export default function StudentDashboard({ session, handleLogout }) {
       {/* 📱 Mobile Bottom Nav */}
       {!takingQuiz && (
         <div className="bottom-nav d-md-none">
-          <button onClick={() => setActiveTab('home')} className={`bottom-nav-item ${activeTab === 'home' ? 'active' : ''}`}><span className="icon">🏠</span>Home</button>
-          <button onClick={() => setActiveTab('classroom')} className={`bottom-nav-item ${activeTab === 'classroom' ? 'active' : ''}`}><span className="icon">📚</span>Class</button>
-          <button onClick={() => setActiveTab('tasks')} className={`bottom-nav-item ${activeTab === 'tasks' ? 'active' : ''}`}><span className="icon">📝</span>Tasks</button>
-          <button onClick={() => setActiveTab('profile')} className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`}><span className="icon">👤</span>Me</button>
+          <button onClick={() => setActiveTab('home')} className={`bottom-nav-item ${activeTab === 'home' ? 'active' : ''}`}><span className="icon">🏠</span>หน้าหลัก</button>
+          <button onClick={() => setActiveTab('classroom')} className={`bottom-nav-item ${activeTab === 'classroom' ? 'active' : ''}`}><span className="icon">📚</span>ห้องเรียน</button>
+          <button onClick={() => setActiveTab('tasks')} className={`bottom-nav-item ${activeTab === 'tasks' ? 'active' : ''}`}><span className="icon">📝</span>งาน/สอบ</button>
+          <button onClick={() => setActiveTab('profile')} className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`}><span className="icon">👤</span>ฉัน</button>
         </div>
       )}
     </div>

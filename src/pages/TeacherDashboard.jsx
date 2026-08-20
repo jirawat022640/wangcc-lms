@@ -32,7 +32,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [quizForm, setQuizForm] = useState({ course_id: "", module_id: "", title: "", time_limit: "" });
   const [questions, setQuestions] = useState([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
   
-  // 🌟 State สำหรับจัดเก็บข้อสอบที่กำลังแก้ไข
   const [editingQuiz, setEditingQuiz] = useState(null);
   
   const [gradeForm, setGradeForm] = useState({ id: "", score: "", feedback: "" }); 
@@ -294,7 +293,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     if (target) setAssignForm(prev => ({ ...prev, title: target.title, description: target.description, module_id: target.module_id || "" }));
   };
 
-  // 🌟 ฟังก์ชันจัดการข้อสอบ (รองรับทั้งการสร้างใหม่ และ การแก้ไข)
   const handleSaveQuiz = async (e) => { 
     e.preventDefault(); 
     if (!quizForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
@@ -304,7 +302,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     } 
     
     if (editingQuiz) {
-       // โหมดแก้ไข
        await supabase.from("quizzes").update({ 
          course_id: quizForm.course_id, 
          module_id: quizForm.module_id || null, 
@@ -314,7 +311,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
        }).eq("id", editingQuiz.id); 
        Swal.fire('สำเร็จ!', 'อัปเดตแบบทดสอบเรียบร้อยแล้ว', 'success'); 
     } else {
-       // โหมดสร้างใหม่
        await supabase.from("quizzes").insert([{ 
          course_id: quizForm.course_id, 
          module_id: quizForm.module_id || null, 
@@ -331,7 +327,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     fetchData(); 
   };
 
-  // 🌟 ดึงข้อมูลข้อสอบมาเตรียมแก้ไข
   const handleEditQuizClick = (quiz) => {
     setEditingQuiz(quiz);
     setQuizForm({
@@ -341,7 +336,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
       time_limit: quiz.time_limit || ""
     });
     setQuestions(JSON.parse(JSON.stringify(quiz.questions)));
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // เลื่อนหน้าจอขึ้นไปบนสุด
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEditQuiz = () => {
@@ -350,7 +345,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
   };
 
-  // 🌟 ฟังก์ชันลบข้อสอบ
   const handleDeleteQuiz = async (id) => {
     const result = await Swal.fire({ 
        title: 'ยืนยันการลบ', 
@@ -604,17 +598,17 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   if (!session || session.role !== "teacher") return <Navigate to="/" />;
 
-  // 🌟 รายการเมนูทั้งหมดของครู
+  // 🌟 แปลงเมนูเป็นภาษาไทย
   const menuItems = [
-    { id: 'analytics', icon: '📊', label: 'Dashboard' }, 
-    { id: 'courses', icon: '📚', label: 'Courses' }, 
-    { id: 'modules', icon: '🗂️', label: 'Modules' },
-    { id: 'materials', icon: '📂', label: 'Materials' }, 
-    { id: 'assignments', icon: '📝', label: 'Assignments' }, 
-    { id: 'quizzes', icon: '✍️', label: 'Quizzes' }, 
-    { id: 'attendance', icon: '🙋‍♂️', label: 'Attendance' },
-    { id: 'grades', icon: '🏆', label: 'Grades' },
-    { id: 'profile', icon: '👤', label: 'Profile' }
+    { id: 'analytics', icon: '📊', label: 'สถิติภาพรวม' }, 
+    { id: 'courses', icon: '📚', label: 'จัดการวิชาเรียน' }, 
+    { id: 'modules', icon: '🗂️', label: 'จัดการบทเรียน' },
+    { id: 'materials', icon: '📂', label: 'เอกสารประกอบ' }, 
+    { id: 'assignments', icon: '📝', label: 'สั่งงานและตรวจ' }, 
+    { id: 'quizzes', icon: '✍️', label: 'แบบทดสอบ' }, 
+    { id: 'attendance', icon: '🙋‍♂️', label: 'เช็คชื่อเข้าเรียน' },
+    { id: 'grades', icon: '🏆', label: 'สรุปผลการเรียน' },
+    { id: 'profile', icon: '👤', label: 'บัญชีของฉัน' }
   ];
 
   return (
@@ -634,7 +628,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
           ))}
         </div>
         <div className="mt-3 border-top pt-3">
-          <button onClick={handleLogout} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> Logout</button>
+          <button onClick={handleLogout} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> ออกจากระบบ</button>
         </div>
       </div>
 
@@ -644,7 +638,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
           <div className="offcanvas-backdrop fade show d-lg-none" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
           <div className="offcanvas offcanvas-start show shadow-lg border-0 d-lg-none" style={{ visibility: "visible", zIndex: 1045, width: "280px" }}>
             <div className="offcanvas-header p-4 bg-theme-dark text-white">
-              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🏫</span> Teacher Menu</h5>
+              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🏫</span> เมนูครูผู้สอน</h5>
               <button type="button" className="btn-close btn-close-white" onClick={() => setIsMenuOpen(false)}></button>
             </div>
             <div className="offcanvas-body d-flex flex-column p-3 bg-white gap-1" style={{ overflowY: 'auto' }}>
@@ -654,7 +648,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                 </button>
               ))}
               <div className="mt-auto pt-3 border-top">
-                <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> Logout</button>
+                <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> ออกจากระบบ</button>
               </div>
             </div>
           </div>
@@ -668,7 +662,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
         <div className="mobile-only d-flex justify-content-between align-items-center p-4 bg-white shadow-sm sticky-top z-3">
           <div className="d-flex align-items-center gap-3">
             <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-circle p-2 fs-5 border-0">☰</button>
-            <h5 className="fw-bold text-theme-dark m-0">Teacher Hub</h5>
+            <h5 className="fw-bold text-theme-dark m-0">ศูนย์ควบคุมครู</h5>
           </div>
           <div className="bg-theme-red text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style={{width:'35px', height:'35px'}}>👩‍🏫</div>
         </div>
@@ -684,16 +678,16 @@ export default function TeacherDashboard({ session, handleLogout }) {
                      <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center border border-4 border-white" style={{width: '70px', height: '70px', fontSize: '30px'}}>
                         {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
                      </div>
-                     <div><h3 className="fw-bold mb-1">สวัสดี, ครู{profileForm.full_name || ""}</h3><p className="text-white-50 mb-0">Overview of your classes today.</p></div>
+                     <div><h3 className="fw-bold mb-1">สวัสดี, ครู{profileForm.full_name || ""}</h3><p className="text-white-50 mb-0">ภาพรวมการจัดการเรียนการสอนของคุณ</p></div>
                   </div>
-                  <button onClick={handleExportCSV} className="btn btn-light text-theme-red fw-bold rounded-pill px-4 py-3 shadow-sm d-flex align-items-center gap-2" style={{zIndex:2}}><span>📥</span> Export CSV</button>
+                  <button onClick={handleExportCSV} className="btn btn-light text-theme-red fw-bold rounded-pill px-4 py-3 shadow-sm d-flex align-items-center gap-2" style={{zIndex:2}}><span>📥</span> โหลดคะแนน (CSV)</button>
                 </div>
 
                 <div className="row g-3">
-                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>📚</div><h2 className="fw-bold text-theme-dark mb-0">{courses.length}</h2><small className="text-muted fw-bold">Courses</small></div></div>
-                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-theme-dark bg-opacity-10 text-theme-dark rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>📝</div><h2 className="fw-bold text-theme-dark mb-0">{assignments.length}</h2><small className="text-muted fw-bold">Assignments</small></div></div>
-                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100 border border-success"><div className="bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>✅</div><h2 className="fw-bold text-success mb-0">{gradedCount}</h2><small className="text-muted fw-bold">Graded</small></div></div>
-                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100 border border-theme-red"><div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>⏳</div><h2 className="fw-bold text-theme-red mb-0">{ungradedCount}</h2><small className="text-theme-red fw-bold">Pending</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>📚</div><h2 className="fw-bold text-theme-dark mb-0">{courses.length}</h2><small className="text-muted fw-bold">วิชาที่สอน</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-theme-dark bg-opacity-10 text-theme-dark rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>📝</div><h2 className="fw-bold text-theme-dark mb-0">{assignments.length}</h2><small className="text-muted fw-bold">งานทั้งหมด</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100 border border-success"><div className="bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>✅</div><h2 className="fw-bold text-success mb-0">{gradedCount}</h2><small className="text-muted fw-bold">ตรวจแล้ว</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100 border border-theme-red"><div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>⏳</div><h2 className="fw-bold text-theme-red mb-0">{ungradedCount}</h2><small className="text-theme-red fw-bold">รอตรวจ</small></div></div>
                 </div>
               </div>
 
@@ -703,9 +697,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
                   <div className="theme-card bg-theme-red bg-opacity-10 border-0 mb-4 slide-up">
                     <div className="d-flex align-items-center gap-3 mb-3">
                       <div className="fs-1">⚠️</div>
-                      <div><h6 className="fw-bold text-theme-red mb-1">Action Needed</h6><p className="mb-0 small text-theme-red fw-bold">You have {ungradedCount} pending submissions.</p></div>
+                      <div><h6 className="fw-bold text-theme-red mb-1">ต้องดำเนินการ</h6><p className="mb-0 small text-theme-red fw-bold">คุณมีงานรอตรวจจำนวน {ungradedCount} ชิ้น</p></div>
                     </div>
-                    <button onClick={() => {setActiveTab('assignments'); setAssignSubTab('grade')}} className="btn btn-theme-red w-100 rounded-pill fw-bold shadow-sm py-2">Grade Now</button>
+                    <button onClick={() => {setActiveTab('assignments'); setAssignSubTab('grade')}} className="btn btn-theme-red w-100 rounded-pill fw-bold shadow-sm py-2">เริ่มตรวจงาน</button>
                   </div>
                  )}
               </div>
@@ -716,30 +710,30 @@ export default function TeacherDashboard({ session, handleLogout }) {
           {activeTab === "courses" && (
             <div className="fade-in">
                <div className="theme-card mb-5 border border-light">
-                    <h5 className="fw-bold mb-4 text-theme-dark">✨ Create New Course</h5>
+                    <h5 className="fw-bold mb-4 text-theme-dark">✨ เปิดรายวิชาใหม่</h5>
                     <form onSubmit={handleCreateCourse}>
                       <div className="row g-3 mb-3">
-                        <div className="col-md-3"><input type="text" className="form-control theme-input" placeholder="Course Code" value={courseForm.code} onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })} required /></div>
-                        <div className="col-md-6"><input type="text" className="form-control theme-input" placeholder="Course Name" value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} required /></div>
-                        <div className="col-md-3"><input type="text" className="form-control theme-input" placeholder="Credits" value={courseForm.credits} onChange={(e) => setCourseForm({ ...courseForm, credits: e.target.value })} required /></div>
+                        <div className="col-md-3"><input type="text" className="form-control theme-input" placeholder="รหัสวิชา" value={courseForm.code} onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })} required /></div>
+                        <div className="col-md-6"><input type="text" className="form-control theme-input" placeholder="ชื่อวิชา" value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} required /></div>
+                        <div className="col-md-3"><input type="text" className="form-control theme-input" placeholder="หน่วยกิต" value={courseForm.credits} onChange={(e) => setCourseForm({ ...courseForm, credits: e.target.value })} required /></div>
                         <div className="col-md-10">
                           <select className="form-select theme-input" value={courseForm.section} onChange={(e) => setCourseForm({ ...courseForm, section: e.target.value })} required>
-                            <option value="">-- Select Section / Department --</option>
+                            <option value="">-- เลือกกลุ่มเรียน/แผนก --</option>
                             {departments.map((d) => (<option key={d.id} value={d.name}>{d.name}</option>))}
                           </select>
                         </div>
-                        <div className="col-md-2"><input type="text" className="form-control theme-input bg-white text-muted" placeholder="Semester" value={courseForm.semester} readOnly /></div>
-                        <div className="col-md-12 mt-4"><button type="submit" className="btn btn-theme-red w-100 rounded-pill fw-bold py-3 shadow-sm">Save Course</button></div>
+                        <div className="col-md-2"><input type="text" className="form-control theme-input bg-white text-muted" placeholder="ภาคเรียน" value={courseForm.semester} readOnly /></div>
+                        <div className="col-md-12 mt-4"><button type="submit" className="btn btn-theme-red w-100 rounded-pill fw-bold py-3 shadow-sm">บันทึกรายวิชา</button></div>
                       </div>
                     </form>
                </div>
                   
                <div className="d-flex justify-content-between align-items-center mb-3">
-                 <h5 className="fw-bold text-theme-dark m-0">Your Courses</h5><span className="badge bg-theme-dark rounded-pill px-3 py-2">{courses.length} Active</span>
+                 <h5 className="fw-bold text-theme-dark m-0">วิชาที่คุณดูแล</h5><span className="badge bg-theme-dark rounded-pill px-3 py-2">{courses.length} กำลังเปิดสอน</span>
                </div>
                   
                <div className="row g-4">
-                 {courses.length === 0 && <p className="text-muted col-12 fw-bold">No courses created yet.</p>}
+                 {courses.length === 0 && <p className="text-muted col-12 fw-bold">ยังไม่ได้สร้างรายวิชา</p>}
                  {courses.map((c) => (
                    <div key={c.id} className="col-md-6 col-xl-4">
                      <div className="theme-card h-100 hover-card border border-light">
@@ -753,8 +747,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
                            </div>
                            <input type="text" className="form-control theme-input p-2" value={editingCourse.section} onChange={(e) => setEditingCourse({ ...editingCourse, section: e.target.value })} required />
                            <div className="d-flex gap-2 mt-3">
-                             <button type="submit" className="btn btn-theme-red btn-sm w-50 rounded-pill fw-bold">Save</button>
-                             <button type="button" onClick={() => setEditingCourse(null)} className="btn btn-light btn-sm w-50 rounded-pill fw-bold">Cancel</button>
+                             <button type="submit" className="btn btn-theme-red btn-sm w-50 rounded-pill fw-bold">บันทึก</button>
+                             <button type="button" onClick={() => setEditingCourse(null)} className="btn btn-light btn-sm w-50 rounded-pill fw-bold">ยกเลิก</button>
                            </div>
                          </form>
                        ) : (
@@ -767,8 +761,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
                              </div>
                            </div>
                            <h5 className="fw-bold mb-2 text-theme-dark">{c.course_name}</h5>
-                           <p className="text-muted small mb-3 fw-bold">Sem: {c.semester || "-"} | Cr: {c.credits || "-"}</p>
-                           <span className="badge bg-theme-gray text-theme-dark border px-3 py-2 w-100 text-start fs-6">Sec: {c.section}</span>
+                           <p className="text-muted small mb-3 fw-bold">ภาคเรียน: {c.semester || "-"} | หน่วยกิต: {c.credits || "-"}</p>
+                           <span className="badge bg-theme-gray text-theme-dark border px-3 py-2 w-100 text-start fs-6">กลุ่ม: {c.section}</span>
                          </>
                        )}
                      </div>
@@ -783,20 +777,20 @@ export default function TeacherDashboard({ session, handleLogout }) {
             <div className="fade-in row g-4">
               <div className="col-lg-5">
                 <div className="theme-card h-100">
-                  <h5 className="fw-bold mb-4 text-theme-dark">🗂️ Create Module</h5>
+                  <h5 className="fw-bold mb-4 text-theme-dark">🗂️ สร้างบทเรียนใหม่</h5>
                   <form onSubmit={handleCreateModule} className="d-flex flex-column gap-3">
                     <select className="form-select theme-input" value={moduleForm.course_id} onChange={(e) => setModuleForm({ ...moduleForm, course_id: e.target.value })} required>
-                      <option value="">-- Select Course --</option>
+                      <option value="">-- เลือกรายวิชา --</option>
                       {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                     </select>
-                    <input type="text" className="form-control theme-input" placeholder="Module Name (e.g. Chapter 1)" value={moduleForm.title} onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })} required />
-                    <button type="submit" className="btn btn-theme-red rounded-pill fw-bold py-3 mt-2 shadow-sm">💾 Add Module</button>
+                    <input type="text" className="form-control theme-input" placeholder="ชื่อบทเรียน (เช่น บทที่ 1)" value={moduleForm.title} onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })} required />
+                    <button type="submit" className="btn btn-theme-red rounded-pill fw-bold py-3 mt-2 shadow-sm">💾 บันทึกบทเรียน</button>
                   </form>
                 </div>
               </div>
               
               <div className="col-lg-7">
-                <h5 className="fw-bold text-theme-dark mb-4">All Modules ({modules.length})</h5>
+                <h5 className="fw-bold text-theme-dark mb-4">บทเรียนทั้งหมด ({modules.length})</h5>
                 <div className="d-flex flex-column gap-4">
                   {courses.map(course => {
                     const courseModules = modules.filter(m => m.course_id === course.id);
@@ -825,37 +819,37 @@ export default function TeacherDashboard({ session, handleLogout }) {
             <div className="fade-in row g-4">
               <div className="col-lg-5">
                 <div className="theme-card h-100">
-                  <h5 className="fw-bold mb-4 text-theme-dark">Upload Material</h5>
+                  <h5 className="fw-bold mb-4 text-theme-dark">เพิ่มเอกสารประกอบ</h5>
                   <div className="d-flex bg-theme-gray p-2 rounded-pill mb-4 border border-light">
-                    <button type="button" onClick={() => setUploadMode("file")} className={`btn rounded-pill flex-grow-1 fw-bold ${uploadMode === "file" ? "btn-white shadow-sm text-theme-red" : "text-muted border-0"}`}>📂 File</button>
-                    <button type="button" onClick={() => setUploadMode("link")} className={`btn rounded-pill flex-grow-1 fw-bold ${uploadMode === "link" ? "btn-white shadow-sm text-theme-red" : "text-muted border-0"}`}>🔗 YouTube Link</button>
+                    <button type="button" onClick={() => setUploadMode("file")} className={`btn rounded-pill flex-grow-1 fw-bold ${uploadMode === "file" ? "btn-white shadow-sm text-theme-red" : "text-muted border-0"}`}>📂 อัปโหลดไฟล์</button>
+                    <button type="button" onClick={() => setUploadMode("link")} className={`btn rounded-pill flex-grow-1 fw-bold ${uploadMode === "link" ? "btn-white shadow-sm text-theme-red" : "text-muted border-0"}`}>🔗 ลิงก์ YouTube</button>
                   </div>
                   <form onSubmit={handleUploadMaterial} className="d-flex flex-column gap-3">
                     <select className="form-select theme-input" value={materialForm.course_id} onChange={(e) => setMaterialForm({ ...materialForm, course_id: e.target.value })} required>
-                      <option value="">-- Select Course --</option>
+                      <option value="">-- เลือกรายวิชา --</option>
                       {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                     </select>
                     <select className="form-select theme-input" value={materialForm.module_id} onChange={(e) => setMaterialForm({ ...materialForm, module_id: e.target.value })}>
-                      <option value="">-- Module (Optional) --</option>
+                      <option value="">-- บทเรียน (ไม่บังคับ) --</option>
                       {modules.filter(m => m.course_id === materialForm.course_id).map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
                     </select>
-                    <input type="text" className="form-control theme-input" placeholder="Title" value={materialForm.title} onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })} required />
+                    <input type="text" className="form-control theme-input" placeholder="หัวข้อเอกสาร" value={materialForm.title} onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })} required />
                     {uploadMode === "file" ? (
                       <input type="file" className="form-control theme-input bg-white" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.png" onChange={(e) => setMaterialForm({ ...materialForm, file: e.target.files[0] })} required />
                     ) : (
                       <input type="url" className="form-control theme-input bg-white" placeholder="https://..." value={materialForm.link} onChange={(e) => setMaterialForm({ ...materialForm, link: e.target.value })} required />
                     )}
                     <button type="submit" className="btn btn-theme-red rounded-pill fw-bold py-3 mt-2 shadow-sm" disabled={uploading}>
-                      {uploading ? "⏳ Uploading..." : "💾 Save Material"}
+                      {uploading ? "⏳ กำลังอัปโหลด..." : "💾 บันทึกเอกสาร"}
                     </button>
                   </form>
                 </div>
               </div>
               
               <div className="col-lg-7">
-                <h5 className="fw-bold text-theme-dark mb-4">Files & Links ({materials.length})</h5>
+                <h5 className="fw-bold text-theme-dark mb-4">ไฟล์และลิงก์ทั้งหมด ({materials.length})</h5>
                 <div className="row g-3">
-                  {materials.length === 0 && <p className="text-muted col-12 fw-bold">No materials found.</p>}
+                  {materials.length === 0 && <p className="text-muted col-12 fw-bold">ยังไม่มีเอกสาร</p>}
                   {materials.map((m) => {
                     const ytThumb = getYoutubeThumbnail(m.file_url);
                     const moduleName = modules.find(mod => mod.id === m.module_id)?.title; 
@@ -887,7 +881,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                             </div>
                           </div>
                           <div className="mt-auto d-flex justify-content-between align-items-end">
-                            <span className="badge bg-theme-gray text-theme-dark px-2 py-1">{moduleName || "General"}</span>
+                            <span className="badge bg-theme-gray text-theme-dark px-2 py-1">{moduleName || "ไม่ระบุบทเรียน"}</span>
                             {!editingMaterial && (
                               <div className="d-flex gap-2">
                                 <button onClick={() => setEditingMaterial(m)} className="btn btn-light text-warning rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
@@ -908,9 +902,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
           {activeTab === "assignments" && (
             <div className="fade-in">
               <div className="d-flex bg-white p-2 rounded-pill shadow-sm mb-5 mx-auto border border-light" style={{ maxWidth: "400px" }}>
-                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${assignSubTab === "create" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => setAssignSubTab("create")}>➕ Create</button>
+                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${assignSubTab === "create" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => setAssignSubTab("create")}>➕ สั่งงานใหม่</button>
                 <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 position-relative ${assignSubTab === "grade" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => setAssignSubTab("grade")}>
-                  ✔️ Grade {ungradedCount > 0 && <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-theme-red">{ungradedCount}</span>}
+                  ✔️ ตรวจงาน {ungradedCount > 0 && <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-theme-red">{ungradedCount}</span>}
                 </button>
               </div>
               
@@ -918,24 +912,24 @@ export default function TeacherDashboard({ session, handleLogout }) {
                 <div className="row g-4">
                   <div className="col-lg-5">
                     <div className="theme-card h-100">
-                      <h5 className="fw-bold mb-4 text-theme-dark">Create Assignment</h5>
+                      <h5 className="fw-bold mb-4 text-theme-dark">สร้างคำสั่งงาน</h5>
                       <form onSubmit={handleCreateAssignment} className="d-flex flex-column gap-3">
                         <select className="form-select theme-input" value={assignForm.course_id} onChange={(e) => setAssignForm({ ...assignForm, course_id: e.target.value })} required>
-                          <option value="">-- Select Course --</option>
+                          <option value="">-- เลือกรายวิชา --</option>
                           {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                         </select>
                         <select className="form-select theme-input" value={assignForm.module_id} onChange={(e) => setAssignForm({ ...assignForm, module_id: e.target.value })}>
-                          <option value="">-- Module (Optional) --</option>
+                          <option value="">-- บทเรียน (ไม่บังคับ) --</option>
                           {modules.filter(m => m.course_id === assignForm.course_id).map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
                         </select>
-                        <input type="text" className="form-control theme-input" placeholder="Title" value={assignForm.title} onChange={(e) => setAssignForm({ ...assignForm, title: e.target.value })} required />
-                        <textarea className="form-control theme-input" placeholder="Description / Instructions..." value={assignForm.description} onChange={(e) => setAssignForm({ ...assignForm, description: e.target.value })} rows="4" required />
-                        <button type="submit" className="btn btn-theme-red rounded-pill fw-bold py-3 mt-2 shadow-sm">Assign Task</button>
+                        <input type="text" className="form-control theme-input" placeholder="หัวข้องาน" value={assignForm.title} onChange={(e) => setAssignForm({ ...assignForm, title: e.target.value })} required />
+                        <textarea className="form-control theme-input" placeholder="รายละเอียดและคำชี้แจง..." value={assignForm.description} onChange={(e) => setAssignForm({ ...assignForm, description: e.target.value })} rows="4" required />
+                        <button type="submit" className="btn btn-theme-red rounded-pill fw-bold py-3 mt-2 shadow-sm">ส่งคำสั่งงาน</button>
                       </form>
                     </div>
                   </div>
                   <div className="col-lg-7">
-                    <h5 className="fw-bold text-theme-dark mb-4">Active Assignments ({assignments.length})</h5>
+                    <h5 className="fw-bold text-theme-dark mb-4">งานที่สั่งไปแล้ว ({assignments.length})</h5>
                     <div className="d-flex flex-column gap-3">
                       {assignments.map((a) => {
                          const moduleName = modules.find(mod => mod.id === a.module_id)?.title;
@@ -961,10 +955,10 @@ export default function TeacherDashboard({ session, handleLogout }) {
                 <div className="theme-card">
                     <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
                       <h5 className="fw-bold m-0 text-theme-dark d-flex align-items-center gap-2">
-                        <span>✔️</span> Grading <span className="badge bg-theme-red text-white rounded-pill fs-6">{ungradedCount} pending</span>
+                        <span>✔️</span> ตรวจให้คะแนน <span className="badge bg-theme-red text-white rounded-pill fs-6">{ungradedCount} รอตรวจ</span>
                       </h5>
                       <select className="form-select theme-input bg-white w-auto" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
-                        <option value="">All Submissions ({submissions.length})</option>
+                        <option value="">ทั้งหมด ({submissions.length} รายการ)</option>
                         {gradeFilterOptions.map((opt, idx) => <option key={idx} value={opt}>{opt}</option>)}
                       </select>
                     </div>
@@ -973,19 +967,19 @@ export default function TeacherDashboard({ session, handleLogout }) {
                       <div className="bg-theme-gray rounded-4 p-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 slide-down border border-light">
                         <div className="d-flex align-items-center gap-2">
                           <button onClick={selectAllFiltered} className="btn btn-sm btn-white fw-bold text-theme-dark rounded-pill px-3 shadow-sm border">
-                            {selectedSubIds.length === ungradedFiltered.length ? "Deselect All" : "Select Pending"}
+                            {selectedSubIds.length === ungradedFiltered.length ? "ยกเลิกการเลือกทั้งหมด" : "เลือกที่ยังไม่ตรวจ"}
                           </button>
-                          <span className="small text-muted fw-bold ms-2">Selected: {selectedSubIds.length}</span>
+                          <span className="small text-muted fw-bold ms-2">เลือกแล้ว: {selectedSubIds.length}</span>
                         </div>
                         <form onSubmit={handleBatchGradeSubmit} className="d-flex gap-2">
-                          <input type="number" className="form-control theme-input bg-white py-2" placeholder="Score" style={{ width: '100px' }} value={batchScore} onChange={(e) => setBatchScore(e.target.value)} required />
-                          <button type="submit" className="btn btn-theme-red rounded-pill fw-bold px-4 shadow-sm">Grade Batch</button>
+                          <input type="number" className="form-control theme-input bg-white py-2" placeholder="คะแนน" style={{ width: '100px' }} value={batchScore} onChange={(e) => setBatchScore(e.target.value)} required />
+                          <button type="submit" className="btn btn-theme-red rounded-pill fw-bold px-4 shadow-sm">ให้คะแนนแบบกลุ่ม</button>
                         </form>
                       </div>
                     )}
 
                     {filteredSubmissions.length === 0 ? (
-                      <div className="text-center text-muted py-5 fw-bold"><span className="fs-1 d-block mb-3">📭</span>No submissions here.</div>
+                      <div className="text-center text-muted py-5 fw-bold"><span className="fs-1 d-block mb-3">📭</span>ไม่มีงานสำหรับวิชานี้</div>
                     ) : (
                       <div className="row g-4">
                         {filteredSubmissions.map((sub) => {
@@ -1003,16 +997,16 @@ export default function TeacherDashboard({ session, handleLogout }) {
                               <div className="d-flex justify-content-between align-items-start mb-3 pe-4">
                                 <div>
                                   <span className="badge bg-theme-dark text-white rounded-pill px-3 py-2 me-2">{sub.assignments?.courses?.section || "-"}</span>
-                                  <div className="fw-bold text-theme-dark mt-2 fs-5">{sub.profiles?.full_name || "Unknown"}</div>
-                                  <span className="text-muted small fw-bold">ID: {sub.profiles?.student_code || "-"}</span>
+                                  <div className="fw-bold text-theme-dark mt-2 fs-5">{sub.profiles?.full_name || "ไม่ระบุชื่อ"}</div>
+                                  <span className="text-muted small fw-bold">รหัส: {sub.profiles?.student_code || "-"}</span>
                                 </div>
                                 {sub.score !== null && editingGrade !== sub.id ? (
                                   <div className="text-success fw-bold bg-success bg-opacity-10 px-3 py-2 rounded-pill border border-success mt-1 d-flex align-items-center gap-2">
                                     ✔ {sub.score}
-                                    <button onClick={() => { setEditingGrade(sub.id); setGradeForm({ id: sub.id, score: sub.score, feedback: sub.teacher_feedback || "" }); }} className="btn btn-sm btn-light rounded-circle p-1" title="Edit">✏️</button>
+                                    <button onClick={() => { setEditingGrade(sub.id); setGradeForm({ id: sub.id, score: sub.score, feedback: sub.teacher_feedback || "" }); }} className="btn btn-sm btn-light rounded-circle p-1" title="แก้ไข">✏️</button>
                                   </div>
                                 ) : sub.score === null && editingGrade !== sub.id ? (
-                                  <div className="text-theme-red fw-bold bg-theme-red bg-opacity-10 px-3 py-2 rounded-pill mt-1">⏳ Pending</div>
+                                  <div className="text-theme-red fw-bold bg-theme-red bg-opacity-10 px-3 py-2 rounded-pill mt-1">⏳ รอตรวจ</div>
                                 ) : null}
                               </div>
                               
@@ -1022,25 +1016,25 @@ export default function TeacherDashboard({ session, handleLogout }) {
                                 {sub.link_url && (
                                   <div className="mb-2">
                                     {ytThumb && <img src={ytThumb} alt="Preview" className="w-100 object-fit-cover rounded-4 mb-2 shadow-sm" />}
-                                    <a href={sub.link_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-dark rounded-pill px-4 fw-bold">🔗 Open Link</a>
+                                    <a href={sub.link_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-dark rounded-pill px-4 fw-bold">🔗 เปิดลิงก์</a>
                                   </div>
                                 )}
                                 {sub.file_url && (
-                                  <div className="mb-2 mt-2"><a href={sub.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-dark rounded-pill px-4 fw-bold bg-white">📂 Download File</a></div>
+                                  <div className="mb-2 mt-2"><a href={sub.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-dark rounded-pill px-4 fw-bold bg-white">📂 โหลดไฟล์</a></div>
                                 )}
                               </div>
 
                               {(sub.score === null || editingGrade === sub.id) ? (
                                 <form onSubmit={(e) => handleGradeSubmit(e, sub.id)} className="d-flex flex-column gap-2 slide-up">
-                                  <textarea className="form-control theme-input bg-white" placeholder="💬 Feedback (Optional)..." value={gradeForm.id === sub.id ? gradeForm.feedback : ""} onChange={(e) => setGradeForm({ ...gradeForm, id: sub.id, feedback: e.target.value })} rows="2"></textarea>
+                                  <textarea className="form-control theme-input bg-white" placeholder="💬 คำติชม (ถ้ามี)..." value={gradeForm.id === sub.id ? gradeForm.feedback : ""} onChange={(e) => setGradeForm({ ...gradeForm, id: sub.id, feedback: e.target.value })} rows="2"></textarea>
                                   <div className="d-flex gap-2">
-                                     <input type="number" className="form-control theme-input bg-white fw-bold flex-grow-1" placeholder="Score" required value={gradeForm.id === sub.id ? gradeForm.score : ""} onChange={(e) => setGradeForm({ ...gradeForm, id: sub.id, score: e.target.value })} />
-                                     <button type="submit" className="btn btn-theme-red rounded-pill fw-bold px-4 shadow-sm">Save</button>
-                                     {editingGrade === sub.id && <button type="button" onClick={() => setEditingGrade(null)} className="btn btn-light rounded-pill fw-bold px-3">Cancel</button>}
+                                     <input type="number" className="form-control theme-input bg-white fw-bold flex-grow-1" placeholder="ให้คะแนน" required value={gradeForm.id === sub.id ? gradeForm.score : ""} onChange={(e) => setGradeForm({ ...gradeForm, id: sub.id, score: e.target.value })} />
+                                     <button type="submit" className="btn btn-theme-red rounded-pill fw-bold px-4 shadow-sm">บันทึก</button>
+                                     {editingGrade === sub.id && <button type="button" onClick={() => setEditingGrade(null)} className="btn btn-light rounded-pill fw-bold px-3">ยกเลิก</button>}
                                   </div>
                                 </form>
                               ) : (
-                                sub.teacher_feedback && <div className="bg-theme-gray p-3 rounded-4 mt-2 small text-theme-dark fw-bold">💬 Reply: {sub.teacher_feedback}</div>
+                                sub.teacher_feedback && <div className="bg-theme-gray p-3 rounded-4 mt-2 small text-theme-dark fw-bold">💬 ตอบกลับ: {sub.teacher_feedback}</div>
                               )}
                             </div>
                           </div>
@@ -1056,19 +1050,19 @@ export default function TeacherDashboard({ session, handleLogout }) {
           {activeTab === "quizzes" && (
             <div className="fade-in">
                <div className="d-flex bg-white p-2 rounded-pill shadow-sm mb-5 mx-auto border border-light" style={{ maxWidth: "400px" }}>
-                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "create" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => { setQuizSubTab("create"); cancelEditQuiz(); }}>➕ Create Quiz</button>
-                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "scores" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => setQuizSubTab("scores")}>📊 Results</button>
+                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "create" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => { setQuizSubTab("create"); cancelEditQuiz(); }}>➕ สร้างข้อสอบ</button>
+                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "scores" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => setQuizSubTab("scores")}>📊 ดูคะแนนสอบ</button>
               </div>
               
               {quizSubTab === "create" && (
                 <>
                   <div className="theme-card mb-5">
-                      <h5 className="fw-bold mb-4 text-theme-dark">{editingQuiz ? '✏️ Edit Quiz' : '✨ New Quiz'}</h5>
+                      <h5 className="fw-bold mb-4 text-theme-dark">{editingQuiz ? '✏️ แก้ไขแบบทดสอบ' : '✨ สร้างแบบทดสอบใหม่'}</h5>
                       {!editingQuiz && quizzes.length > 0 && (
                         <div className="mb-4 p-3 bg-theme-gray rounded-4 border border-light">
-                          <label className="form-label small fw-bold text-theme-dark mb-2">🔄 Clone from existing</label>
+                          <label className="form-label small fw-bold text-theme-dark mb-2">🔄 คัดลอกโจทย์จากข้อสอบเดิม</label>
                           <select className="form-select theme-input bg-white" onChange={handleCloneQuiz}>
-                            <option value="">-- Select Quiz --</option>
+                            <option value="">-- เลือกแบบทดสอบ --</option>
                             {quizzes.map(q => <option key={q.id} value={q.id}>{q.courses?.course_name} : {q.title}</option>)}
                           </select>
                         </div>
@@ -1078,36 +1072,36 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         <div className="row g-3 mb-4">
                           <div className="col-md-4">
                             <select className="form-select theme-input" value={quizForm.course_id} onChange={(e) => setQuizForm({ ...quizForm, course_id: e.target.value })} required>
-                              <option value="">-- Course --</option>
+                              <option value="">-- เลือกรายวิชา --</option>
                               {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                             </select>
                           </div>
                           <div className="col-md-4">
                             <select className="form-select theme-input" value={quizForm.module_id} onChange={(e) => setQuizForm({ ...quizForm, module_id: e.target.value })}>
-                              <option value="">-- Module --</option>
+                              <option value="">-- บทเรียน (ไม่บังคับ) --</option>
                               {modules.filter(m => m.course_id === quizForm.course_id).map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
                             </select>
                           </div>
                           <div className="col-md-4">
-                            <input type="number" className="form-control theme-input" placeholder="Time limit (mins) 0=None" value={quizForm.time_limit} onChange={(e) => setQuizForm({ ...quizForm, time_limit: e.target.value })} required />
+                            <input type="number" className="form-control theme-input" placeholder="เวลาสอบ (นาที) 0=ไม่จำกัด" value={quizForm.time_limit} onChange={(e) => setQuizForm({ ...quizForm, time_limit: e.target.value })} required />
                           </div>
                           <div className="col-md-12">
-                            <input type="text" className="form-control theme-input" placeholder="Quiz Title" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} required />
+                            <input type="text" className="form-control theme-input" placeholder="หัวข้อแบบทดสอบ" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} required />
                           </div>
                         </div>
                         
-                        <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>📋</span> Questions</h6>
+                        <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>📋</span> ชุดคำถาม</h6>
                         {questions.map((q, qIndex) => (
                           <div className="bg-theme-gray p-4 rounded-4 mb-4 position-relative border border-light slide-down" key={qIndex}>
                             <div className="d-flex justify-content-between align-items-center mb-3">
-                              <span className="fw-bold text-theme-dark bg-white px-3 py-1 rounded-pill shadow-sm">Q {qIndex + 1}</span>
-                              {questions.length > 1 && (<button type="button" className="btn btn-white text-theme-red btn-sm rounded-pill shadow-sm px-3 fw-bold" onClick={() => setQuestions(questions.filter((_, i) => i !== qIndex))}>Delete</button>)}
+                              <span className="fw-bold text-theme-dark bg-white px-3 py-1 rounded-pill shadow-sm">ข้อที่ {qIndex + 1}</span>
+                              {questions.length > 1 && (<button type="button" className="btn btn-white text-theme-red btn-sm rounded-pill shadow-sm px-3 fw-bold" onClick={() => setQuestions(questions.filter((_, i) => i !== qIndex))}>ลบข้อนี้</button>)}
                             </div>
                             
-                            <input type="text" className="form-control theme-input bg-white mb-3 shadow-sm" placeholder="Type question..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
+                            <input type="text" className="form-control theme-input bg-white mb-3 shadow-sm" placeholder="พิมพ์โจทย์คำถาม..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
                             
                             <div className="mb-4">
-                              <label className="small fw-bold text-muted d-block mb-1">🖼️ Attach Image (Optional)</label>
+                              <label className="small fw-bold text-muted d-block mb-1">🖼️ แนบรูปภาพประกอบ (ถ้ามี)</label>
                               <div className="d-flex align-items-center gap-3">
                                 <input type="file" accept="image/*" className="form-control bg-white rounded-3 border-0 shadow-sm p-2 w-75" onChange={(e) => handleQuestionImageUpload(qIndex, e)} />
                                 {q.imageUrl && <img src={q.imageUrl} alt="preview" style={{ height: '40px', borderRadius: '5px' }} />}
@@ -1119,7 +1113,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                                 <div key={optIndex} className="col-md-6">
                                   <div className={`d-flex align-items-center gap-3 border rounded-4 p-2 bg-white transition-all ${q.correctOption === optIndex ? "border-theme-red border-2 shadow-sm bg-theme-red bg-opacity-10" : "border-light"}`}>
                                     <input className="form-check-input mt-0 ms-2" type="radio" name={`correct-${qIndex}`} style={{ width: "24px", height: "24px", accentColor: "var(--theme-red)" }} checked={q.correctOption === optIndex} onChange={() => updateQuestion(qIndex, "correctOption", optIndex)} />
-                                    <input type="text" className="form-control border-0 bg-transparent fw-bold" placeholder={`Option ${optIndex + 1}`} value={opt} onChange={(e) => updateOption(qIndex, optIndex, e.target.value)} required />
+                                    <input type="text" className="form-control border-0 bg-transparent fw-bold" placeholder={`ตัวเลือกที่ ${optIndex + 1}`} value={opt} onChange={(e) => updateOption(qIndex, optIndex, e.target.value)} required />
                                   </div>
                                 </div>
                               ))}
@@ -1128,18 +1122,18 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         ))}
                         
                         <div className="d-flex flex-column flex-md-row gap-3 mt-4">
-                          <button type="button" className="btn btn-light text-theme-dark border border-dark rounded-pill fw-bold py-3 px-5" onClick={addQuestion}>+ Add Question</button>
+                          <button type="button" className="btn btn-light text-theme-dark border border-dark rounded-pill fw-bold py-3 px-5" onClick={addQuestion}>+ เพิ่มโจทย์ข้อต่อไป</button>
                           <button type="submit" className="btn btn-theme-red rounded-pill fw-bold flex-grow-1 py-3 shadow-sm">
-                            {editingQuiz ? '💾 Update Quiz' : '💾 Save Quiz'}
+                            {editingQuiz ? '💾 บันทึกการแก้ไข' : '💾 บันทึกแบบทดสอบ'}
                           </button>
-                          {editingQuiz && <button type="button" className="btn btn-dark rounded-pill fw-bold py-3 px-4 shadow-sm" onClick={cancelEditQuiz}>Cancel</button>}
+                          {editingQuiz && <button type="button" className="btn btn-dark rounded-pill fw-bold py-3 px-4 shadow-sm" onClick={cancelEditQuiz}>ยกเลิก</button>}
                         </div>
                       </form>
                   </div>
                   
-                <h5 className="fw-bold mb-3 text-theme-dark">Active Quizzes</h5>
+                <h5 className="fw-bold mb-3 text-theme-dark">แบบทดสอบทั้งหมด</h5>
                 <div className="row g-4">
-                  {quizzes.length === 0 && <p className="text-muted col-12 fw-bold">No quizzes yet.</p>}
+                  {quizzes.length === 0 && <p className="text-muted col-12 fw-bold">ยังไม่ได้สร้างแบบทดสอบ</p>}
                   {quizzes.map((q) => (
                     <div key={q.id} className="col-md-6 col-lg-4">
                       <div className="theme-card h-100 d-flex flex-column border border-light">
@@ -1152,8 +1146,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         </div>
                         <h5 className="fw-bold mb-2 text-theme-dark">{q.title}</h5>
                         <div className="mt-auto d-flex justify-content-between align-items-center pt-3">
-                          <span className="text-muted small fw-bold">{q.questions.length} Qs</span>
-                          {q.time_limit > 0 && <span className="badge bg-theme-red text-white">⏳ {q.time_limit} m</span>}
+                          <span className="text-muted small fw-bold">จำนวน {q.questions.length} ข้อ</span>
+                          {q.time_limit > 0 && <span className="badge bg-theme-red text-white">⏳ {q.time_limit} นาที</span>}
                         </div>
                       </div>
                     </div>
@@ -1165,26 +1159,26 @@ export default function TeacherDashboard({ session, handleLogout }) {
               {quizSubTab === "scores" && (
                  <div className="theme-card slide-up">
                      <div className="d-flex justify-content-between align-items-center mb-4">
-                       <h5 className="fw-bold m-0 text-theme-dark">Quiz Results</h5>
-                       <button onClick={handleExportQuizCSV} className="btn btn-theme-red rounded-pill fw-bold px-4 py-2 shadow-sm">📥 Export CSV</button>
+                       <h5 className="fw-bold m-0 text-theme-dark">ผลคะแนนแบบทดสอบ</h5>
+                       <button onClick={handleExportQuizCSV} className="btn btn-theme-red rounded-pill fw-bold px-4 py-2 shadow-sm">📥 โหลดคะแนน (CSV)</button>
                      </div>
                      
                      {quizSubmissions.length === 0 ? (
-                       <div className="text-center text-muted py-5 fw-bold"><span className="fs-1 d-block mb-3">📭</span>No submissions yet.</div>
+                       <div className="text-center text-muted py-5 fw-bold"><span className="fs-1 d-block mb-3">📭</span>ยังไม่มีผู้ส่งข้อสอบ</div>
                      ) : (
                        <div className="table-responsive rounded-4 border border-light">
                          <table className="table table-hover align-middle mb-0">
-                           <thead className="table-light"><tr><th className="px-4 py-3 text-theme-dark">Course</th><th className="py-3 text-theme-dark">Quiz</th><th className="py-3 text-theme-dark">Student ID</th><th className="py-3 text-theme-dark">Name</th><th className="text-center py-3 text-theme-dark">Score</th></tr></thead>
+                           <thead className="table-light"><tr><th className="px-4 py-3 text-theme-dark">วิชา</th><th className="py-3 text-theme-dark">แบบทดสอบ</th><th className="py-3 text-theme-dark">รหัสนักศึกษา</th><th className="py-3 text-theme-dark">ชื่อ-สกุล</th><th className="text-center py-3 text-theme-dark">คะแนน</th></tr></thead>
                            <tbody>
                              {quizSubmissions.map(qs => (
                                <tr key={qs.id}>
                                  <td className="px-4 fw-bold text-muted">{qs.quizzes?.courses?.course_name || "-"}</td>
                                  <td className="text-theme-dark fw-bold">{qs.quizzes?.title || "-"}</td>
                                  <td className="text-muted">{qs.profiles?.student_code || "-"}</td>
-                                 <td className="fw-bold text-theme-dark">{qs.profiles?.full_name || "Unknown"}</td>
+                                 <td className="fw-bold text-theme-dark">{qs.profiles?.full_name || "ไม่ระบุชื่อ"}</td>
                                  <td className="text-center">
                                    <span className="badge bg-theme-dark rounded-pill px-3 py-2 fs-6 shadow-sm">{qs.score} / {qs.total_score}</span>
-                                   {qs.is_cheated && <span className="badge bg-theme-red rounded-pill px-2 py-1 ms-2 shadow-sm">🚨 Cheated</span>}
+                                   {qs.is_cheated && <span className="badge bg-theme-red rounded-pill px-2 py-1 ms-2 shadow-sm">🚨 ทุจริต</span>}
                                  </td>
                                </tr>
                              ))}
@@ -1200,17 +1194,17 @@ export default function TeacherDashboard({ session, handleLogout }) {
           {/* 🌟 TAB 6: ระบบเช็คชื่อ */}
           {activeTab === "attendance" && (
             <div className="fade-in theme-card">
-                 <h4 className="fw-bold text-theme-dark mb-4 d-flex align-items-center gap-2"><span>🙋‍♂️</span> Attendance</h4>
+                 <h4 className="fw-bold text-theme-dark mb-4 d-flex align-items-center gap-2"><span>🙋‍♂️</span> เช็คชื่อเข้าเรียน</h4>
                  <div className="row g-3 mb-4 bg-theme-gray p-4 rounded-4 border border-light">
                    <div className="col-md-6">
-                      <label className="fw-bold text-theme-dark small mb-2">Select Course</label>
+                      <label className="fw-bold text-theme-dark small mb-2">เลือกรายวิชา</label>
                       <select className="form-select theme-input bg-white" value={attCourse} onChange={(e) => setAttCourse(e.target.value)}>
-                        <option value="">-- Choose Course --</option>
+                        <option value="">-- กรุณาเลือก --</option>
                         {courses.map(c => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                       </select>
                    </div>
                    <div className="col-md-6">
-                      <label className="fw-bold text-theme-dark small mb-2">Date</label>
+                      <label className="fw-bold text-theme-dark small mb-2">วันที่สอน</label>
                       <input type="date" className="form-control theme-input bg-white" value={attDate} onChange={(e) => setAttDate(e.target.value)} />
                    </div>
                  </div>
@@ -1218,12 +1212,12 @@ export default function TeacherDashboard({ session, handleLogout }) {
                  {attCourse && (
                    <div className="slide-up">
                      <div className="d-flex justify-content-between align-items-center mb-3">
-                       <h6 className="fw-bold text-theme-dark">Students List</h6>
-                       <button onClick={handleSaveAttendance} className="btn btn-theme-red rounded-pill px-4 py-2 fw-bold shadow-sm">💾 Save</button>
+                       <h6 className="fw-bold text-theme-dark">รายชื่อนักเรียน</h6>
+                       <button onClick={handleSaveAttendance} className="btn btn-theme-red rounded-pill px-4 py-2 fw-bold shadow-sm">💾 บันทึกข้อมูล</button>
                      </div>
                      <div className="table-responsive border border-light rounded-4">
                        <table className="table align-middle mb-0">
-                          <thead className="table-light"><tr><th className="px-4 py-3">ID</th><th className="py-3">Name</th><th className="py-3 text-center">Status</th></tr></thead>
+                          <thead className="table-light"><tr><th className="px-4 py-3">รหัส</th><th className="py-3">ชื่อ-สกุล</th><th className="py-3 text-center">สถานะ</th></tr></thead>
                           <tbody>
                             {enrollments.filter(e => e.course_id === attCourse).map(enroll => (
                               <tr key={enroll.student_id}>
@@ -1252,7 +1246,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                               </tr>
                             ))}
                             {enrollments.filter(e => e.course_id === attCourse).length === 0 && (
-                              <tr><td colSpan="3" className="text-center py-5 text-muted fw-bold">No students enrolled.</td></tr>
+                              <tr><td colSpan="3" className="text-center py-5 text-muted fw-bold">ยังไม่มีผู้ลงทะเบียนเรียน</td></tr>
                             )}
                           </tbody>
                        </table>
@@ -1265,11 +1259,11 @@ export default function TeacherDashboard({ session, handleLogout }) {
           {/* 🌟 TAB 7: สรุปเกรดรวม */}
           {activeTab === "grades" && (
             <div className="fade-in theme-card">
-                <h4 className="fw-bold text-theme-dark mb-4 d-flex align-items-center gap-2"><span>🏆</span> Grades Summary</h4>
+                <h4 className="fw-bold text-theme-dark mb-4 d-flex align-items-center gap-2"><span>🏆</span> สรุปผลการเรียนและตัดเกรด</h4>
                 <div className="bg-theme-gray p-4 rounded-4 mb-4 border border-light">
-                  <label className="fw-bold text-theme-dark small mb-2">Select Course to Calculate</label>
+                  <label className="fw-bold text-theme-dark small mb-2">เลือกรายวิชาเพื่อประมวลผล</label>
                   <select className="form-select theme-input bg-white fs-5 text-theme-dark" value={gradeSummaryCourse} onChange={(e) => setGradeSummaryCourse(e.target.value)}>
-                    <option value="">-- Choose Course --</option>
+                    <option value="">-- กรุณาเลือก --</option>
                     {courses.map(c => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                   </select>
                 </div>
@@ -1279,12 +1273,12 @@ export default function TeacherDashboard({ session, handleLogout }) {
                     <table className="table table-hover align-middle mb-0">
                       <thead className="table-light">
                         <tr className="text-center">
-                          <th className="px-4 py-3 text-start text-theme-dark">ID</th>
-                          <th className="py-3 text-start text-theme-dark">Name</th>
-                          <th className="py-3 text-theme-dark">Task Score</th>
-                          <th className="py-3 text-theme-dark">Quiz Score</th>
-                          <th className="py-3 bg-dark text-white fw-bold">Total</th>
-                          <th className="py-3 bg-theme-red text-white fw-bold">Grade</th>
+                          <th className="px-4 py-3 text-start text-theme-dark">รหัส</th>
+                          <th className="py-3 text-start text-theme-dark">ชื่อ-สกุล</th>
+                          <th className="py-3 text-theme-dark">คะแนนเก็บ</th>
+                          <th className="py-3 text-theme-dark">คะแนนสอบ</th>
+                          <th className="py-3 bg-dark text-white fw-bold">รวมสุทธิ</th>
+                          <th className="py-3 bg-theme-red text-white fw-bold">เกรดที่ได้</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1298,7 +1292,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                             <td className="bg-theme-red bg-opacity-10"><span className={`badge ${row.grade === '0' || row.grade === 'รอประเมิน' ? 'bg-theme-red' : 'bg-theme-dark'} rounded-pill px-3 py-2 fs-6 shadow-sm`}>{row.grade}</span></td>
                           </tr>
                         ))}
-                        {getGradeSummary().length === 0 && <tr><td colSpan="6" className="text-center py-5 text-muted fw-bold">No data available.</td></tr>}
+                        {getGradeSummary().length === 0 && <tr><td colSpan="6" className="text-center py-5 text-muted fw-bold">ไม่มีข้อมูลนักเรียน</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -1310,45 +1304,45 @@ export default function TeacherDashboard({ session, handleLogout }) {
           {activeTab === "profile" && (
             <div className="fade-in row justify-content-center">
               <div className="col-12 col-md-8 col-xl-6">
-                <h4 className="fw-bold text-theme-dark mb-4">Profile</h4>
+                <h4 className="fw-bold text-theme-dark mb-4">บัญชีผู้ใช้</h4>
                 <div className="hero-card mb-4 text-center">
                   <div className="bg-white rounded-circle border border-4 border-white shadow-lg mx-auto mb-3 d-flex justify-content-center align-items-center overflow-hidden" style={{ width: "100px", height: "100px", fontSize: "40px", zIndex: 2, position: 'relative' }}>
                      {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
                   </div>
                   <div style={{zIndex: 2, position: 'relative'}}>
-                    <h4 className="fw-bold mb-1">Teacher {profileForm.full_name || ""}</h4>
+                    <h4 className="fw-bold mb-1">ครู{profileForm.full_name || ""}</h4>
                     <p className="text-white-50 mb-0">{session?.user?.email}</p>
                   </div>
                 </div>
                 
                 <div className="theme-card mb-4">
-                  <h5 className="fw-bold mb-4 text-theme-dark text-center">Edit Profile</h5>
+                  <h5 className="fw-bold mb-4 text-theme-dark text-center">แก้ไขข้อมูลส่วนตัว</h5>
                   <form onSubmit={handleUpdateProfile}>
-                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Full Name</label><input type="text" className="form-control theme-input" value={profileForm.full_name} onChange={(e) => setProfileForm({...profileForm, full_name: e.target.value})} required /></div>
-                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Nickname</label><input type="text" className="form-control theme-input" value={profileForm.nickname} onChange={(e) => setProfileForm({...profileForm, nickname: e.target.value})} /></div>
-                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Phone</label><input type="text" className="form-control theme-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></div>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">ชื่อ - นามสกุล</label><input type="text" className="form-control theme-input" value={profileForm.full_name} onChange={(e) => setProfileForm({...profileForm, full_name: e.target.value})} required /></div>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">ชื่อเล่น</label><input type="text" className="form-control theme-input" value={profileForm.nickname} onChange={(e) => setProfileForm({...profileForm, nickname: e.target.value})} /></div>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">เบอร์โทรศัพท์</label><input type="text" className="form-control theme-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></div>
                     <div className="mb-4">
-                      <label className="form-label text-muted small fw-bold px-2">Avatar Upload</label>
+                      <label className="form-label text-muted small fw-bold px-2">อัปโหลดรูปโปรไฟล์</label>
                       <input type="file" accept="image/*" className="form-control theme-input bg-white" onChange={handleUploadAvatar} disabled={uploadingAvatar} />
-                      {uploadingAvatar && <small className="text-theme-red mt-2 ms-2 d-block fw-bold">⏳ Uploading...</small>}
+                      {uploadingAvatar && <small className="text-theme-red mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
                     </div>
                     <hr className="my-4 border-light" />
                     
-                    <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>✈️</span> Telegram Notifications</h6>
+                    <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>✈️</span> แจ้งเตือนผ่าน Telegram</h6>
                     <div className="bg-theme-dark text-white p-4 rounded-4 mb-4 shadow-sm">
-                       <p className="small mb-3 text-white-50">1. Click below to open Telegram and get your Chat ID from @getmyid_bot</p>
-                       <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-theme-red rounded-pill px-4 py-2 shadow-sm mb-4 fw-bold">👉 Get Chat ID</a>
-                       <p className="small mb-2 text-white-50">2. Paste your Chat ID here</p>
-                       <input type="text" className="form-control bg-white border-0 rounded-pill px-4 py-3 fw-bold" placeholder="E.g., 123456789" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
-                       {profileForm.telegram_chat_id && <small className="text-success fw-bold d-block mt-3">✅ Chat ID Ready</small>}
+                       <p className="small mb-3 text-white-50">1. กดปุ่มด้านล่างเพื่อเปิด Telegram และรับรหัส Chat ID จาก @getmyid_bot</p>
+                       <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-theme-red rounded-pill px-4 py-2 shadow-sm mb-4 fw-bold">👉 เปิดเพื่อรับรหัส Chat ID</a>
+                       <p className="small mb-2 text-white-50">2. นำตัวเลข Chat ID มาวางที่นี่</p>
+                       <input type="text" className="form-control bg-white border-0 rounded-pill px-4 py-3 fw-bold" placeholder="ตัวอย่าง 123456789" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
+                       {profileForm.telegram_chat_id && <small className="text-success fw-bold d-block mt-3">✅ ข้อมูล Chat ID พร้อมใช้งานแล้ว</small>}
                     </div>
 
                     <hr className="my-4 border-light" />
 
-                    <h6 className="fw-bold mb-3 text-theme-dark">System Info (Read-only)</h6>
-                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Teacher ID</label><input type="text" className="form-control theme-input" value={profileForm.student_code} disabled /></div>
-                    <div className="mb-4"><label className="form-label text-muted small fw-bold px-2">Department</label><input type="text" className="form-control theme-input" value={profileForm.department} disabled /></div>
-                    <button type="submit" className="btn btn-theme-dark w-100 rounded-pill fw-bold py-3 shadow-sm">💾 Save Profile</button>
+                    <h6 className="fw-bold mb-3 text-theme-dark">ข้อมูลระบบ (แก้ไขไม่ได้)</h6>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">รหัสประจำตัว</label><input type="text" className="form-control theme-input" value={profileForm.student_code} disabled /></div>
+                    <div className="mb-4"><label className="form-label text-muted small fw-bold px-2">แผนกวิชา</label><input type="text" className="form-control theme-input" value={profileForm.department} disabled /></div>
+                    <button type="submit" className="btn btn-theme-dark w-100 rounded-pill fw-bold py-3 shadow-sm">💾 บันทึกข้อมูล</button>
                   </form>
                 </div>
               </div>
