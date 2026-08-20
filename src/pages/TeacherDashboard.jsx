@@ -31,8 +31,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
   
   const [quizForm, setQuizForm] = useState({ course_id: "", module_id: "", title: "", time_limit: "" });
   const [questions, setQuestions] = useState([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
-  
-  // 🌟 State สำหรับจัดเก็บข้อสอบที่กำลังแก้ไข
   const [editingQuiz, setEditingQuiz] = useState(null);
   
   const [gradeForm, setGradeForm] = useState({ id: "", score: "", feedback: "" }); 
@@ -137,10 +135,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
             const assign = assignList.find(a => a.id === sub.assignment_id);
             const course = coursesList.find(c => c.id === assign?.course_id);
             const student = profilesList.find(p => p.id === sub.student_id);
-
             return {
-              ...sub,
-              assignments: { ...assign, courses: course || {} },
+              ...sub, assignments: { ...assign, courses: course || {} },
               profiles: student || { student_code: "-", full_name: "ไม่ระบุชื่อ", telegram_chat_id: student?.telegram_chat_id || "" }
             };
           });
@@ -162,33 +158,26 @@ export default function TeacherDashboard({ session, handleLogout }) {
         if (myQuizIds.length > 0) {
            const { data: qsData } = await supabase.from("quiz_submissions").select("*").in("quiz_id", myQuizIds);
            const qsList = qsData || [];
-           
            const qsStudentIds = [...new Set(qsList.map(qs => qs.student_id).filter(Boolean))];
            let qsProfilesList = [];
            if (qsStudentIds.length > 0) {
               const { data: qsProfData } = await supabase.from("profiles").select("*").in("id", qsStudentIds);
               qsProfilesList = qsProfData || [];
            }
-
            const enrichedQS = qsList.map(qs => {
               const quiz = quizList.find(q => q.id === qs.quiz_id);
               const course = coursesList.find(c => c.id === quiz?.course_id);
               const student = qsProfilesList.find(p => p.id === qs.student_id);
               return {
-                ...qs,
-                quizzes: { ...quiz, courses: course || {} },
+                ...qs, quizzes: { ...quiz, courses: course || {} },
                 profiles: student || { student_code: "-", full_name: "ไม่ระบุชื่อ" }
               }
            });
            enrichedQS.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
            setQuizSubmissions(enrichedQS);
-        } else {
-           setQuizSubmissions([]);
-        }
+        } else { setQuizSubmissions([]); }
       }
-    } catch (err) {
-      console.error("Fetch Data Error:", err);
-    }
+    } catch (err) { console.error("Fetch Data Error:", err); }
   };
 
   const handleTabChange = (tab) => { setActiveTab(tab); setIsMenuOpen(false); setViewingCourseStudents(null); };
@@ -199,30 +188,21 @@ export default function TeacherDashboard({ session, handleLogout }) {
       setUploadingAvatar(true);
       const file = e.target.files[0];
       if (!file) return;
-
       const fileExt = file.name.split('.').pop();
       const fileName = `user_${session.user.id}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${fileName}`;
-
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
       if (uploadError) throw uploadError;
-
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setProfileForm({ ...profileForm, avatar_url: publicUrl });
-      
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปโหลดรูปภาพสำเร็จ!', showConfirmButton: false, timer: 3000 });
-    } catch (error) {
-      Swal.fire('ข้อผิดพลาด', `ไม่สามารถอัปโหลดรูปได้: ${error.message}`, 'error');
-    } finally {
-      setUploadingAvatar(false);
-    }
+    } catch (error) { Swal.fire('ข้อผิดพลาด', `ไม่สามารถอัปโหลดรูปได้: ${error.message}`, 'error'); } finally { setUploadingAvatar(false); }
   };
 
   const handleUpdateProfile = async (e) => { 
     e.preventDefault(); 
     await supabase.from("profiles").update({ 
-      full_name: profileForm.full_name, nickname: profileForm.nickname, phone: profileForm.phone, avatar_url: profileForm.avatar_url,
-      telegram_chat_id: profileForm.telegram_chat_id 
+      full_name: profileForm.full_name, nickname: profileForm.nickname, phone: profileForm.phone, avatar_url: profileForm.avatar_url, telegram_chat_id: profileForm.telegram_chat_id 
     }).eq("id", session.user.id); 
     fetchData(); Swal.fire('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อย', 'success'); 
   };
@@ -230,10 +210,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const handleCreateCourse = async (e) => {
     e.preventDefault();
     if (!courseForm.section) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกกลุ่มเรียน/แผนก', 'warning'); return; }
-    await supabase.from("courses").insert([{ 
-      course_code: courseForm.code, course_name: courseForm.name, section: courseForm.section, 
-      semester: courseForm.semester, credits: courseForm.credits, teacher_id: session.user.id 
-    }]);
+    await supabase.from("courses").insert([{ course_code: courseForm.code, course_name: courseForm.name, section: courseForm.section, semester: courseForm.semester, credits: courseForm.credits, teacher_id: session.user.id }]);
     setCourseForm(prev => ({ code: "", name: "", section: "", semester: prev.semester, credits: "" })); 
     fetchData(); Swal.fire('สำเร็จ!', 'เปิดรายวิชาใหม่เรียบร้อยแล้ว', 'success');
   };
@@ -242,49 +219,33 @@ export default function TeacherDashboard({ session, handleLogout }) {
     e.preventDefault();
     if (!moduleForm.course_id || !moduleForm.title) return;
     await supabase.from("modules").insert([{ course_id: moduleForm.course_id, title: moduleForm.title }]);
-    setModuleForm({ course_id: "", title: "" });
-    fetchData();
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'สร้างบทเรียนสำเร็จ!', showConfirmButton: false, timer: 1500 });
+    setModuleForm({ course_id: "", title: "" }); fetchData(); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'สร้างบทเรียนสำเร็จ!', showConfirmButton: false, timer: 1500 });
   };
 
   const handleDeleteModule = async (id) => {
-    const result = await Swal.fire({ title: 'ลบบทเรียน?', text: "เอกสารและงานในบทนี้จะถูกนำออกจากหมวดหมู่ (แต่ไม่ถูกลบ)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบทิ้ง' });
+    const result = await Swal.fire({ title: 'ลบบทเรียน?', text: "เอกสารและงานในบทนี้จะถูกนำออกจากหมวดหมู่ (แต่ไม่ถูกลบ)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบทิ้ง' });
     if (!result.isConfirmed) return;
-    await supabase.from("modules").delete().eq("id", id);
-    fetchData();
+    await supabase.from("modules").delete().eq("id", id); fetchData();
   };
 
   const handleCreateAssignment = async (e) => { 
     e.preventDefault(); 
     if (!assignForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
-    
-    await supabase.from("assignments").insert([{ 
-      course_id: assignForm.course_id, 
-      module_id: assignForm.module_id || null, 
-      title: assignForm.title, 
-      description: assignForm.description 
-    }]); 
-    
+    await supabase.from("assignments").insert([{ course_id: assignForm.course_id, module_id: assignForm.module_id || null, title: assignForm.title, description: assignForm.description }]); 
     const targetCourse = courses.find(c => c.id === assignForm.course_id);
     const courseName = targetCourse ? targetCourse.course_name : "วิชาของคุณ";
-    
     const { data: enrolledStudents } = await supabase.from("enrollments").select("profiles(telegram_chat_id)").eq("course_id", assignForm.course_id);
-
     let notifyCount = 0;
     if (enrolledStudents && enrolledStudents.length > 0) {
       enrolledStudents.forEach(student => {
          const chatId = student.profiles?.telegram_chat_id;
          if (chatId) {
             const msg = `📢 แจ้งเตือนงานใหม่!\nวิชา: ${courseName}\nเรื่อง: ${assignForm.title}\nคำชี้แจง: ${assignForm.description}\n\nอย่าลืมเข้าไปดูรายละเอียดและส่งงานในระบบนะครับ ✌️`;
-            sendTelegramNotify(chatId, msg);
-            notifyCount++;
+            sendTelegramNotify(chatId, msg); notifyCount++;
          }
       });
     }
-
-    setAssignForm({ course_id: "", module_id: "", title: "", description: "" }); 
-    fetchData(); 
-    Swal.fire('สำเร็จ!', `สั่งงานเรียบร้อย\nส่งแจ้งเตือนผ่าน Telegram ให้นักเรียน ${notifyCount} คน`, 'success'); 
+    setAssignForm({ course_id: "", module_id: "", title: "", description: "" }); fetchData(); Swal.fire('สำเร็จ!', `สั่งงานเรียบร้อย\nส่งแจ้งเตือน Telegram ${notifyCount} คน`, 'success'); 
   };
 
   const handleCloneAssignment = (e) => {
@@ -294,7 +255,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     if (target) setAssignForm(prev => ({ ...prev, title: target.title, description: target.description, module_id: target.module_id || "" }));
   };
 
-  // 🌟 ฟังก์ชันจัดการข้อสอบ (รองรับทั้งการสร้างใหม่ และ การแก้ไข)
   const handleSaveQuiz = async (e) => { 
     e.preventDefault(); 
     if (!quizForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
@@ -302,68 +262,26 @@ export default function TeacherDashboard({ session, handleLogout }) {
       if (!questions[i].question) { Swal.fire('แจ้งเตือน', `กรุณากรอกโจทย์ข้อที่ ${i + 1}`, 'warning'); return; }
       if (questions[i].options.some((opt) => opt.trim() === "")) { Swal.fire('แจ้งเตือน', `กรุณากรอกตัวเลือกให้ครบในข้อที่ ${i + 1}`, 'warning'); return; }
     } 
-    
     if (editingQuiz) {
-       // โหมดแก้ไข
-       await supabase.from("quizzes").update({ 
-         course_id: quizForm.course_id, 
-         module_id: quizForm.module_id || null, 
-         title: quizForm.title, 
-         time_limit: parseInt(quizForm.time_limit) || 0,
-         questions: questions 
-       }).eq("id", editingQuiz.id); 
+       await supabase.from("quizzes").update({ course_id: quizForm.course_id, module_id: quizForm.module_id || null, title: quizForm.title, time_limit: parseInt(quizForm.time_limit) || 0, questions: questions }).eq("id", editingQuiz.id); 
        Swal.fire('สำเร็จ!', 'อัปเดตแบบทดสอบเรียบร้อยแล้ว', 'success'); 
     } else {
-       // โหมดสร้างใหม่
-       await supabase.from("quizzes").insert([{ 
-         course_id: quizForm.course_id, 
-         module_id: quizForm.module_id || null, 
-         title: quizForm.title, 
-         time_limit: parseInt(quizForm.time_limit) || 0,
-         questions: questions 
-       }]); 
+       await supabase.from("quizzes").insert([{ course_id: quizForm.course_id, module_id: quizForm.module_id || null, title: quizForm.title, time_limit: parseInt(quizForm.time_limit) || 0, questions: questions }]); 
        Swal.fire('สำเร็จ!', 'สร้างแบบทดสอบเรียบร้อยแล้ว', 'success'); 
     }
-    
-    setEditingQuiz(null);
-    setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" }); 
-    setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); 
-    fetchData(); 
+    setEditingQuiz(null); setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" }); setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); fetchData(); 
   };
 
-  // 🌟 ดึงข้อมูลข้อสอบมาเตรียมแก้ไข
   const handleEditQuizClick = (quiz) => {
-    setEditingQuiz(quiz);
-    setQuizForm({
-      course_id: quiz.course_id,
-      module_id: quiz.module_id || "",
-      title: quiz.title,
-      time_limit: quiz.time_limit || ""
-    });
-    setQuestions(JSON.parse(JSON.stringify(quiz.questions)));
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // เลื่อนหน้าจอขึ้นไปบนสุด
+    setEditingQuiz(quiz); setQuizForm({ course_id: quiz.course_id, module_id: quiz.module_id || "", title: quiz.title, time_limit: quiz.time_limit || "" });
+    setQuestions(JSON.parse(JSON.stringify(quiz.questions))); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+  const cancelEditQuiz = () => { setEditingQuiz(null); setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" }); setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); };
 
-  const cancelEditQuiz = () => {
-    setEditingQuiz(null);
-    setQuizForm({ course_id: "", module_id: "", title: "", time_limit: "" });
-    setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
-  };
-
-  // 🌟 ฟังก์ชันลบข้อสอบ
   const handleDeleteQuiz = async (id) => {
-    const result = await Swal.fire({ 
-       title: 'ยืนยันการลบ', 
-       text: "ลบแบบทดสอบนี้หรือไม่? คำเตือน: คะแนนสอบของนักเรียนจะถูกลบไปด้วย", 
-       icon: 'warning', 
-       showCancelButton: true, 
-       confirmButtonColor: '#d33', 
-       confirmButtonText: 'ลบทิ้ง' 
-    });
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบแบบทดสอบนี้หรือไม่? คำเตือน: คะแนนสอบของนักเรียนจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบทิ้ง' });
     if (!result.isConfirmed) return;
-    await supabase.from("quizzes").delete().eq("id", id);
-    fetchData();
-    Swal.fire('ลบแล้ว!', 'ลบแบบทดสอบเรียบร้อยแล้ว', 'success');
+    await supabase.from("quizzes").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบแบบทดสอบเรียบร้อยแล้ว', 'success');
   };
 
   const handleCloneQuiz = (e) => {
@@ -376,25 +294,16 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const handleUploadMaterial = async (e) => { 
     e.preventDefault(); 
     if (!materialForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
-    
     let finalUrl = ""; setUploading(true); 
-    
     if (uploadMode === "file") { 
       if (!materialForm.file) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์', 'warning'); setUploading(false); return; } 
-      const file = materialForm.file; 
-      const fileExt = file.name.split(".").pop(); 
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`; 
-      const filePath = `${materialForm.course_id}/${fileName}`; 
-      
+      const file = materialForm.file; const fileExt = file.name.split(".").pop(); const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`; const filePath = `${materialForm.course_id}/${fileName}`; 
       const { error: uploadError } = await supabase.storage.from("course_materials").upload(filePath, file); 
       if (uploadError) { Swal.fire('ข้อผิดพลาด', `อัปโหลดไม่สำเร็จ: ${uploadError.message}`, 'error'); setUploading(false); return; } 
-      const { data: { publicUrl } } = supabase.storage.from("course_materials").getPublicUrl(filePath); 
-      finalUrl = publicUrl; 
+      const { data: { publicUrl } } = supabase.storage.from("course_materials").getPublicUrl(filePath); finalUrl = publicUrl; 
     } else { 
-      if (!materialForm.link) { Swal.fire('แจ้งเตือน', 'กรุณาวางลิงก์', 'warning'); setUploading(false); return; } 
-      finalUrl = materialForm.link; 
+      if (!materialForm.link) { Swal.fire('แจ้งเตือน', 'กรุณาวางลิงก์', 'warning'); setUploading(false); return; } finalUrl = materialForm.link; 
     } 
-    
     await supabase.from("materials").insert([{ course_id: materialForm.course_id, module_id: materialForm.module_id || null, title: materialForm.title, file_url: finalUrl }]); 
     setMaterialForm({ course_id: "", module_id: "", title: "", file: null, link: "" }); fetchData(); Swal.fire('สำเร็จ!', 'อัปโหลดเอกสารสำเร็จ!', 'success'); setUploading(false); 
   };
@@ -402,27 +311,20 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const handleGradeSubmit = async (e, subId) => { 
     e.preventDefault(); 
     await supabase.from("submissions").update({ score: gradeForm.score, teacher_feedback: gradeForm.feedback }).eq("id", subId); 
-    
     const targetSub = submissions.find(s => s.id === subId);
     if (targetSub && targetSub.profiles?.telegram_chat_id) {
        const msg = `✅ ตรวจงานแล้ว!\nวิชา: ${targetSub.assignments?.courses?.course_name}\nงาน: ${targetSub.assignments?.title}\nได้คะแนน: ${gradeForm.score}\nคอมเมนต์: ${gradeForm.feedback || '-'}`;
        sendTelegramNotify(targetSub.profiles.telegram_chat_id, msg);
     }
-
-    setGradeForm({ id: "", score: "", feedback: "" }); 
-    setEditingGrade(null); 
-    fetchData(); 
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกคะแนนและคำแนะนำสำเร็จ', showConfirmButton: false, timer: 1500 }); 
+    setGradeForm({ id: "", score: "", feedback: "" }); setEditingGrade(null); fetchData(); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกคะแนนและคำแนะนำสำเร็จ', showConfirmButton: false, timer: 1500 }); 
   };
 
   const handleBatchGradeSubmit = async (e) => {
     e.preventDefault();
     if (selectedSubIds.length === 0) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกงานที่ต้องการให้คะแนน', 'warning'); return; }
     if (!batchScore) { Swal.fire('แจ้งเตือน', 'กรุณาระบุคะแนนที่ต้องการให้', 'warning'); return; }
-    
     await supabase.from("submissions").update({ score: batchScore }).in("id", selectedSubIds);
     const count = selectedSubIds.length;
-    
     selectedSubIds.forEach(subId => {
        const targetSub = submissions.find(s => s.id === subId);
        if (targetSub && targetSub.profiles?.telegram_chat_id) {
@@ -430,29 +332,24 @@ export default function TeacherDashboard({ session, handleLogout }) {
            sendTelegramNotify(targetSub.profiles.telegram_chat_id, msg);
        }
     });
-
-    setSelectedSubIds([]); setBatchScore(""); fetchData();
-    Swal.fire('บันทึกสำเร็จ!', `บันทึกคะแนน ${batchScore} ให้กับ ${count} รายการ สำเร็จ!`, 'success');
+    setSelectedSubIds([]); setBatchScore(""); fetchData(); Swal.fire('บันทึกสำเร็จ!', `บันทึกคะแนน ${batchScore} ให้กับ ${count} รายการ สำเร็จ!`, 'success');
   };
 
   const toggleSubSelection = (id) => setSelectedSubIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
   const handleDeleteCourse = async (id) => { 
-    const result = await Swal.fire({ title: 'คำเตือน', text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบวิชา' });
-    if (!result.isConfirmed) return; 
-    await supabase.from("courses").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบวิชาเรียบร้อยแล้ว', 'success');
+    const result = await Swal.fire({ title: 'คำเตือน', text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบวิชา' });
+    if (!result.isConfirmed) return; await supabase.from("courses").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบวิชาเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteMaterial = async (id) => { 
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบเอกสารประกอบการสอนนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบเอกสาร' });
-    if (!result.isConfirmed) return; 
-    await supabase.from("materials").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบเอกสารเรียบร้อยแล้ว', 'success');
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบเอกสารประกอบการสอนนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบเอกสาร' });
+    if (!result.isConfirmed) return; await supabase.from("materials").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบเอกสารเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteAssignment = async (id) => { 
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบคำสั่งงานนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบงาน' });
-    if (!result.isConfirmed) return; 
-    await supabase.from("assignments").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบคำสั่งงานเรียบร้อยแล้ว', 'success');
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบคำสั่งงานนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบงาน' });
+    if (!result.isConfirmed) return; await supabase.from("assignments").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบคำสั่งงานเรียบร้อยแล้ว', 'success');
   };
 
   const handleUpdateCourse = async (e) => { 
@@ -472,32 +369,19 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const updateOption = (qIndex, optIndex, value) => { const newQs = [...questions]; newQs[qIndex].options[optIndex] = value; setQuestions(newQs); };
 
   const handleQuestionImageUpload = async (qIndex, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `quiz_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-    
+    const file = e.target.files[0]; if (!file) return;
+    const fileExt = file.name.split('.').pop(); const fileName = `quiz_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
     const { error: uploadError } = await supabase.storage.from('quiz_images').upload(fileName, file);
-    if (uploadError) {
-      Swal.fire('ข้อผิดพลาด', `อัปโหลดรูปไม่สำเร็จ: ${uploadError.message}`, 'error');
-      return;
-    }
-
+    if (uploadError) { Swal.fire('ข้อผิดพลาด', `อัปโหลดรูปไม่สำเร็จ: ${uploadError.message}`, 'error'); return; }
     const { data: { publicUrl } } = supabase.storage.from('quiz_images').getPublicUrl(fileName);
-    
-    const newQs = [...questions];
-    newQs[qIndex].imageUrl = publicUrl;
-    setQuestions(newQs);
+    const newQs = [...questions]; newQs[qIndex].imageUrl = publicUrl; setQuestions(newQs);
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปโหลดรูปภาพสำเร็จ!', showConfirmButton: false, timer: 1500 });
   };
 
   const loadAttendanceRecords = () => {
     if (!attCourse || !attDate) return;
     const existing = attendances.filter(a => a.course_id === attCourse && a.date === attDate);
-    const newRecords = {};
-    existing.forEach(a => newRecords[a.student_id] = a.status);
-    setAttRecords(newRecords);
+    const newRecords = {}; existing.forEach(a => newRecords[a.student_id] = a.status); setAttRecords(newRecords);
   };
   
   useEffect(() => { loadAttendanceRecords(); }, [attCourse, attDate, attendances]);
@@ -506,18 +390,10 @@ export default function TeacherDashboard({ session, handleLogout }) {
     if (!attCourse) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกวิชา', 'warning');
     const studentsInCourse = enrollments.filter(e => e.course_id === attCourse);
     if (studentsInCourse.length === 0) return Swal.fire('แจ้งเตือน', 'ไม่มีนักเรียนในวิชานี้', 'warning');
-
     await supabase.from("attendances").delete().eq("course_id", attCourse).eq("date", attDate);
-
-    const inserts = Object.keys(attRecords).map(sId => ({
-      course_id: attCourse, student_id: sId, date: attDate, status: attRecords[sId]
-    }));
-
-    if (inserts.length > 0) {
-      await supabase.from("attendances").insert(inserts);
-    }
-    fetchData();
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกการเช็คชื่อสำเร็จ', showConfirmButton: false, timer: 1500 });
+    const inserts = Object.keys(attRecords).map(sId => ({ course_id: attCourse, student_id: sId, date: attDate, status: attRecords[sId] }));
+    if (inserts.length > 0) await supabase.from("attendances").insert(inserts);
+    fetchData(); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกการเช็คชื่อสำเร็จ', showConfirmButton: false, timer: 1500 });
   };
 
   const handleExportCSV = () => { 
@@ -545,807 +421,855 @@ export default function TeacherDashboard({ session, handleLogout }) {
   };
 
   const getFileIcon = (url) => {
-    if (!url) return '🔗';
-    const lowerUrl = url.toLowerCase();
-    if (lowerUrl.includes('.pdf')) return '📕';
-    if (lowerUrl.includes('.doc') || lowerUrl.includes('.docx')) return '📝';
-    if (lowerUrl.includes('.xls') || lowerUrl.includes('.xlsx')) return '📊';
-    if (lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx')) return '📽️';
-    if (lowerUrl.includes('.jpg') || lowerUrl.includes('.png') || lowerUrl.includes('.jpeg')) return '🖼️';
-    return '📎';
+    if (!url) return '🔗'; const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('.pdf')) return '📕'; if (lowerUrl.includes('.doc') || lowerUrl.includes('.docx')) return '📝';
+    if (lowerUrl.includes('.xls') || lowerUrl.includes('.xlsx')) return '📊'; if (lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx')) return '📽️';
+    if (lowerUrl.includes('.jpg') || lowerUrl.includes('.png') || lowerUrl.includes('.jpeg')) return '🖼️'; return '📎';
   };
 
   const gradedCount = submissions.filter((s) => s.score !== null).length;
   const ungradedCount = submissions.filter((s) => s.score === null).length;
-
   const filteredSubmissions = gradeFilter ? submissions.filter(s => `${s.assignments?.courses?.course_name} (${s.assignments?.courses?.section})` === gradeFilter) : submissions;
   const ungradedFiltered = filteredSubmissions.filter((s) => s.score === null);
   const gradeFilterOptions = Array.from(new Set(submissions.map(s => `${s.assignments?.courses?.course_name} (${s.assignments?.courses?.section})`)));
-
   const selectAllFiltered = () => {
     const allIds = ungradedFiltered.map(s => s.id);
-    if (selectedSubIds.length === allIds.length && allIds.length > 0) setSelectedSubIds([]);
-    else setSelectedSubIds(allIds);
+    if (selectedSubIds.length === allIds.length && allIds.length > 0) setSelectedSubIds([]); else setSelectedSubIds(allIds);
   };
 
   const getGradeSummary = () => {
     if (!gradeSummaryCourse) return [];
     const studentsInCourse = enrollments.filter(e => e.course_id === gradeSummaryCourse);
     const courseStudentIds = studentsInCourse.map(e => e.student_id);
-    
     const allKnownProfiles = {};
     submissions.forEach(s => { if (s.profiles && s.student_id) allKnownProfiles[s.student_id] = s.profiles; });
     quizSubmissions.forEach(q => { if (q.profiles && q.student_id) allKnownProfiles[q.student_id] = q.profiles; });
-
     const summary = courseStudentIds.map(sId => {
       const assignScores = submissions.filter(s => s.student_id === sId && s.assignments?.course_id === gradeSummaryCourse && s.score !== null).reduce((sum, s) => sum + s.score, 0);
       const quizScores = quizSubmissions.filter(qs => qs.student_id === sId && qs.quizzes?.course_id === gradeSummaryCourse && qs.score !== null).reduce((sum, qs) => sum + qs.score, 0);
-      
       const total = assignScores + quizScores;
       let grade = "รอประเมิน";
-      if (total >= 80) grade = "4";
-      else if (total >= 75) grade = "3.5";
-      else if (total >= 70) grade = "3";
-      else if (total >= 65) grade = "2.5";
-      else if (total >= 60) grade = "2";
-      else if (total >= 55) grade = "1.5";
-      else if (total >= 50) grade = "1";
-      else if (total > 0) grade = "0";
-
-      return {
-        student_id: sId, profile: allKnownProfiles[sId] || { student_code: '-', full_name: 'กำลังโหลด..' },
-        assignScores, quizScores, total, grade
-      };
+      if (total >= 80) grade = "4"; else if (total >= 75) grade = "3.5"; else if (total >= 70) grade = "3"; else if (total >= 65) grade = "2.5"; else if (total >= 60) grade = "2"; else if (total >= 55) grade = "1.5"; else if (total >= 50) grade = "1"; else if (total > 0) grade = "0";
+      return { student_id: sId, profile: allKnownProfiles[sId] || { student_code: '-', full_name: 'กำลังโหลด..' }, assignScores, quizScores, total, grade };
     });
-    
     summary.sort((a, b) => (a.profile.student_code || "").localeCompare(b.profile.student_code || ""));
     return summary;
   };
 
   if (!session || session.role !== "teacher") return <Navigate to="/" />;
 
+  // 🌟 รายการเมนูทั้งหมด
+  const menuItems = [
+    { id: 'analytics', icon: '📊', label: 'Dashboard' }, 
+    { id: 'courses', icon: '📚', label: 'Courses' }, 
+    { id: 'modules', icon: '🗂️', label: 'Modules' },
+    { id: 'materials', icon: '📂', label: 'Materials' }, 
+    { id: 'assignments', icon: '📝', label: 'Assignments' }, 
+    { id: 'quizzes', icon: '✍️', label: 'Quizzes' }, 
+    { id: 'attendance', icon: '🙋‍♂️', label: 'Attendance' },
+    { id: 'grades', icon: '🏆', label: 'Grades' },
+    { id: 'profile', icon: '👤', label: 'Profile' }
+  ];
+
   return (
-    <div className="bg-light min-vh-100 pb-5 font-app">
+    <div className="app-layout font-app">
       
-      <div className="bg-white shadow-sm sticky-top px-4 py-3 d-flex align-items-center justify-content-between mb-4 z-3">
-        <div className="d-flex align-items-center gap-3">
-          <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-success rounded-circle d-flex align-items-center justify-content-center p-0" style={{ width: '40px', height: '40px' }}><span className="fs-5">☰</span></button>
-          <h5 className="fw-bold text-success m-0">Teacher Hub</h5>
+      {/* 🖥️ Desktop Sidebar */}
+      <div className="sidebar shadow-sm">
+        <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
+          <div className="bg-theme-red text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style={{width:'45px', height:'45px'}}>R</div>
+          <h4 className="fw-bold m-0 text-theme-dark">LMS Teacher</h4>
         </div>
-        <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style={{ width: '35px', height: '35px' }}>👩‍🏫</div>
+        <div className="d-flex flex-column gap-1 flex-grow-1" style={{overflowY: 'auto'}}>
+          {menuItems.map(item => (
+            <button key={item.id} className={`nav-link-btn ${activeTab === item.id ? "active" : ""}`} onClick={() => handleTabChange(item.id)}>
+              <span className="fs-5">{item.icon}</span> {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 border-top pt-3">
+          <button onClick={handleLogout} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> Logout</button>
+        </div>
       </div>
 
+      {/* 📱 Mobile Menu (Offcanvas) */}
       {isMenuOpen && (
         <>
-          <div className="offcanvas-backdrop fade show" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
-          <div className="offcanvas offcanvas-start show shadow-lg border-0" style={{ visibility: "visible", zIndex: 1045, width: "280px" }}>
-            <div className="offcanvas-header p-4 bg-success text-white">
-              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🏫</span> เมนูการสอน</h5>
+          <div className="offcanvas-backdrop fade show d-lg-none" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
+          <div className="offcanvas offcanvas-start show shadow-lg border-0 d-lg-none" style={{ visibility: "visible", zIndex: 1045, width: "280px" }}>
+            <div className="offcanvas-header p-4 bg-theme-dark text-white">
+              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🏫</span> Teacher Menu</h5>
               <button type="button" className="btn-close btn-close-white" onClick={() => setIsMenuOpen(false)}></button>
             </div>
             <div className="offcanvas-body d-flex flex-column p-3 bg-white gap-1" style={{ overflowY: 'auto' }}>
-              {[
-                { id: 'analytics', icon: '📊', label: 'สถิติภาพรวม' }, 
-                { id: 'courses', icon: '📚', label: 'จัดการวิชาเรียน' }, 
-                { id: 'modules', icon: '🗂️', label: 'จัดการบทเรียน' },
-                { id: 'materials', icon: '📂', label: 'เอกสารประกอบ' }, 
-                { id: 'assignments', icon: '📝', label: 'งานและให้คะแนน' }, 
-                { id: 'quizzes', icon: '✍️', label: 'แบบทดสอบและคะแนน' }, 
-                { id: 'attendance', icon: '🙋‍♂️', label: 'เช็คชื่อเข้าเรียน' },
-                { id: 'grades', icon: '🏆', label: 'สรุปเกรดรวม' },
-                { id: 'profile', icon: '👤', label: 'บัญชีของฉัน' }
-              ].map(item => (
-                <button key={item.id} className={`btn text-start fw-bold py-3 px-4 rounded-4 transition-all ${activeTab === item.id ? "bg-success bg-opacity-10 text-success" : "bg-white text-muted border-0 hover-bg-light"}`} onClick={() => handleTabChange(item.id)}>
-                  <span className="me-3">{item.icon}</span> {item.label}
+              {menuItems.map(item => (
+                <button key={item.id} className={`nav-link-btn ${activeTab === item.id ? "active" : ""}`} onClick={() => handleTabChange(item.id)}>
+                  <span className="fs-5">{item.icon}</span> {item.label}
                 </button>
               ))}
               <div className="mt-auto pt-3 border-top">
-                <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="btn btn-light text-danger w-100 rounded-pill fw-bold py-3">ออกจากระบบ</button>
+                <button onClick={() => { setIsMenuOpen(false); handleLogout(); }} className="nav-link-btn text-danger w-100"><span className="fs-5">🚪</span> Logout</button>
               </div>
             </div>
           </div>
         </>
       )}
 
-      <div className="container position-relative" style={{ maxWidth: '1000px' }}>
+      {/* 📱 Main Content Area */}
+      <div className="main-content">
         
-        {/* TAB 1: 📊 ภาพรวม & สถิติ */}
-        {activeTab === "analytics" && (
-          <div className="fade-in">
-            <div className="card shadow-sm border-0 rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #198754 0%, #146c43 100%)' }}>
-              <div className="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4 text-white">
-                <div className="d-flex align-items-center gap-3">
-                   <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center" style={{width: '60px', height: '60px', fontSize: '25px'}}>
-                      {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
-                   </div>
-                   <div><h3 className="fw-bold mb-1">สวัสดี, ครู{profileForm.full_name || ""} 👋</h3><p className="text-white-50 mb-0">ยินดีต้อนรับกลับสู่ระบบการจัดการเรียนการสอน</p></div>
+        {/* Mobile Header */}
+        <div className="mobile-only d-flex justify-content-between align-items-center p-4 bg-white shadow-sm sticky-top z-3">
+          <div className="d-flex align-items-center gap-3">
+            <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-circle p-2 fs-5 border-0">☰</button>
+            <h5 className="fw-bold text-theme-dark m-0">Teacher Hub</h5>
+          </div>
+          <div className="bg-theme-red text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5 shadow-sm" style={{width:'35px', height:'35px'}}>👩‍🏫</div>
+        </div>
+
+        <div className="container-fluid p-4" style={{ maxWidth: '1200px' }}>
+          
+          {/* TAB 1: 📊 ภาพรวม & สถิติ (Grid Layout) */}
+          {activeTab === "analytics" && (
+            <div className="fade-in row g-4">
+              <div className="col-12 col-xl-8">
+                <div className="hero-card mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+                  <div className="d-flex align-items-center gap-3" style={{zIndex:2}}>
+                     <div className="bg-white rounded-circle shadow-sm overflow-hidden d-flex justify-content-center align-items-center border border-2 border-theme-red" style={{width: '60px', height: '60px', fontSize: '25px'}}>
+                        {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
+                     </div>
+                     <div><h3 className="fw-bold mb-1">สวัสดี, ครู{profileForm.full_name || ""}</h3><p className="text-white-50 mb-0">Overview of your classes today.</p></div>
+                  </div>
+                  <button onClick={handleExportCSV} className="btn btn-theme-red fw-bold rounded-pill px-4 py-3 shadow-sm d-flex align-items-center gap-2" style={{zIndex:2}}><span>📥</span> Export CSV</button>
                 </div>
-                <button onClick={handleExportCSV} className="btn btn-light text-success fw-bold rounded-pill px-4 py-3 shadow-sm d-flex align-items-center gap-2"><span>📥</span> โหลดคะแนนงาน (CSV)</button>
+
+                <div className="row g-3">
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>📚</div><h2 className="fw-bold text-theme-dark mb-0">{courses.length}</h2><small className="text-muted fw-bold">Courses</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-theme-dark bg-opacity-10 text-theme-dark rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>📝</div><h2 className="fw-bold text-theme-dark mb-0">{assignments.length}</h2><small className="text-muted fw-bold">Assignments</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100 border border-success"><div className="bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>✅</div><h2 className="fw-bold text-success mb-0">{gradedCount}</h2><small className="text-muted fw-bold">Graded</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100 border border-theme-red"><div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>⏳</div><h2 className="fw-bold text-theme-red mb-0">{ungradedCount}</h2><small className="text-theme-red fw-bold">Pending</small></div></div>
+                </div>
+              </div>
+
+              <div className="col-12 col-xl-4">
+                 {/* Alert Banner / Mini tools */}
+                 {ungradedCount > 0 && (
+                  <div className="theme-card bg-theme-red bg-opacity-10 border-0 mb-4 slide-up">
+                    <div className="d-flex align-items-center gap-3 mb-3">
+                      <div className="fs-1">⚠️</div>
+                      <div><h6 className="fw-bold text-theme-red mb-1">Action Needed</h6><p className="mb-0 small text-theme-red fw-bold">You have {ungradedCount} pending submissions.</p></div>
+                    </div>
+                    <button onClick={() => {setActiveTab('assignments'); setAssignSubTab('grade')}} className="btn btn-theme-red w-100 rounded-pill fw-bold shadow-sm py-2">Grade Now</button>
+                  </div>
+                 )}
               </div>
             </div>
-            <div className="row g-3 mb-4">
-              <div className="col-6 col-md-3"><div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-white"><div className="bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-2 p-2 fs-4" style={{width:'50px', height:'50px'}}>📚</div><h2 className="fw-bold text-dark mb-0">{courses.length}</h2><small className="text-muted fw-bold text-uppercase">วิชาที่สอน</small></div></div>
-              <div className="col-6 col-md-3"><div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-white"><div className="bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-2 p-2 fs-4" style={{width:'50px', height:'50px'}}>📝</div><h2 className="fw-bold text-dark mb-0">{assignments.length}</h2><small className="text-muted fw-bold text-uppercase">งานทั้งหมด</small></div></div>
-              <div className="col-6 col-md-3"><div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-white"><div className="bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-2 p-2 fs-4" style={{width:'50px', height:'50px'}}>✅</div><h2 className="fw-bold text-success mb-0">{gradedCount}</h2><small className="text-muted fw-bold text-uppercase">ตรวจแล้ว</small></div></div>
-              <div className="col-6 col-md-3"><div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-white"><div className="bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-2 p-2 fs-4" style={{width:'50px', height:'50px'}}>⏳</div><h2 className="fw-bold text-warning mb-0">{ungradedCount}</h2><small className="text-muted fw-bold text-uppercase">รอการตรวจ</small></div></div>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB 2: 📚 จัดการวิชา */}
-        {activeTab === "courses" && (
-          <div className="fade-in">
-             <div className="card border-0 shadow-sm rounded-4 mb-5 overflow-hidden">
-                  <div className="card-body p-4 bg-white">
-                    <h5 className="fw-bold mb-4 text-dark d-flex align-items-center gap-2"><span>✨</span> เปิดรายวิชาใหม่</h5>
+          {/* TAB 2: 📚 จัดการวิชา */}
+          {activeTab === "courses" && (
+            <div className="fade-in">
+               <div className="theme-card mb-5 border border-light">
+                    <h5 className="fw-bold mb-4 text-theme-dark">✨ Create New Course</h5>
                     <form onSubmit={handleCreateCourse}>
                       <div className="row g-3 mb-3">
-                        <div className="col-md-3"><input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="รหัสวิชา" value={courseForm.code} onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })} required /></div>
-                        <div className="col-md-6"><input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="ชื่อวิชา" value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} required /></div>
-                        <div className="col-md-3"><input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="หน่วยกิต" value={courseForm.credits} onChange={(e) => setCourseForm({ ...courseForm, credits: e.target.value })} required /></div>
+                        <div className="col-md-3"><input type="text" className="form-control theme-input" placeholder="Course Code" value={courseForm.code} onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })} required /></div>
+                        <div className="col-md-6"><input type="text" className="form-control theme-input" placeholder="Course Name" value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} required /></div>
+                        <div className="col-md-3"><input type="text" className="form-control theme-input" placeholder="Credits" value={courseForm.credits} onChange={(e) => setCourseForm({ ...courseForm, credits: e.target.value })} required /></div>
                         <div className="col-md-10">
-                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary fw-bold" value={courseForm.section} onChange={(e) => setCourseForm({ ...courseForm, section: e.target.value })} required>
-                            <option value="">-- เลือกกลุ่มเรียน/แผนก --</option>
+                          <select className="form-select theme-input" value={courseForm.section} onChange={(e) => setCourseForm({ ...courseForm, section: e.target.value })} required>
+                            <option value="">-- Select Section / Department --</option>
                             {departments.map((d) => (<option key={d.id} value={d.name}>{d.name}</option>))}
                           </select>
                         </div>
-                        <div className="col-md-2"><input type="text" className="form-control bg-light border-0 rounded-4 p-3 text-secondary fw-bold" placeholder="ภาคเรียน" value={courseForm.semester} readOnly /></div>
-                        <div className="col-md-12 mt-4"><button type="submit" className="btn btn-success w-100 rounded-4 fw-bold p-3 shadow-sm custom-btn">บันทึกรายวิชา</button></div>
+                        <div className="col-md-2"><input type="text" className="form-control theme-input bg-white text-muted" placeholder="Semester" value={courseForm.semester} readOnly /></div>
+                        <div className="col-md-12 mt-4"><button type="submit" className="btn btn-theme-red w-100 rounded-pill fw-bold py-3 shadow-sm">Save Course</button></div>
                       </div>
                     </form>
-                  </div>
-                </div>
-                
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="fw-bold text-dark m-0">วิชาที่คุณดูแล</h5><span className="badge bg-success rounded-pill px-3 py-2">{courses.length} วิชา</span>
-                </div>
-                
-                <div className="row g-3">
-                  {courses.length === 0 && <p className="text-muted">ยังไม่ได้เปิดรายวิชา</p>}
-                  {courses.map((c) => { 
-                    const studentCount = enrollments.filter((e) => e.course_id === c.id).length; 
-                    return (
-                      <div key={c.id} className="col-md-6">
-                        <div className="card border-0 shadow-sm rounded-4 h-100 bg-white hover-card">
-                          {editingCourse?.id === c.id ? (
-                            <div className="card-body p-4">
-                              <form onSubmit={handleUpdateCourse} className="d-flex flex-column gap-2">
-                                <input type="text" className="form-control bg-light border-0 rounded-3" value={editingCourse.course_code} onChange={(e) => setEditingCourse({ ...editingCourse, course_code: e.target.value })} required />
-                                <input type="text" className="form-control bg-light border-0 rounded-3" value={editingCourse.course_name} onChange={(e) => setEditingCourse({ ...editingCourse, course_name: e.target.value })} required />
-                                <div className="d-flex gap-2">
-                                  <input type="text" className="form-control bg-light border-0 rounded-3" value={editingCourse.semester} onChange={(e) => setEditingCourse({ ...editingCourse, semester: e.target.value })} required />
-                                  <input type="text" className="form-control bg-light border-0 rounded-3" value={editingCourse.credits} onChange={(e) => setEditingCourse({ ...editingCourse, credits: e.target.value })} required />
-                                </div>
-                                <input type="text" className="form-control bg-light border-0 rounded-3" value={editingCourse.section} onChange={(e) => setEditingCourse({ ...editingCourse, section: e.target.value })} required />
-                                <div className="d-flex gap-2 mt-3">
-                                  <button type="submit" className="btn btn-success btn-sm w-50 rounded-pill fw-bold">บันทึก</button>
-                                  <button type="button" onClick={() => setEditingCourse(null)} className="btn btn-light btn-sm w-50 rounded-pill fw-bold">ยกเลิก</button>
-                                </div>
-                              </form>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="card-body p-4">
-                                <div className="d-flex justify-content-between align-items-start mb-2">
-                                  <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2">{c.course_code}</span>
-                                  <div>
-                                    <button onClick={() => setEditingCourse(c)} className="btn btn-light text-warning rounded-circle p-1 me-1 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
-                                    <button onClick={() => handleDeleteCourse(c.id)} className="btn btn-light text-danger rounded-circle p-1 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
-                                  </div>
-                                </div>
-                                <h5 className="fw-bold mb-1 text-dark">{c.course_name}</h5>
-                                <p className="text-muted small mb-3">ภาค: {c.semester || "-"} | กิต: {c.credits || "-"}</p>
-                                <span className="badge bg-light text-dark border px-3 py-2 w-100 text-start">กลุ่ม: {c.section}</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-          </div>
-        )}
+               </div>
+                  
+               <div className="d-flex justify-content-between align-items-center mb-3">
+                 <h5 className="fw-bold text-theme-dark m-0">Your Courses</h5><span className="badge bg-theme-dark rounded-pill px-3 py-2">{courses.length} Active</span>
+               </div>
+                  
+               <div className="row g-4">
+                 {courses.length === 0 && <p className="text-muted col-12 fw-bold">No courses created yet.</p>}
+                 {courses.map((c) => (
+                   <div key={c.id} className="col-md-6 col-xl-4">
+                     <div className="theme-card h-100 hover-card border border-light">
+                       {editingCourse?.id === c.id ? (
+                         <form onSubmit={handleUpdateCourse} className="d-flex flex-column gap-2">
+                           <input type="text" className="form-control theme-input p-2" value={editingCourse.course_code} onChange={(e) => setEditingCourse({ ...editingCourse, course_code: e.target.value })} required />
+                           <input type="text" className="form-control theme-input p-2" value={editingCourse.course_name} onChange={(e) => setEditingCourse({ ...editingCourse, course_name: e.target.value })} required />
+                           <div className="d-flex gap-2">
+                             <input type="text" className="form-control theme-input p-2" value={editingCourse.semester} onChange={(e) => setEditingCourse({ ...editingCourse, semester: e.target.value })} required />
+                             <input type="text" className="form-control theme-input p-2" value={editingCourse.credits} onChange={(e) => setEditingCourse({ ...editingCourse, credits: e.target.value })} required />
+                           </div>
+                           <input type="text" className="form-control theme-input p-2" value={editingCourse.section} onChange={(e) => setEditingCourse({ ...editingCourse, section: e.target.value })} required />
+                           <div className="d-flex gap-2 mt-3">
+                             <button type="submit" className="btn btn-theme-red btn-sm w-50 rounded-pill fw-bold">Save</button>
+                             <button type="button" onClick={() => setEditingCourse(null)} className="btn btn-light btn-sm w-50 rounded-pill fw-bold">Cancel</button>
+                           </div>
+                         </form>
+                       ) : (
+                         <>
+                           <div className="d-flex justify-content-between align-items-start mb-3">
+                             <span className="badge bg-theme-red bg-opacity-10 text-theme-red rounded-pill px-3 py-2">{c.course_code}</span>
+                             <div className="d-flex gap-1">
+                               <button onClick={() => setEditingCourse(c)} className="btn btn-light text-warning rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
+                               <button onClick={() => handleDeleteCourse(c.id)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                             </div>
+                           </div>
+                           <h5 className="fw-bold mb-2 text-theme-dark">{c.course_name}</h5>
+                           <p className="text-muted small mb-3 fw-bold">Sem: {c.semester || "-"} | Cr: {c.credits || "-"}</p>
+                           <span className="badge bg-theme-gray text-theme-dark border px-3 py-2 w-100 text-start fs-6">Sec: {c.section}</span>
+                         </>
+                       )}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
 
-        {/* TAB: หมวดหมู่บทเรียน */}
-        {activeTab === "modules" && (
-          <div className="fade-in row g-4">
-            <div className="col-lg-5">
-              <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
-                <div className="card-body p-4">
-                  <h5 className="fw-bold mb-4 text-dark">🗂️ สร้างบทเรียนใหม่</h5>
+          {/* TAB: หมวดหมู่บทเรียน */}
+          {activeTab === "modules" && (
+            <div className="fade-in row g-4">
+              <div className="col-lg-5">
+                <div className="theme-card h-100">
+                  <h5 className="fw-bold mb-4 text-theme-dark">🗂️ Create Module</h5>
                   <form onSubmit={handleCreateModule} className="d-flex flex-column gap-3">
-                    <select className="form-select custom-input bg-light border-0 rounded-4 p-3 fw-bold text-secondary" value={moduleForm.course_id} onChange={(e) => setModuleForm({ ...moduleForm, course_id: e.target.value })} required>
-                      <option value="">-- เลือกรายวิชา --</option>
+                    <select className="form-select theme-input" value={moduleForm.course_id} onChange={(e) => setModuleForm({ ...moduleForm, course_id: e.target.value })} required>
+                      <option value="">-- Select Course --</option>
                       {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                     </select>
-                    <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="ชื่อบทเรียน (เช่น บทที่ 1)" value={moduleForm.title} onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })} required />
-                    <button type="submit" className="btn btn-success rounded-4 fw-bold py-3 mt-2 shadow-sm custom-btn">💾 เพิ่มบทเรียน</button>
+                    <input type="text" className="form-control theme-input" placeholder="Module Name (e.g. Chapter 1)" value={moduleForm.title} onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })} required />
+                    <button type="submit" className="btn btn-theme-red rounded-pill fw-bold py-3 mt-2 shadow-sm">💾 Add Module</button>
                   </form>
                 </div>
               </div>
-            </div>
-            
-            <div className="col-lg-7">
-              <h5 className="fw-bold text-dark mb-4">หมวดหมู่บทเรียนทั้งหมด ({modules.length})</h5>
-              <div className="d-flex flex-column gap-3">
-                {courses.map(course => {
-                  const courseModules = modules.filter(m => m.course_id === course.id);
-                  if(courseModules.length === 0) return null;
-                  return (
-                    <div key={course.id} className="mb-4">
-                      <h6 className="fw-bold text-success mb-3 px-2 border-start border-4 border-success">{course.course_name}</h6>
-                      <div className="d-flex flex-column gap-2">
-                        {courseModules.map(m => (
-                          <div key={m.id} className="bg-white shadow-sm rounded-4 p-3 d-flex justify-content-between align-items-center hover-card border-start border-4 border-primary">
-                            <span className="fw-bold text-dark">{m.title}</span>
-                            <button onClick={() => handleDeleteModule(m.id)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
-                          </div>
-                        ))}
+              
+              <div className="col-lg-7">
+                <h5 className="fw-bold text-theme-dark mb-4">All Modules ({modules.length})</h5>
+                <div className="d-flex flex-column gap-4">
+                  {courses.map(course => {
+                    const courseModules = modules.filter(m => m.course_id === course.id);
+                    if(courseModules.length === 0) return null;
+                    return (
+                      <div key={course.id} className="mb-2">
+                        <h6 className="fw-bold text-theme-dark mb-3 px-3 py-2 bg-white rounded-pill d-inline-block shadow-sm">{course.course_name}</h6>
+                        <div className="d-flex flex-column gap-2 ps-2">
+                          {courseModules.map(m => (
+                            <div key={m.id} className="theme-card p-3 d-flex justify-content-between align-items-center hover-card border-start border-4 border-theme-red" style={{borderRadius: '16px'}}>
+                              <span className="fw-bold text-theme-dark">{m.title}</span>
+                              <button onClick={() => handleDeleteModule(m.id)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB 3: 📂 เอกสาร */}
-        {activeTab === "materials" && (
-          <div className="fade-in row g-4">
-            <div className="col-lg-5">
-              <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
-                <div className="card-body p-4">
-                  <h5 className="fw-bold mb-4 text-dark">เพิ่มเอกสารใหม่</h5>
-                  <div className="d-flex bg-light p-1 rounded-pill mb-4 shadow-sm">
-                    <button type="button" onClick={() => setUploadMode("file")} className={`btn rounded-pill flex-grow-1 fw-bold ${uploadMode === "file" ? "btn-white shadow-sm text-success" : "text-muted border-0"}`}>📂 อัปโหลด</button>
-                    <button type="button" onClick={() => setUploadMode("link")} className={`btn rounded-pill flex-grow-1 fw-bold ${uploadMode === "link" ? "btn-white shadow-sm text-success" : "text-muted border-0"}`}>🔗 วางลิงก์ YouTube</button>
+          {/* TAB 3: 📂 เอกสาร */}
+          {activeTab === "materials" && (
+            <div className="fade-in row g-4">
+              <div className="col-lg-5">
+                <div className="theme-card h-100">
+                  <h5 className="fw-bold mb-4 text-theme-dark">Upload Material</h5>
+                  <div className="d-flex bg-theme-gray p-2 rounded-pill mb-4 border border-light">
+                    <button type="button" onClick={() => setUploadMode("file")} className={`btn rounded-pill flex-grow-1 fw-bold ${uploadMode === "file" ? "btn-white shadow-sm text-theme-red" : "text-muted border-0"}`}>📂 File</button>
+                    <button type="button" onClick={() => setUploadMode("link")} className={`btn rounded-pill flex-grow-1 fw-bold ${uploadMode === "link" ? "btn-white shadow-sm text-theme-red" : "text-muted border-0"}`}>🔗 YouTube Link</button>
                   </div>
                   <form onSubmit={handleUploadMaterial} className="d-flex flex-column gap-3">
-                    <select className="form-select custom-input bg-light border-0 rounded-4 p-3 fw-bold text-secondary" value={materialForm.course_id} onChange={(e) => setMaterialForm({ ...materialForm, course_id: e.target.value })} required>
-                      <option value="">-- เลือกรายวิชา --</option>
+                    <select className="form-select theme-input" value={materialForm.course_id} onChange={(e) => setMaterialForm({ ...materialForm, course_id: e.target.value })} required>
+                      <option value="">-- Select Course --</option>
                       {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                     </select>
-                    <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={materialForm.module_id} onChange={(e) => setMaterialForm({ ...materialForm, module_id: e.target.value })}>
-                      <option value="">-- จัดอยู่ในบทเรียน (ไม่บังคับ) --</option>
+                    <select className="form-select theme-input" value={materialForm.module_id} onChange={(e) => setMaterialForm({ ...materialForm, module_id: e.target.value })}>
+                      <option value="">-- Module (Optional) --</option>
                       {modules.filter(m => m.course_id === materialForm.course_id).map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
                     </select>
-                    <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="ชื่อเอกสาร" value={materialForm.title} onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })} required />
+                    <input type="text" className="form-control theme-input" placeholder="Title" value={materialForm.title} onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })} required />
                     {uploadMode === "file" ? (
-                      <input type="file" className="form-control custom-input bg-light border-0 rounded-4 p-3" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.png" onChange={(e) => setMaterialForm({ ...materialForm, file: e.target.files[0] })} required />
+                      <input type="file" className="form-control theme-input bg-white" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.png" onChange={(e) => setMaterialForm({ ...materialForm, file: e.target.files[0] })} required />
                     ) : (
-                      <input type="url" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="https://..." value={materialForm.link} onChange={(e) => setMaterialForm({ ...materialForm, link: e.target.value })} required />
+                      <input type="url" className="form-control theme-input bg-white" placeholder="https://..." value={materialForm.link} onChange={(e) => setMaterialForm({ ...materialForm, link: e.target.value })} required />
                     )}
-                    <button type="submit" className="btn btn-success rounded-4 fw-bold py-3 mt-2 shadow-sm custom-btn" disabled={uploading}>
-                      {uploading ? "⏳ กำลังบันทึก..." : "💾 บันทึกข้อมูล"}
+                    <button type="submit" className="btn btn-theme-red rounded-pill fw-bold py-3 mt-2 shadow-sm" disabled={uploading}>
+                      {uploading ? "⏳ Uploading..." : "💾 Save Material"}
                     </button>
                   </form>
                 </div>
               </div>
-            </div>
-            
-            <div className="col-lg-7">
-              <h5 className="fw-bold text-dark mb-4">เอกสารในระบบ ({materials.length})</h5>
-              <div className="d-flex flex-column gap-3">
-                {materials.length === 0 && <p className="text-muted">ยังไม่มีเอกสาร</p>}
-                {materials.map((m) => {
-                  const ytThumb = getYoutubeThumbnail(m.file_url);
-                  const moduleName = modules.find(mod => mod.id === m.module_id)?.title; 
-                  return (
-                    <div key={m.id} className="bg-white shadow-sm rounded-4 p-3 d-flex flex-row align-items-center gap-3 hover-card">
-                      <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none d-flex align-items-center justify-content-center" style={{ flexShrink: 0, transition: '0.2s' }}>
-                        {ytThumb ? (
-                           <div className="rounded-3 overflow-hidden shadow-sm" style={{ width: '80px', height: '55px', flexShrink: 0 }}>
-                              <img src={ytThumb} alt="youtube thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                           </div>
-                        ) : (
-                           <div className="bg-success bg-opacity-10 text-success rounded-3 d-flex align-items-center justify-content-center fs-4 p-3">
-                             {getFileIcon(m.file_url)}
-                           </div>
-                        )}
-                      </a>
-                      <div className="flex-grow-1 overflow-hidden">
-                        {editingMaterial?.id === m.id ? (
-                          <form onSubmit={handleUpdateMaterial} className="d-flex gap-2">
-                            <input type="text" className="form-control bg-light border-0 rounded-pill form-control-sm" value={editingMaterial.title} onChange={(e) => setEditingMaterial({ ...editingMaterial, title: e.target.value })} required />
-                            <button type="submit" className="btn btn-success btn-sm rounded-pill px-3">✔</button>
-                          </form>
-                        ) : (
-                          <>
-                            <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
-                              <h6 className="fw-bold mb-1 text-dark text-truncate hover-primary" style={{ transition: 'color 0.2s' }}>{m.title}</h6>
+              
+              <div className="col-lg-7">
+                <h5 className="fw-bold text-theme-dark mb-4">Files & Links ({materials.length})</h5>
+                <div className="row g-3">
+                  {materials.length === 0 && <p className="text-muted col-12 fw-bold">No materials found.</p>}
+                  {materials.map((m) => {
+                    const ytThumb = getYoutubeThumbnail(m.file_url);
+                    const moduleName = modules.find(mod => mod.id === m.module_id)?.title; 
+                    return (
+                      <div key={m.id} className="col-12 col-md-6">
+                        <div className="theme-card p-3 d-flex flex-column h-100 hover-card border border-light">
+                          <div className="d-flex align-items-start gap-3 mb-3">
+                            <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none d-flex align-items-center justify-content-center" style={{ flexShrink: 0 }}>
+                              {ytThumb ? (
+                                <div className="rounded-3 overflow-hidden shadow-sm border" style={{ width: '80px', height: '60px' }}><img src={ytThumb} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
+                              ) : (
+                                <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-3 d-flex align-items-center justify-content-center fs-3 p-3" style={{ width: '80px', height: '60px' }}>{getFileIcon(m.file_url)}</div>
+                              )}
                             </a>
-                            <p className="text-muted small mb-0 text-truncate">{m.courses?.course_name || "-"} {moduleName && <span className="text-primary">[{moduleName}]</span>}</p>
-                          </>
-                        )}
-                      </div>
-                      {!editingMaterial && (
-                        <div className="d-flex flex-column gap-2 flex-shrink-0">
-                          <button onClick={() => setEditingMaterial(m)} className="btn btn-light text-warning rounded-circle p-1 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
-                          <button onClick={() => handleDeleteMaterial(m.id)} className="btn btn-light text-danger rounded-circle p-1 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                            <div className="flex-grow-1 overflow-hidden">
+                              {editingMaterial?.id === m.id ? (
+                                <form onSubmit={handleUpdateMaterial} className="d-flex gap-2">
+                                  <input type="text" className="form-control theme-input p-1" value={editingMaterial.title} onChange={(e) => setEditingMaterial({ ...editingMaterial, title: e.target.value })} required />
+                                  <button type="submit" className="btn btn-theme-red btn-sm rounded-3 px-2">✔</button>
+                                </form>
+                              ) : (
+                                <>
+                                  <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                                    <h6 className="fw-bold mb-1 text-theme-dark text-truncate">{m.title}</h6>
+                                  </a>
+                                  <p className="text-muted small mb-0 text-truncate fw-bold">{m.courses?.course_name || "-"}</p>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-auto d-flex justify-content-between align-items-end">
+                            <span className="badge bg-theme-gray text-theme-dark px-2 py-1">{moduleName || "General"}</span>
+                            {!editingMaterial && (
+                              <div className="d-flex gap-2">
+                                <button onClick={() => setEditingMaterial(m)} className="btn btn-light text-warning rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
+                                <button onClick={() => handleDeleteMaterial(m.id)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB 4: 📝 งาน & ตรวจให้คะแนน */}
-        {activeTab === "assignments" && (
-          <div className="fade-in">
-            <div className="d-flex bg-white p-1 rounded-pill shadow-sm mb-4 mx-auto" style={{ maxWidth: "400px" }}>
-              <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${assignSubTab === "create" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => setAssignSubTab("create")}>➕ สั่งงานใหม่</button>
-              <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 position-relative ${assignSubTab === "grade" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => setAssignSubTab("grade")}>
-                ✔️ ตรวจงาน {ungradedCount > 0 && <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{ungradedCount}</span>}
-              </button>
-            </div>
-            
-            {assignSubTab === "create" && (
-              <div className="row g-4">
-                <div className="col-lg-5">
-                  <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
-                    <div className="card-body p-4">
-                      <h5 className="fw-bold mb-4 text-dark">สร้างคำสั่งงาน</h5>
+          {/* TAB 4: 📝 งาน & ตรวจให้คะแนน */}
+          {activeTab === "assignments" && (
+            <div className="fade-in">
+              <div className="d-flex bg-white p-2 rounded-pill shadow-sm mb-5 mx-auto border border-light" style={{ maxWidth: "400px" }}>
+                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${assignSubTab === "create" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => setAssignSubTab("create")}>➕ Create</button>
+                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 position-relative ${assignSubTab === "grade" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => setAssignSubTab("grade")}>
+                  ✔️ Grade {ungradedCount > 0 && <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-theme-red">{ungradedCount}</span>}
+                </button>
+              </div>
+              
+              {assignSubTab === "create" && (
+                <div className="row g-4">
+                  <div className="col-lg-5">
+                    <div className="theme-card h-100">
+                      <h5 className="fw-bold mb-4 text-theme-dark">Create Assignment</h5>
                       <form onSubmit={handleCreateAssignment} className="d-flex flex-column gap-3">
-                        <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary fw-bold" value={assignForm.course_id} onChange={(e) => setAssignForm({ ...assignForm, course_id: e.target.value })} required>
-                          <option value="">-- เลือกรายวิชา --</option>
+                        <select className="form-select theme-input" value={assignForm.course_id} onChange={(e) => setAssignForm({ ...assignForm, course_id: e.target.value })} required>
+                          <option value="">-- Select Course --</option>
                           {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
                         </select>
-                        <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={assignForm.module_id} onChange={(e) => setAssignForm({ ...assignForm, module_id: e.target.value })}>
-                          <option value="">-- จัดอยู่ในบทเรียน (ไม่บังคับ) --</option>
+                        <select className="form-select theme-input" value={assignForm.module_id} onChange={(e) => setAssignForm({ ...assignForm, module_id: e.target.value })}>
+                          <option value="">-- Module (Optional) --</option>
                           {modules.filter(m => m.course_id === assignForm.course_id).map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
                         </select>
-                        <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="หัวข้องาน" value={assignForm.title} onChange={(e) => setAssignForm({ ...assignForm, title: e.target.value })} required />
-                        <textarea className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="รายละเอียดและคำชี้แจง..." value={assignForm.description} onChange={(e) => setAssignForm({ ...assignForm, description: e.target.value })} rows="4" required />
-                        <button type="submit" className="btn btn-success rounded-4 fw-bold py-3 mt-2 shadow-sm custom-btn">ส่งคำสั่งงาน</button>
+                        <input type="text" className="form-control theme-input" placeholder="Title" value={assignForm.title} onChange={(e) => setAssignForm({ ...assignForm, title: e.target.value })} required />
+                        <textarea className="form-control theme-input" placeholder="Description / Instructions..." value={assignForm.description} onChange={(e) => setAssignForm({ ...assignForm, description: e.target.value })} rows="4" required />
+                        <button type="submit" className="btn btn-theme-red rounded-pill fw-bold py-3 mt-2 shadow-sm">Assign Task</button>
                       </form>
                     </div>
                   </div>
-                </div>
-                <div className="col-lg-7">
-                  <h5 className="fw-bold text-dark mb-4">งานที่สั่งไปแล้ว ({assignments.length})</h5>
-                  <div className="d-flex flex-column gap-3">
-                    {assignments.map((a) => {
-                       const moduleName = modules.find(mod => mod.id === a.module_id)?.title;
-                       return (
-                      <div key={a.id} className="bg-white border-0 shadow-sm rounded-4 overflow-hidden position-relative d-flex">
-                        <div className="bg-success" style={{ width: "8px" }}></div>
-                        <div className="p-4 flex-grow-1">
-                          <div className="d-flex justify-content-between align-items-start mb-2">
-                            <span className="badge bg-light text-success border px-3 py-2 rounded-pill">{a.courses?.course_name} {moduleName && `[${moduleName}]`}</span>
-                            <button onClick={() => handleDeleteAssignment(a.id)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
-                          </div>
-                          <h5 className="fw-bold mb-2 text-dark">{a.title}</h5>
-                          <p className="text-muted small mb-0 bg-light p-3 rounded-4">{a.description}</p>
-                        </div>
-                      </div>
-                    )})}
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {assignSubTab === "grade" && (
-              <div className="card border-0 shadow-sm rounded-4 bg-white">
-                <div className="card-body p-4 p-md-5">
-                  <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-                    <h5 className="fw-bold m-0 text-dark d-flex align-items-center gap-2">
-                      <span>✔️</span> รอตรวจและให้คะแนน <span className="badge bg-warning text-dark rounded-pill fs-6">{ungradedCount} งาน</span>
-                    </h5>
-                    <select className="form-select border-2 border-light bg-light rounded-pill fw-bold text-dark shadow-sm" style={{ maxWidth: '300px' }} value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
-                      <option value="">ทั้งหมด ({submissions.length} รายการ)</option>
-                      {gradeFilterOptions.map((opt, idx) => <option key={idx} value={opt}>{opt}</option>)}
-                    </select>
-                  </div>
-
-                  {filteredSubmissions.length === 0 ? (
-                    <div className="text-center text-muted py-5"><span className="fs-1 d-block mb-3">📭</span>ไม่มีงานสำหรับวิชานี้</div>
-                  ) : (
-                    <div className="row g-4">
-                      {filteredSubmissions.map((sub) => {
-                        const ytThumb = getYoutubeThumbnail(sub.link_url);
-                        return (
-                        <div key={sub.id} className="col-12 col-xl-6">
-                          <div className={`border rounded-4 p-4 h-100 d-flex flex-column transition-all position-relative ${sub.score !== null ? 'border-success bg-success bg-opacity-10' : 'border-warning bg-white shadow-sm hover-card'}`}>
-                            
-                            <div className="d-flex justify-content-between align-items-start mb-3 pe-4">
-                              <div>
-                                <span className="badge bg-dark text-white rounded-pill px-3 py-2 me-2">{sub.assignments?.courses?.section || "-"}</span>
-                                <span className="badge bg-light text-dark border rounded-pill px-3 py-2">{sub.profiles?.student_code || "-"}</span>
-                                <div className="fw-bold text-dark mt-2 fs-5">{sub.profiles?.full_name || "ไม่ระบุชื่อ"}</div>
-                              </div>
-                              {sub.score !== null && editingGrade !== sub.id ? (
-                                <div className="text-success fw-bold bg-white px-3 py-2 rounded-pill shadow-sm border border-success mt-1 d-flex align-items-center gap-2">
-                                  ✔ {sub.score} คะแนน
-                                  <button onClick={() => {
-                                     setEditingGrade(sub.id);
-                                     setGradeForm({ id: sub.id, score: sub.score, feedback: sub.teacher_feedback || "" });
-                                  }} className="btn btn-sm btn-light rounded-circle p-1" title="แก้ไขคะแนนและคำติชม">✏️</button>
-                                </div>
-                              ) : sub.score === null && editingGrade !== sub.id ? (
-                                <div className="text-warning fw-bold bg-warning bg-opacity-10 px-3 py-2 rounded-pill border border-warning text-dark mt-1">⏳ รอตรวจ</div>
-                              ) : null}
+                  <div className="col-lg-7">
+                    <h5 className="fw-bold text-theme-dark mb-4">Active Assignments ({assignments.length})</h5>
+                    <div className="d-flex flex-column gap-3">
+                      {assignments.map((a) => {
+                         const moduleName = modules.find(mod => mod.id === a.module_id)?.title;
+                         return (
+                        <div key={a.id} className="theme-card p-0 overflow-hidden d-flex border border-light">
+                          <div className="bg-theme-red" style={{ width: "8px" }}></div>
+                          <div className="p-4 flex-grow-1">
+                            <div className="d-flex justify-content-between align-items-start mb-3">
+                              <span className="badge bg-theme-gray text-theme-dark px-3 py-2 rounded-pill fs-6">{a.courses?.course_name} {moduleName && <span className="text-theme-red">[{moduleName}]</span>}</span>
+                              <button onClick={() => handleDeleteAssignment(a.id)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
                             </div>
-                            
-                            <div className="bg-light rounded-4 p-3 mb-4 flex-grow-1">
-                              <strong className="text-success small d-block mb-2 border-bottom pb-2">{sub.assignments?.courses?.course_name || "-"} : {sub.assignments?.title || "-"}</strong>
-                              
-                              {sub.submitted_text && <p className="mb-2 text-dark lh-base bg-white p-2 rounded-3 border">"{sub.submitted_text}"</p>}
-                              {sub.link_url && (
-                                <div className="mb-2">
-                                  {ytThumb && <img src={ytThumb} alt="Preview" className="w-100 object-fit-cover rounded-3 mb-1" />}
-                                  <a href={sub.link_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary rounded-pill px-3">🔗 เปิดลิงก์ที่เด็กส่ง</a>
-                                </div>
-                              )}
-                              {sub.file_url && (
-                                <div className="mb-2"><a href={sub.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary rounded-pill px-3">📂 โหลดไฟล์ที่แนบ</a></div>
-                              )}
-                            </div>
-
-                            {(sub.score === null || editingGrade === sub.id) ? (
-                              <form onSubmit={(e) => handleGradeSubmit(e, sub.id)} className="d-flex flex-column gap-2 slide-up">
-                                <textarea className="form-control custom-input bg-white border-light rounded-4 p-2 small" placeholder="พิมพ์คำแนะนำ/ฟีดแบ็ก (ถ้ามี)..." value={gradeForm.id === sub.id ? gradeForm.feedback : ""} onChange={(e) => setGradeForm({ ...gradeForm, id: sub.id, feedback: e.target.value })} rows="2"></textarea>
-                                <div className="d-flex gap-2">
-                                   <input type="number" className="form-control custom-input bg-white border-warning rounded-pill px-4 fw-bold flex-grow-1" placeholder="ระบุคะแนน" required value={gradeForm.id === sub.id ? gradeForm.score : ""} onChange={(e) => setGradeForm({ ...gradeForm, id: sub.id, score: e.target.value })} />
-                                   <button type="submit" className="btn btn-success rounded-pill fw-bold px-4 shadow-sm custom-btn">บันทึก</button>
-                                   {editingGrade === sub.id && (
-                                     <button type="button" onClick={() => setEditingGrade(null)} className="btn btn-light rounded-pill fw-bold px-3">ยกเลิก</button>
-                                   )}
-                                </div>
-                              </form>
-                            ) : (
-                              sub.teacher_feedback && <div className="bg-white p-3 rounded-4 border mt-2 small text-primary">💬 ครู: {sub.teacher_feedback}</div>
-                            )}
+                            <h5 className="fw-bold mb-2 text-theme-dark">{a.title}</h5>
+                            <p className="text-muted small mb-0 fw-bold">{a.description}</p>
                           </div>
                         </div>
                       )})}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+              
+              {assignSubTab === "grade" && (
+                <div className="theme-card">
+                    <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                      <h5 className="fw-bold m-0 text-theme-dark d-flex align-items-center gap-2">
+                        <span>✔️</span> Grading <span className="badge bg-theme-red text-white rounded-pill fs-6">{ungradedCount} pending</span>
+                      </h5>
+                      <select className="form-select theme-input bg-white w-auto" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
+                        <option value="">All Submissions ({submissions.length})</option>
+                        {gradeFilterOptions.map((opt, idx) => <option key={idx} value={opt}>{opt}</option>)}
+                      </select>
+                    </div>
 
-        {/* 🌟 TAB 5: 📝 ข้อสอบ (ฟีเจอร์เพิ่ม/แก้ไขข้อสอบ) */}
-        {activeTab === "quizzes" && (
-          <div className="fade-in">
-             <div className="d-flex bg-white p-1 rounded-pill shadow-sm mb-4 mx-auto" style={{ maxWidth: "400px" }}>
-              <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "create" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => { setQuizSubTab("create"); cancelEditQuiz(); }}>➕ สร้างข้อสอบ</button>
-              <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "scores" ? "btn-success shadow-sm" : "btn-white text-muted"}`} onClick={() => setQuizSubTab("scores")}>📊 ดูคะแนนสอบ</button>
-            </div>
-            
-            {quizSubTab === "create" && (
-              <>
-                <div className="card border-0 shadow-sm rounded-4 mb-5 bg-white">
-                  <div className="card-body p-4 p-md-5">
-                    {/* 🌟 แสดงหัวข้อตามสถานะว่า กำลังแก้ไข หรือ สร้างใหม่ */}
-                    <h5 className="fw-bold mb-4 text-dark">{editingQuiz ? '✏️ แก้ไขแบบทดสอบ' : '✨ สร้างแบบทดสอบใหม่'}</h5>
-                    
-                    {/* 🌟 ซ่อนกล่องคัดลอกโจทย์ ถ้ากำลังอยู่ในโหมดแก้ไข */}
-                    {!editingQuiz && quizzes.length > 0 && (
-                      <div className="mb-4 p-3 bg-light rounded-4 border">
-                        <label className="form-label small fw-bold text-success mb-2">🔄 คัดลอกชุดคำถามจากข้อสอบเดิม</label>
-                        <select className="form-select border-0 shadow-sm rounded-3" onChange={handleCloneQuiz}>
-                          <option value="">-- เลือกข้อสอบที่เคยสร้างไว้ --</option>
-                          {quizzes.map(q => <option key={q.id} value={q.id}>{q.courses?.course_name} : {q.title}</option>)}
-                        </select>
+                    {gradeFilter && ungradedFiltered.length > 0 && (
+                      <div className="bg-theme-gray rounded-4 p-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 slide-down border border-light">
+                        <div className="d-flex align-items-center gap-2">
+                          <button onClick={selectAllFiltered} className="btn btn-sm btn-white fw-bold text-theme-dark rounded-pill px-3 shadow-sm border">
+                            {selectedSubIds.length === ungradedFiltered.length ? "Deselect All" : "Select Pending"}
+                          </button>
+                          <span className="small text-muted fw-bold ms-2">Selected: {selectedSubIds.length}</span>
+                        </div>
+                        <form onSubmit={handleBatchGradeSubmit} className="d-flex gap-2">
+                          <input type="number" className="form-control theme-input bg-white py-2" placeholder="Score" style={{ width: '100px' }} value={batchScore} onChange={(e) => setBatchScore(e.target.value)} required />
+                          <button type="submit" className="btn btn-theme-red rounded-pill fw-bold px-4 shadow-sm">Grade Batch</button>
+                        </form>
                       </div>
                     )}
 
-                    <form onSubmit={handleSaveQuiz}>
-                      <div className="row g-3 mb-4">
-                        <div className="col-md-4">
-                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary fw-bold" value={quizForm.course_id} onChange={(e) => setQuizForm({ ...quizForm, course_id: e.target.value })} required>
-                            <option value="">-- เลือกรายวิชา --</option>
-                            {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary" value={quizForm.module_id} onChange={(e) => setQuizForm({ ...quizForm, module_id: e.target.value })}>
-                            <option value="">-- บทเรียน (ไม่บังคับ) --</option>
-                            {modules.filter(m => m.course_id === quizForm.course_id).map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <input type="number" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="เวลาสอบ (นาที) *0=ไม่จำกัด" value={quizForm.time_limit} onChange={(e) => setQuizForm({ ...quizForm, time_limit: e.target.value })} required />
-                        </div>
-                        <div className="col-md-12">
-                          <input type="text" className="form-control custom-input bg-light border-0 rounded-4 p-3" placeholder="หัวข้อแบบทดสอบ" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} required />
-                        </div>
-                      </div>
-                      
-                      <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2"><span>📋</span> ชุดคำถาม</h6>
-                      {questions.map((q, qIndex) => (
-                        <div key={qIndex} className="bg-light p-4 rounded-4 mb-4 position-relative border slide-down">
-                          <div className="d-flex justify-content-between align-items-center mb-3">
-                            <span className="fw-bold text-success bg-white px-3 py-1 rounded-pill shadow-sm">ข้อที่ {qIndex + 1}</span>
-                            {questions.length > 1 && (<button type="button" className="btn btn-white text-danger btn-sm rounded-pill shadow-sm px-3 fw-bold" onClick={() => setQuestions(questions.filter((_, i) => i !== qIndex))}>ลบข้อนี้</button>)}
-                          </div>
-                          
-                          <input type="text" className="form-control custom-input border-0 rounded-4 p-3 mb-3 shadow-sm" placeholder="พิมพ์โจทย์คำถาม..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
-                          
-                          <div className="mb-4">
-                            <label className="small fw-bold text-muted d-block mb-1">🖼️ แนบรูปภาพประกอบโจทย์ (ถ้ามี)</label>
-                            <div className="d-flex align-items-center gap-3">
-                              <input type="file" accept="image/*" className="form-control bg-white rounded-3 border-0 shadow-sm p-2 w-75" onChange={(e) => handleQuestionImageUpload(qIndex, e)} />
-                              {q.imageUrl && <img src={q.imageUrl} alt="preview" style={{ height: '40px', borderRadius: '5px' }} />}
+                    {filteredSubmissions.length === 0 ? (
+                      <div className="text-center text-muted py-5 fw-bold"><span className="fs-1 d-block mb-3">📭</span>No submissions here.</div>
+                    ) : (
+                      <div className="row g-4">
+                        {filteredSubmissions.map((sub) => {
+                          const ytThumb = getYoutubeThumbnail(sub.link_url);
+                          return (
+                          <div key={sub.id} className="col-12 col-xl-6">
+                            <div className={`theme-card p-4 h-100 d-flex flex-column transition-all position-relative ${sub.score !== null ? 'border border-success' : 'border border-theme-red'} ${selectedSubIds.includes(sub.id) ? 'shadow-lg border-3' : ''}`}>
+                              
+                              {sub.score === null && (
+                                 <div className="position-absolute top-0 end-0 p-3 z-2">
+                                    <input type="checkbox" className="form-check-input shadow-sm" style={{ width: '25px', height: '25px', cursor: 'pointer', accentColor: 'var(--theme-red)' }} checked={selectedSubIds.includes(sub.id)} onChange={() => toggleSubSelection(sub.id)} />
+                                 </div>
+                              )}
+
+                              <div className="d-flex justify-content-between align-items-start mb-3 pe-4">
+                                <div>
+                                  <span className="badge bg-theme-dark text-white rounded-pill px-3 py-2 me-2">{sub.assignments?.courses?.section || "-"}</span>
+                                  <div className="fw-bold text-theme-dark mt-2 fs-5">{sub.profiles?.full_name || "Unknown"}</div>
+                                  <span className="text-muted small fw-bold">ID: {sub.profiles?.student_code || "-"}</span>
+                                </div>
+                                {sub.score !== null && editingGrade !== sub.id ? (
+                                  <div className="text-success fw-bold bg-success bg-opacity-10 px-3 py-2 rounded-pill border border-success mt-1 d-flex align-items-center gap-2">
+                                    ✔ {sub.score}
+                                    <button onClick={() => { setEditingGrade(sub.id); setGradeForm({ id: sub.id, score: sub.score, feedback: sub.teacher_feedback || "" }); }} className="btn btn-sm btn-light rounded-circle p-1" title="Edit">✏️</button>
+                                  </div>
+                                ) : sub.score === null && editingGrade !== sub.id ? (
+                                  <div className="text-theme-red fw-bold bg-theme-red bg-opacity-10 px-3 py-2 rounded-pill mt-1">⏳ Pending</div>
+                                ) : null}
+                              </div>
+                              
+                              <div className="bg-theme-gray rounded-4 p-3 mb-4 flex-grow-1">
+                                <strong className="text-theme-dark small d-block mb-2 border-bottom border-light pb-2">{sub.assignments?.courses?.course_name || "-"} : {sub.assignments?.title || "-"}</strong>
+                                {sub.submitted_text && <p className="mb-2 text-theme-dark bg-white p-3 rounded-4 fw-bold shadow-sm">"{sub.submitted_text}"</p>}
+                                {sub.link_url && (
+                                  <div className="mb-2">
+                                    {ytThumb && <img src={ytThumb} alt="Preview" className="w-100 object-fit-cover rounded-4 mb-2 shadow-sm" />}
+                                    <a href={sub.link_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-dark rounded-pill px-4 fw-bold">🔗 Open Link</a>
+                                  </div>
+                                )}
+                                {sub.file_url && (
+                                  <div className="mb-2 mt-2"><a href={sub.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-dark rounded-pill px-4 fw-bold bg-white">📂 Download File</a></div>
+                                )}
+                              </div>
+
+                              {(sub.score === null || editingGrade === sub.id) ? (
+                                <form onSubmit={(e) => handleGradeSubmit(e, sub.id)} className="d-flex flex-column gap-2 slide-up">
+                                  <textarea className="form-control theme-input bg-white" placeholder="💬 Feedback (Optional)..." value={gradeForm.id === sub.id ? gradeForm.feedback : ""} onChange={(e) => setGradeForm({ ...gradeForm, id: sub.id, feedback: e.target.value })} rows="2"></textarea>
+                                  <div className="d-flex gap-2">
+                                     <input type="number" className="form-control theme-input bg-white fw-bold flex-grow-1" placeholder="Score" required value={gradeForm.id === sub.id ? gradeForm.score : ""} onChange={(e) => setGradeForm({ ...gradeForm, id: sub.id, score: e.target.value })} />
+                                     <button type="submit" className="btn btn-theme-red rounded-pill fw-bold px-4 shadow-sm">Save</button>
+                                     {editingGrade === sub.id && <button type="button" onClick={() => setEditingGrade(null)} className="btn btn-light rounded-pill fw-bold px-3">Cancel</button>}
+                                  </div>
+                                </form>
+                              ) : (
+                                sub.teacher_feedback && <div className="bg-theme-gray p-3 rounded-4 mt-2 small text-theme-dark fw-bold">💬 Reply: {sub.teacher_feedback}</div>
+                              )}
                             </div>
                           </div>
-
-                          <div className="row g-3">
-                            {q.options.map((opt, optIndex) => (
-                              <div key={optIndex} className="col-md-6">
-                                <div className={`d-flex align-items-center gap-3 border rounded-4 p-2 bg-white transition-all ${q.correctOption === optIndex ? "border-success border-2 shadow-sm bg-success bg-opacity-10" : "border-light"}`}>
-                                  <input className="form-check-input mt-0 ms-2" type="radio" name={`correct-${qIndex}`} style={{ width: "24px", height: "24px" }} checked={q.correctOption === optIndex} onChange={() => updateQuestion(qIndex, "correctOption", optIndex)} />
-                                  <input type="text" className="form-control border-0 bg-transparent fw-bold" placeholder={`ตัวเลือกที่ ${optIndex + 1}`} value={opt} onChange={(e) => updateOption(qIndex, optIndex, e.target.value)} required />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* 🌟 ปุ่มบันทึก เปลี่ยนคำตามโหมด และเพิ่มปุ่มยกเลิกถ้ากำลังแก้ไข */}
-                      <div className="d-flex flex-column flex-md-row gap-3 mt-4">
-                        <button type="button" className="btn btn-light text-success border border-success rounded-pill fw-bold py-3 px-5 custom-btn-outline" onClick={addQuestion}>+ เพิ่มโจทย์ข้อต่อไป</button>
-                        <button type="submit" className="btn btn-success rounded-pill fw-bold flex-grow-1 py-3 shadow-sm custom-btn">
-                          {editingQuiz ? '💾 บันทึกการแก้ไข' : '💾 บันทึกแบบทดสอบ'}
-                        </button>
-                        {editingQuiz && (
-                          <button type="button" className="btn btn-secondary rounded-pill fw-bold py-3 px-4 shadow-sm" onClick={cancelEditQuiz}>ยกเลิก</button>
-                        )}
+                        )})}
                       </div>
-                    </form>
-                  </div>
-              </div>
-                
-              <h5 className="fw-bold mb-3 text-dark">แบบทดสอบที่สร้างไว้แล้ว</h5>
-              <div className="row g-3">
-                {quizzes.length === 0 && <p className="text-muted">ยังไม่มีแบบทดสอบ</p>}
-                {quizzes.map((q) => (
-                  <div key={q.id} className="col-md-6 col-lg-4">
-                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white hover-card d-flex flex-column">
-                      
-                      {/* 🌟 ปุ่มแก้ไขและลบข้อสอบ */}
-                      <div className="d-flex justify-content-between align-items-start mb-2">
-                         <strong className="text-success small bg-success bg-opacity-10 px-3 py-2 rounded-pill align-self-start">{q.courses?.course_name || "-"} ({q.courses?.section || "-"})</strong>
-                         <div className="d-flex gap-1">
-                           <button onClick={() => handleEditQuizClick(q)} className="btn btn-light text-warning rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
-                           <button onClick={() => handleDeleteQuiz(q.id)} className="btn btn-light text-danger rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
-                         </div>
-                      </div>
-
-                      <span className="fw-bold fs-5 mb-2 text-dark">{q.title}</span>
-                      <span className="text-muted small mt-auto fw-bold d-block">จำนวน {q.questions.length} ข้อ</span>
-                      {q.time_limit > 0 && <span className="badge bg-warning text-dark mt-2 align-self-start">⏳ {q.time_limit} นาที</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              </>
-            )}
-
-            {quizSubTab === "scores" && (
-               <div className="card border-0 shadow-sm rounded-4 bg-white slide-up">
-                 <div className="card-body p-4 p-md-5">
-                   <div className="d-flex justify-content-between align-items-center mb-4">
-                     <h5 className="fw-bold m-0 text-dark">ผลคะแนนแบบทดสอบ (ตรวจอัตโนมัติ)</h5>
-                     <button onClick={handleExportQuizCSV} className="btn btn-success rounded-pill fw-bold px-4 shadow-sm">📥 โหลดคะแนนสอบ (CSV)</button>
-                   </div>
-                   
-                   {quizSubmissions.length === 0 ? (
-                     <div className="text-center text-muted py-5"><span className="fs-1 d-block mb-3">📭</span>ยังไม่มีนักเรียนส่งข้อสอบ</div>
-                   ) : (
-                     <div className="table-responsive rounded-4 border">
-                       <table className="table table-hover align-middle mb-0">
-                         <thead className="table-light"><tr><th className="px-4 py-3">วิชา / กลุ่ม</th><th className="py-3">ชื่อแบบทดสอบ</th><th className="py-3">รหัสนักศึกษา</th><th className="py-3">ชื่อ - นามสกุล</th><th className="text-center py-3">คะแนนที่ได้</th></tr></thead>
-                         <tbody>
-                           {quizSubmissions.map(qs => (
-                             <tr key={qs.id}>
-                               <td className="px-4 fw-bold text-secondary">{qs.quizzes?.courses?.course_name || "-"} <br/><small className="text-muted">({qs.quizzes?.courses?.section || "-"})</small></td>
-                               <td className="text-dark">{qs.quizzes?.title || "-"}</td>
-                               <td>{qs.profiles?.student_code || "-"}</td>
-                               <td className="fw-bold text-dark">{qs.profiles?.full_name || "ไม่ระบุชื่อ"}</td>
-                               <td className="text-center">
-                                 <span className="badge bg-success rounded-pill px-3 py-2 fs-6 shadow-sm">{qs.score} / {qs.total_score}</span>
-                                 {qs.is_cheated && <span className="badge bg-danger rounded-pill px-2 py-1 ms-2 shadow-sm" title="สลับหน้าจอขณะสอบ">🚨 ทุจริต</span>}
-                               </td>
-                             </tr>
-                           ))}
-                         </tbody>
-                       </table>
-                     </div>
-                   )}
-                 </div>
-               </div>
-            )}
-          </div>
-        )}
-
-        {/* 🌟 TAB 6: ระบบเช็คชื่อ */}
-        {activeTab === "attendance" && (
-          <div className="fade-in card border-0 shadow-sm rounded-4 bg-white mb-5">
-            <div className="card-body p-4 p-md-5">
-               <h4 className="fw-bold text-dark mb-4 d-flex align-items-center gap-2"><span>🙋‍♂️</span> เช็คชื่อเข้าเรียน</h4>
-               <div className="row g-3 mb-4 bg-light p-4 rounded-4">
-                 <div className="col-md-6">
-                    <label className="fw-bold text-muted small mb-2">เลือกรายวิชา/กลุ่มเรียน</label>
-                    <select className="form-select border-0 shadow-sm rounded-3 py-2 fw-bold" value={attCourse} onChange={(e) => setAttCourse(e.target.value)}>
-                      <option value="">-- กรุณาเลือก --</option>
-                      {courses.map(c => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
-                    </select>
-                 </div>
-                 <div className="col-md-6">
-                    <label className="fw-bold text-muted small mb-2">วันที่สอน</label>
-                    <input type="date" className="form-control border-0 shadow-sm rounded-3 py-2 fw-bold" value={attDate} onChange={(e) => setAttDate(e.target.value)} />
-                 </div>
-               </div>
-
-               {attCourse && (
-                 <div className="slide-up">
-                   <div className="d-flex justify-content-between align-items-center mb-3">
-                     <h6 className="fw-bold text-dark">รายชื่อนักเรียน</h6>
-                     <button onClick={handleSaveAttendance} className="btn btn-success rounded-pill px-4 fw-bold shadow-sm custom-btn">💾 บันทึกการเข้าเรียน</button>
-                   </div>
-                   <div className="table-responsive border rounded-4">
-                     <table className="table align-middle mb-0">
-                        <thead className="table-light"><tr><th className="px-4 py-3">รหัส</th><th className="py-3">ชื่อ-สกุล</th><th className="py-3 text-center">สถานะการเข้าเรียน</th></tr></thead>
-                        <tbody>
-                          {enrollments.filter(e => e.course_id === attCourse).map(enroll => (
-                            <tr key={enroll.student_id}>
-                              <td className="px-4">{enroll.profiles?.student_code || '-'}</td>
-                              <td className="fw-bold text-dark">{enroll.profiles?.full_name || '-'}</td>
-                              <td className="text-center">
-                                <div className="btn-group shadow-sm" role="group">
-                                  {["มา", "สาย", "ลา", "ขาด"].map((status, i) => {
-                                    const colors = ["outline-success", "outline-warning", "outline-info", "outline-danger"];
-                                    const activeColors = ["success", "warning", "info", "danger"];
-                                    const isSelected = attRecords[enroll.student_id] === status;
-                                    return (
-                                      <button key={status} type="button" 
-                                        className={`btn btn-sm ${isSelected ? `btn-${activeColors[i]} text-white` : `btn-${colors[i]} bg-white`}`}
-                                        onClick={() => setAttRecords({...attRecords, [enroll.student_id]: status})}>
-                                        {status}
-                                      </button>
-                                    )
-                                  })}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                          {enrollments.filter(e => e.course_id === attCourse).length === 0 && (
-                            <tr><td colSpan="3" className="text-center py-4 text-muted">ยังไม่มีนักเรียนลงทะเบียนในวิชานี้</td></tr>
-                          )}
-                        </tbody>
-                     </table>
-                   </div>
-                 </div>
-               )}
-            </div>
-          </div>
-        )}
-
-        {/* 🌟 TAB 7: สรุปเกรดรวม */}
-        {activeTab === "grades" && (
-          <div className="fade-in card border-0 shadow-sm rounded-4 bg-white mb-5">
-            <div className="card-body p-4 p-md-5">
-              <h4 className="fw-bold text-dark mb-4 d-flex align-items-center gap-2"><span>🏆</span> สรุปผลการเรียนและตัดเกรด</h4>
-              <div className="bg-light p-4 rounded-4 mb-4">
-                <label className="fw-bold text-muted small mb-2">เลือกรายวิชาเพื่อประมวลผล</label>
-                <select className="form-select border-0 shadow-sm rounded-3 py-3 fw-bold fs-5 text-primary" value={gradeSummaryCourse} onChange={(e) => setGradeSummaryCourse(e.target.value)}>
-                  <option value="">-- กรุณาเลือกรายวิชา --</option>
-                  {courses.map(c => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
-                </select>
-              </div>
-
-              {gradeSummaryCourse && (
-                <div className="slide-up table-responsive border rounded-4 shadow-sm">
-                  <table className="table table-hover align-middle mb-0">
-                    <thead className="table-light">
-                      <tr className="text-center">
-                        <th className="px-4 py-3 text-start">รหัส</th>
-                        <th className="py-3 text-start">ชื่อ-สกุล</th>
-                        <th className="py-3">คะแนนเก็บ (งาน)</th>
-                        <th className="py-3">คะแนนสอบ (ควิซ)</th>
-                        <th className="py-3 bg-warning bg-opacity-10 fw-bold">รวมสุทธิ</th>
-                        <th className="py-3 bg-success bg-opacity-10 fw-bold">เกรดประเมิน</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getGradeSummary().map(row => (
-                        <tr key={row.student_id} className="text-center">
-                          <td className="px-4 text-start">{row.profile.student_code}</td>
-                          <td className="fw-bold text-dark text-start">{row.profile.full_name}</td>
-                          <td className="text-muted">{row.assignScores}</td>
-                          <td className="text-muted">{row.quizScores}</td>
-                          <td className="fw-bold fs-5 text-primary bg-warning bg-opacity-10">{row.total}</td>
-                          <td className="bg-success bg-opacity-10"><span className={`badge ${row.grade === '0' || row.grade === 'รอประเมิน' ? 'bg-danger' : 'bg-success'} rounded-pill px-3 py-2 fs-6 shadow-sm`}>{row.grade}</span></td>
-                        </tr>
-                      ))}
-                      {getGradeSummary().length === 0 && <tr><td colSpan="6" className="text-center py-5 text-muted">ไม่มีข้อมูลนักเรียน</td></tr>}
-                    </tbody>
-                  </table>
+                    )}
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB 8: บัญชีของฉัน */}
-        {activeTab === "profile" && (
-          <div className="fade-in d-flex flex-column align-items-center">
-            <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white w-100" style={{ maxWidth: "500px" }}>
-              <div className="p-5 text-center position-relative" style={{ background: 'linear-gradient(135deg, #198754 0%, #146c43 100%)' }}>
-                <div className="bg-white rounded-circle position-absolute start-50 translate-middle border border-4 border-white shadow-sm d-flex justify-content-center align-items-center overflow-hidden" style={{ width: "90px", height: "90px", top: "100%", fontSize: "36px" }}>
-                   {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
+          {/* 🌟 TAB 5: 📝 ข้อสอบ */}
+          {activeTab === "quizzes" && (
+            <div className="fade-in">
+               <div className="d-flex bg-white p-2 rounded-pill shadow-sm mb-5 mx-auto border border-light" style={{ maxWidth: "400px" }}>
+                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "create" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => { setQuizSubTab("create"); cancelEditQuiz(); }}>➕ Create Quiz</button>
+                <button className={`btn rounded-pill flex-grow-1 fw-bold py-2 ${quizSubTab === "scores" ? "btn-theme-dark shadow-sm" : "btn-white text-muted border-0"}`} onClick={() => setQuizSubTab("scores")}>📊 Results</button>
+              </div>
+              
+              {quizSubTab === "create" && (
+                <>
+                  <div className="theme-card mb-5">
+                      <h5 className="fw-bold mb-4 text-theme-dark">{editingQuiz ? '✏️ Edit Quiz' : '✨ New Quiz'}</h5>
+                      {!editingQuiz && quizzes.length > 0 && (
+                        <div className="mb-4 p-3 bg-theme-gray rounded-4 border border-light">
+                          <label className="form-label small fw-bold text-theme-dark mb-2">🔄 Clone from existing</label>
+                          <select className="form-select theme-input bg-white" onChange={handleCloneQuiz}>
+                            <option value="">-- Select Quiz --</option>
+                            {quizzes.map(q => <option key={q.id} value={q.id}>{q.courses?.course_name} : {q.title}</option>)}
+                          </select>
+                        </div>
+                      )}
+
+                      <form onSubmit={handleSaveQuiz}>
+                        <div className="row g-3 mb-4">
+                          <div className="col-md-4">
+                            <select className="form-select theme-input" value={quizForm.course_id} onChange={(e) => setQuizForm({ ...quizForm, course_id: e.target.value })} required>
+                              <option value="">-- Course --</option>
+                              {courses.map((c) => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
+                            </select>
+                          </div>
+                          <div className="col-md-4">
+                            <select className="form-select theme-input" value={quizForm.module_id} onChange={(e) => setQuizForm({ ...quizForm, module_id: e.target.value })}>
+                              <option value="">-- Module --</option>
+                              {modules.filter(m => m.course_id === quizForm.course_id).map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+                            </select>
+                          </div>
+                          <div className="col-md-4">
+                            <input type="number" className="form-control theme-input" placeholder="Time limit (mins) 0=None" value={quizForm.time_limit} onChange={(e) => setQuizForm({ ...quizForm, time_limit: e.target.value })} required />
+                          </div>
+                          <div className="col-md-12">
+                            <input type="text" className="form-control theme-input" placeholder="Quiz Title" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} required />
+                          </div>
+                        </div>
+                        
+                        <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>📋</span> Questions</h6>
+                        {questions.map((q, qIndex) => (
+                          <div key={qIndex} className="bg-theme-gray p-4 rounded-4 mb-4 position-relative border border-light slide-down">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <span className="fw-bold text-theme-dark bg-white px-3 py-1 rounded-pill shadow-sm">Q {qIndex + 1}</span>
+                              {questions.length > 1 && (<button type="button" className="btn btn-white text-theme-red btn-sm rounded-pill shadow-sm px-3 fw-bold" onClick={() => setQuestions(questions.filter((_, i) => i !== qIndex))}>Delete</button>)}
+                            </div>
+                            
+                            <input type="text" className="form-control theme-input bg-white mb-3 shadow-sm" placeholder="Type question..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
+                            
+                            <div className="mb-4">
+                              <label className="small fw-bold text-muted d-block mb-1">🖼️ Attach Image (Optional)</label>
+                              <div className="d-flex align-items-center gap-3">
+                                <input type="file" accept="image/*" className="form-control bg-white rounded-3 border-0 shadow-sm p-2 w-75" onChange={(e) => handleQuestionImageUpload(qIndex, e)} />
+                                {q.imageUrl && <img src={q.imageUrl} alt="preview" style={{ height: '40px', borderRadius: '5px' }} />}
+                              </div>
+                            </div>
+
+                            <div className="row g-3">
+                              {q.options.map((opt, optIndex) => (
+                                <div key={optIndex} className="col-md-6">
+                                  <div className={`d-flex align-items-center gap-3 border rounded-4 p-2 bg-white transition-all ${q.correctOption === optIndex ? "border-theme-red border-2 shadow-sm bg-theme-red bg-opacity-10" : "border-light"}`}>
+                                    <input className="form-check-input mt-0 ms-2" type="radio" name={`correct-${qIndex}`} style={{ width: "24px", height: "24px", accentColor: "var(--theme-red)" }} checked={q.correctOption === optIndex} onChange={() => updateQuestion(qIndex, "correctOption", optIndex)} />
+                                    <input type="text" className="form-control border-0 bg-transparent fw-bold" placeholder={`Option ${optIndex + 1}`} value={opt} onChange={(e) => updateOption(qIndex, optIndex, e.target.value)} required />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <div className="d-flex flex-column flex-md-row gap-3 mt-4">
+                          <button type="button" className="btn btn-light text-theme-dark border border-dark rounded-pill fw-bold py-3 px-5" onClick={addQuestion}>+ Add Question</button>
+                          <button type="submit" className="btn btn-theme-red rounded-pill fw-bold flex-grow-1 py-3 shadow-sm">
+                            {editingQuiz ? '💾 Update Quiz' : '💾 Save Quiz'}
+                          </button>
+                          {editingQuiz && <button type="button" className="btn btn-dark rounded-pill fw-bold py-3 px-4 shadow-sm" onClick={cancelEditQuiz}>Cancel</button>}
+                        </div>
+                      </form>
+                  </div>
+                  
+                <h5 className="fw-bold mb-3 text-theme-dark">Active Quizzes</h5>
+                <div className="row g-4">
+                  {quizzes.length === 0 && <p className="text-muted col-12 fw-bold">No quizzes yet.</p>}
+                  {quizzes.map((q) => (
+                    <div key={q.id} className="col-md-6 col-lg-4">
+                      <div className="theme-card h-100 d-flex flex-column border border-light">
+                        <div className="d-flex justify-content-between align-items-start mb-3">
+                           <span className="badge bg-theme-dark text-white px-3 py-2 rounded-pill fs-6">{q.courses?.course_name || "-"}</span>
+                           <div className="d-flex gap-1">
+                             <button onClick={() => handleEditQuizClick(q)} className="btn btn-light text-warning rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>✏️</span></button>
+                             <button onClick={() => handleDeleteQuiz(q.id)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                           </div>
+                        </div>
+                        <h5 className="fw-bold mb-2 text-theme-dark">{q.title}</h5>
+                        <div className="mt-auto d-flex justify-content-between align-items-center pt-3">
+                          <span className="text-muted small fw-bold">{q.questions.length} Qs</span>
+                          {q.time_limit > 0 && <span className="badge bg-theme-red text-white">⏳ {q.time_limit} m</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
+              )}
+
+              {quizSubTab === "scores" && (
+                 <div className="theme-card slide-up">
+                     <div className="d-flex justify-content-between align-items-center mb-4">
+                       <h5 className="fw-bold m-0 text-theme-dark">Quiz Results</h5>
+                       <button onClick={handleExportQuizCSV} className="btn btn-theme-red rounded-pill fw-bold px-4 py-2 shadow-sm">📥 Export CSV</button>
+                     </div>
+                     
+                     {quizSubmissions.length === 0 ? (
+                       <div className="text-center text-muted py-5 fw-bold"><span className="fs-1 d-block mb-3">📭</span>No submissions yet.</div>
+                     ) : (
+                       <div className="table-responsive rounded-4 border border-light">
+                         <table className="table table-hover align-middle mb-0">
+                           <thead className="table-light"><tr><th className="px-4 py-3 text-theme-dark">Course</th><th className="py-3 text-theme-dark">Quiz</th><th className="py-3 text-theme-dark">Student ID</th><th className="py-3 text-theme-dark">Name</th><th className="text-center py-3 text-theme-dark">Score</th></tr></thead>
+                           <tbody>
+                             {quizSubmissions.map(qs => (
+                               <tr key={qs.id}>
+                                 <td className="px-4 fw-bold text-muted">{qs.quizzes?.courses?.course_name || "-"}</td>
+                                 <td className="text-theme-dark fw-bold">{qs.quizzes?.title || "-"}</td>
+                                 <td className="text-muted">{qs.profiles?.student_code || "-"}</td>
+                                 <td className="fw-bold text-theme-dark">{qs.profiles?.full_name || "Unknown"}</td>
+                                 <td className="text-center">
+                                   <span className="badge bg-theme-dark rounded-pill px-3 py-2 fs-6 shadow-sm">{qs.score} / {qs.total_score}</span>
+                                   {qs.is_cheated && <span className="badge bg-theme-red rounded-pill px-2 py-1 ms-2 shadow-sm">🚨 Cheated</span>}
+                                 </td>
+                               </tr>
+                             ))}
+                           </tbody>
+                         </table>
+                       </div>
+                     )}
+                 </div>
+              )}
+            </div>
+          )}
+
+          {/* 🌟 TAB 6: ระบบเช็คชื่อ */}
+          {activeTab === "attendance" && (
+            <div className="fade-in theme-card">
+                 <h4 className="fw-bold text-theme-dark mb-4 d-flex align-items-center gap-2"><span>🙋‍♂️</span> Attendance</h4>
+                 <div className="row g-3 mb-4 bg-theme-gray p-4 rounded-4 border border-light">
+                   <div className="col-md-6">
+                      <label className="fw-bold text-theme-dark small mb-2">Select Course</label>
+                      <select className="form-select theme-input bg-white" value={attCourse} onChange={(e) => setAttCourse(e.target.value)}>
+                        <option value="">-- Choose Course --</option>
+                        {courses.map(c => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
+                      </select>
+                   </div>
+                   <div className="col-md-6">
+                      <label className="fw-bold text-theme-dark small mb-2">Date</label>
+                      <input type="date" className="form-control theme-input bg-white" value={attDate} onChange={(e) => setAttDate(e.target.value)} />
+                   </div>
+                 </div>
+
+                 {attCourse && (
+                   <div className="slide-up">
+                     <div className="d-flex justify-content-between align-items-center mb-3">
+                       <h6 className="fw-bold text-theme-dark">Students List</h6>
+                       <button onClick={handleSaveAttendance} className="btn btn-theme-red rounded-pill px-4 py-2 fw-bold shadow-sm">💾 Save</button>
+                     </div>
+                     <div className="table-responsive border border-light rounded-4">
+                       <table className="table align-middle mb-0">
+                          <thead className="table-light"><tr><th className="px-4 py-3">ID</th><th className="py-3">Name</th><th className="py-3 text-center">Status</th></tr></thead>
+                          <tbody>
+                            {enrollments.filter(e => e.course_id === attCourse).map(enroll => (
+                              <tr key={enroll.student_id}>
+                                <td className="px-4 text-muted fw-bold">{enroll.profiles?.student_code || '-'}</td>
+                                <td className="fw-bold text-theme-dark">{enroll.profiles?.full_name || '-'}</td>
+                                <td className="text-center">
+                                  <div className="btn-group shadow-sm bg-white rounded-3 p-1 border" role="group">
+                                    {["มา", "สาย", "ลา", "ขาด"].map((status, i) => {
+                                      const activeColors = ["#198754", "#ffc107", "#0dcaf0", "var(--theme-red)"];
+                                      const isSelected = attRecords[enroll.student_id] === status;
+                                      return (
+                                        <button key={status} type="button" 
+                                          className="btn btn-sm rounded-3 fw-bold"
+                                          style={{
+                                             backgroundColor: isSelected ? activeColors[i] : 'transparent',
+                                             color: isSelected ? (i===1 || i===2 ? 'black' : 'white') : '#6c757d',
+                                             border: 'none', transition: '0.2s'
+                                          }}
+                                          onClick={() => setAttRecords({...attRecords, [enroll.student_id]: status})}>
+                                          {status}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                            {enrollments.filter(e => e.course_id === attCourse).length === 0 && (
+                              <tr><td colSpan="3" className="text-center py-5 text-muted fw-bold">No students enrolled.</td></tr>
+                            )}
+                          </tbody>
+                       </table>
+                     </div>
+                   </div>
+                 )}
+            </div>
+          )}
+
+          {/* 🌟 TAB 7: สรุปเกรดรวม */}
+          {activeTab === "grades" && (
+            <div className="fade-in theme-card">
+                <h4 className="fw-bold text-theme-dark mb-4 d-flex align-items-center gap-2"><span>🏆</span> Grades Summary</h4>
+                <div className="bg-theme-gray p-4 rounded-4 mb-4 border border-light">
+                  <label className="fw-bold text-theme-dark small mb-2">Select Course to Calculate</label>
+                  <select className="form-select theme-input bg-white fs-5 text-theme-dark" value={gradeSummaryCourse} onChange={(e) => setGradeSummaryCourse(e.target.value)}>
+                    <option value="">-- Choose Course --</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.course_name} ({c.section})</option>)}
+                  </select>
+                </div>
+
+                {gradeSummaryCourse && (
+                  <div className="slide-up table-responsive border border-light rounded-4 shadow-sm">
+                    <table className="table table-hover align-middle mb-0">
+                      <thead className="table-light">
+                        <tr className="text-center">
+                          <th className="px-4 py-3 text-start text-theme-dark">ID</th>
+                          <th className="py-3 text-start text-theme-dark">Name</th>
+                          <th className="py-3 text-theme-dark">Task Score</th>
+                          <th className="py-3 text-theme-dark">Quiz Score</th>
+                          <th className="py-3 bg-dark text-white fw-bold">Total</th>
+                          <th className="py-3 bg-theme-red text-white fw-bold">Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getGradeSummary().map(row => (
+                          <tr key={row.student_id} className="text-center">
+                            <td className="px-4 text-start text-muted fw-bold">{row.profile.student_code}</td>
+                            <td className="fw-bold text-theme-dark text-start">{row.profile.full_name}</td>
+                            <td className="text-muted fw-bold">{row.assignScores}</td>
+                            <td className="text-muted fw-bold">{row.quizScores}</td>
+                            <td className="fw-bold fs-5 text-theme-dark bg-theme-gray">{row.total}</td>
+                            <td className="bg-theme-red bg-opacity-10"><span className={`badge ${row.grade === '0' || row.grade === 'รอประเมิน' ? 'bg-theme-red' : 'bg-theme-dark'} rounded-pill px-3 py-2 fs-6 shadow-sm`}>{row.grade}</span></td>
+                          </tr>
+                        ))}
+                        {getGradeSummary().length === 0 && <tr><td colSpan="6" className="text-center py-5 text-muted fw-bold">No data available.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+            </div>
+          )}
+
+          {/* TAB 8: บัญชีของฉัน */}
+          {activeTab === "profile" && (
+            <div className="fade-in row justify-content-center">
+              <div className="col-12 col-md-8 col-xl-6">
+                <h4 className="fw-bold text-theme-dark mb-4">Profile</h4>
+                <div className="hero-card mb-4 text-center">
+                  <div className="bg-white rounded-circle border border-4 border-white shadow-lg mx-auto mb-3 d-flex justify-content-center align-items-center overflow-hidden" style={{ width: "100px", height: "100px", fontSize: "40px", zIndex: 2, position: 'relative' }}>
+                     {profileForm.avatar_url ? <img src={profileForm.avatar_url} alt="Profile" className="w-100 h-100" style={{objectFit: 'cover'}}/> : '👩‍🏫'}
+                  </div>
+                  <div style={{zIndex: 2, position: 'relative'}}>
+                    <h4 className="fw-bold mb-1">Teacher {profileForm.full_name || ""}</h4>
+                    <p className="text-white-50 mb-0">{session?.user?.email}</p>
+                  </div>
+                </div>
+                
+                <div className="theme-card mb-4">
+                  <h5 className="fw-bold mb-4 text-theme-dark text-center">Edit Profile</h5>
+                  <form onSubmit={handleUpdateProfile}>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Full Name</label><input type="text" className="form-control theme-input" value={profileForm.full_name} onChange={(e) => setProfileForm({...profileForm, full_name: e.target.value})} required /></div>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Nickname</label><input type="text" className="form-control theme-input" value={profileForm.nickname} onChange={(e) => setProfileForm({...profileForm, nickname: e.target.value})} /></div>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Phone</label><input type="text" className="form-control theme-input" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} /></div>
+                    <div className="mb-4">
+                      <label className="form-label text-muted small fw-bold px-2">Avatar Upload</label>
+                      <input type="file" accept="image/*" className="form-control theme-input bg-white" onChange={handleUploadAvatar} disabled={uploadingAvatar} />
+                      {uploadingAvatar && <small className="text-theme-red mt-2 ms-2 d-block fw-bold">⏳ Uploading...</small>}
+                    </div>
+                    <hr className="my-4 border-light" />
+                    
+                    <h6 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>✈️</span> Telegram Notifications</h6>
+                    <div className="bg-theme-dark text-white p-4 rounded-4 mb-4 shadow-sm">
+                       <p className="small mb-3 text-white-50">1. Click below to open Telegram and get your Chat ID from @getmyid_bot</p>
+                       <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-theme-red rounded-pill px-4 py-2 shadow-sm mb-4 fw-bold">👉 Get Chat ID</a>
+                       <p className="small mb-2 text-white-50">2. Paste your Chat ID here</p>
+                       <input type="text" className="form-control bg-white border-0 rounded-pill px-4 py-3 fw-bold" placeholder="E.g., 123456789" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
+                       {profileForm.telegram_chat_id && <small className="text-success fw-bold d-block mt-3">✅ Chat ID Ready</small>}
+                    </div>
+
+                    <hr className="my-4 border-light" />
+
+                    <h6 className="fw-bold mb-3 text-theme-dark">System Info (Read-only)</h6>
+                    <div className="mb-3"><label className="form-label text-muted small fw-bold px-2">Teacher ID</label><input type="text" className="form-control theme-input" value={profileForm.student_code} disabled /></div>
+                    <div className="mb-4"><label className="form-label text-muted small fw-bold px-2">Department</label><input type="text" className="form-control theme-input" value={profileForm.department} disabled /></div>
+                    <button type="submit" className="btn btn-theme-dark w-100 rounded-pill fw-bold py-3 shadow-sm">💾 Save Profile</button>
+                  </form>
                 </div>
               </div>
-              <div className="card-body pt-5 px-4 pb-5 text-center mt-3"><h4 className="fw-bold mb-1 text-dark">ครู{profileForm.full_name || ""}</h4><p className="text-muted mb-0">{session?.user?.email}</p></div>
             </div>
-            
-            <div className="card border-0 shadow-sm rounded-4 bg-white w-100 mb-4" style={{ maxWidth: "500px" }}>
-              <div className="card-body p-4 p-md-5">
-                <h5 className="fw-bold mb-4 text-dark text-center">แก้ไขข้อมูลส่วนตัว</h5>
-                <form onSubmit={handleUpdateProfile}>
-                  <div className="mb-3"><label className="form-label text-muted small fw-bold ms-2">ชื่อ - นามสกุล</label><input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3 fw-bold" value={profileForm.full_name} onChange={(e) => setProfileForm({...profileForm, full_name: e.target.value})} required /></div>
-                  <div className="mb-3"><label className="form-label text-muted small fw-bold ms-2">ชื่อเล่น</label><input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.nickname} onChange={(e) => setProfileForm({...profileForm, nickname: e.target.value})} placeholder="ระบุชื่อเล่น" /></div>
-                  <div className="mb-3"><label className="form-label text-muted small fw-bold ms-2">เบอร์โทรศัพท์</label><input type="text" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-3" value={profileForm.phone} onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})} placeholder="08X-XXX-XXXX" /></div>
-                  <div className="mb-4">
-                    <label className="form-label text-muted small fw-bold ms-2">รูปโปรไฟล์ (อัปโหลดจากเครื่อง)</label>
-                    <input type="file" accept="image/*" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-2" onChange={handleUploadAvatar} disabled={uploadingAvatar} />
-                    {uploadingAvatar && <small className="text-success mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
-                  </div>
-                  <hr className="my-4 border-light" />
-                  
-                  {/* 🌟 ส่วนเชื่อมต่อ Telegram สำหรับคุณครู */}
-                  <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2"><span>✈️</span> การแจ้งเตือนผ่าน Telegram</h6>
-                  <div className="bg-success bg-opacity-10 p-3 rounded-4 mb-4 border border-success border-opacity-25">
-                     <p className="small text-dark mb-2">1. กดปุ่มด้านล่างเพื่อเปิด Telegram และรับรหัส Chat ID ของคุณจากบอท @getmyid_bot</p>
-                     <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-success rounded-pill px-3 shadow-sm mb-3">👉 เปิด Telegram รับรหัส</a>
-                     <p className="small text-dark mb-2">2. นำตัวเลข Chat ID (เช่น 123456789) มากรอกในช่องด้านล่าง</p>
-                     <input type="text" className="form-control custom-input bg-white border-0 rounded-pill px-4 py-3" placeholder="ระบุ Telegram Chat ID" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
-                     {profileForm.telegram_chat_id && <small className="text-success fw-bold d-block mt-2">✅ ข้อมูล Chat ID พร้อมใช้งานแล้ว</small>}
-                  </div>
+          )}
 
-                  <hr className="my-4 border-light" />
-
-                  <h6 className="fw-bold mb-3 text-dark">ข้อมูลของระบบ (แก้ไขไม่ได้)</h6>
-                  <div className="mb-3"><label className="form-label text-muted small fw-bold ms-2">รหัสบุคลากร</label><input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-3 text-muted" value={profileForm.student_code} disabled /></div>
-                  <div className="mb-4"><label className="form-label text-muted small fw-bold ms-2">แผนกวิชา</label><input type="text" className="form-control bg-light border-0 rounded-pill px-4 py-3 text-muted" value={profileForm.department} disabled /></div>
-                  <button type="submit" className="btn btn-success w-100 rounded-pill fw-bold py-3 shadow-sm custom-btn">💾 บันทึกข้อมูล</button>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div style={{ height: '120px', width: '100%' }}></div>
-
+        </div>
       </div>
 
+      {/* 🎨 Theme 1 CSS Rules */}
       <style>{`
-        .font-app { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; } 
+        :root {
+          --theme-red: #E50914; 
+          --theme-red-hover: #b90710;
+          --theme-dark: #121212; 
+          --theme-gray: #F5F6FA; 
+        }
+        body { background-color: var(--theme-gray); }
+        .font-app { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+        
+        .text-theme-red { color: var(--theme-red) !important; }
+        .text-theme-dark { color: var(--theme-dark) !important; }
+        .bg-theme-red { background-color: var(--theme-red) !important; color: white; }
+        .bg-theme-dark { background-color: var(--theme-dark) !important; color: white; }
+        .bg-theme-gray { background-color: var(--theme-gray) !important; }
+        
+        .btn-theme-red { background-color: var(--theme-red); color: white; border: none; transition: 0.3s; }
+        .btn-theme-red:hover { background-color: var(--theme-red-hover); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3) !important; }
+        .btn-theme-dark { background-color: var(--theme-dark); color: white; border: none; transition: 0.3s; }
+        .btn-theme-dark:hover { background-color: black; color: white; transform: translateY(-2px); }
+
+        .app-layout { display: flex; min-height: 100vh; background-color: var(--theme-gray); }
+        
+        /* Desktop Sidebar */
+        .sidebar { width: 260px; background: white; border-right: 1px solid rgba(0,0,0,0.05); display: none; flex-direction: column; position: fixed; height: 100vh; z-index: 1000; padding: 24px; }
+        .nav-link-btn { display: flex; align-items: center; gap: 15px; width: 100%; padding: 15px 20px; border-radius: 16px; border: none; background: transparent; color: #6c757d; font-weight: 700; text-align: left; transition: 0.3s; margin-bottom: 8px; }
+        .nav-link-btn:hover { background: var(--theme-gray); color: var(--theme-dark); }
+        .nav-link-btn.active { background: var(--theme-red); color: white; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.2); }
+        
+        /* Main Content */
+        .main-content { flex-grow: 1; margin-left: 0; padding-bottom: 80px; min-height: 100vh; }
+        
+        /* Components */
+        .theme-card { background: white; border-radius: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.03); border: none; padding: 24px; }
+        .hero-card { background: var(--theme-dark); color: white; border-radius: 28px; padding: 32px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .hero-card::after { content: ''; position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: var(--theme-red); border-radius: 50%; opacity: 0.2; filter: blur(40px); }
+        
+        .theme-input { background-color: var(--theme-gray) !important; border: 1px solid transparent !important; border-radius: 16px !important; padding: 16px 20px !important; transition: 0.3s; font-weight: 600; color: var(--theme-dark); }
+        .theme-input:focus { background-color: white !important; border-color: var(--theme-red) !important; box-shadow: 0 0 0 4px rgba(229, 9, 20, 0.1) !important; }
+        
+        .hover-card { transition: transform 0.2s, box-shadow 0.2s; } 
+        .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; } 
+
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
         .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
         .slide-down { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1); } 
-        .transition-all { transition: all 0.3s ease; } 
-        .hover-bg-light:hover { background-color: #f8f9fa !important; } 
-        .hover-card { transition: transform 0.2s, box-shadow 0.2s; } 
-        .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; } 
-        .custom-input { transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); } 
-        .custom-input:focus { box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.15) !important; background-color: #fff !important; } 
-        .custom-btn { transition: all 0.3s; } 
-        .custom-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(25, 135, 84, 0.3) !important; } 
-        .custom-btn-outline:hover { background-color: rgba(25, 135, 84, 0.1); } 
-        .hover-primary:hover { color: #198754 !important; }
+        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } 
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } 
         @keyframes slideDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Media Queries for Desktop */
+        @media (min-width: 992px) {
+          .sidebar { display: flex; }
+          .main-content { margin-left: 260px; padding-bottom: 20px; }
+          .mobile-only { display: none !important; }
+        }
       `}</style>
     </div>
   );
