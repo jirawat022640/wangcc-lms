@@ -29,12 +29,13 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const [moduleForm, setModuleForm] = useState({ course_id: "", title: "" }); 
   const [assignForm, setAssignForm] = useState({ course_id: "", module_id: "", title: "", description: "" });
   const [quizForm, setQuizForm] = useState({ course_id: "", module_id: "", title: "" });
-  const [questions, setQuestions] = useState([{ question: "", options: ["", "", "", ""], correctOption: 0 }]);
+  
+  // 🌟 เพิ่ม imageUrl ในโครงสร้างข้อสอบเริ่มต้น
+  const [questions, setQuestions] = useState([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
   
   const [gradeForm, setGradeForm] = useState({ id: "", score: "", feedback: "" }); 
   const [editingGrade, setEditingGrade] = useState(null); 
   
-  // 🌟 เพิ่ม telegram_chat_id ใน profileForm ของคุณครู
   const [profileForm, setProfileForm] = useState({ 
     full_name: '', nickname: '', phone: '', avatar_url: '', student_code: '', department: '', telegram_chat_id: '' 
   });
@@ -62,7 +63,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
   };
 
-  // 🌟 ฟังก์ชันสำหรับยิงแจ้งเตือนเข้า Telegram
   const sendTelegramNotify = async (chatId, message) => {
     const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || "YOUR_BOT_TOKEN_HERE";
     if (!chatId || botToken === "YOUR_BOT_TOKEN_HERE") return;
@@ -86,7 +86,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
         setProfileForm({
           full_name: pData.full_name || '', nickname: pData.nickname || '', phone: pData.phone || '',
           avatar_url: pData.avatar_url || '', student_code: pData.student_code || '', department: pData.department || '',
-          telegram_chat_id: pData.telegram_chat_id || '' // 🌟 ดึงข้อมูล Telegram ID
+          telegram_chat_id: pData.telegram_chat_id || '' 
         });
       }
 
@@ -220,7 +220,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
     e.preventDefault(); 
     await supabase.from("profiles").update({ 
       full_name: profileForm.full_name, nickname: profileForm.nickname, phone: profileForm.phone, avatar_url: profileForm.avatar_url,
-      telegram_chat_id: profileForm.telegram_chat_id // 🌟 บันทึกข้อมูล Telegram ID ลงฐานข้อมูล
+      telegram_chat_id: profileForm.telegram_chat_id 
     }).eq("id", session.user.id); 
     fetchData(); Swal.fire('สำเร็จ!', 'บันทึกข้อมูลเรียบร้อย', 'success'); 
   };
@@ -255,8 +255,34 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const handleCreateAssignment = async (e) => { 
     e.preventDefault(); 
     if (!assignForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
-    await supabase.from("assignments").insert([{ course_id: assignForm.course_id, module_id: assignForm.module_id || null, title: assignForm.title, description: assignForm.description }]); 
-    setAssignForm({ course_id: "", module_id: "", title: "", description: "" }); fetchData(); Swal.fire('สำเร็จ!', 'สั่งงานนักเรียนเรียบร้อยแล้ว', 'success'); 
+    
+    await supabase.from("assignments").insert([{ 
+      course_id: assignForm.course_id, 
+      module_id: assignForm.module_id || null, 
+      title: assignForm.title, 
+      description: assignForm.description 
+    }]); 
+    
+    const targetCourse = courses.find(c => c.id === assignForm.course_id);
+    const courseName = targetCourse ? targetCourse.course_name : "วิชาของคุณ";
+    
+    const { data: enrolledStudents } = await supabase.from("enrollments").select("profiles(telegram_chat_id)").eq("course_id", assignForm.course_id);
+
+    let notifyCount = 0;
+    if (enrolledStudents && enrolledStudents.length > 0) {
+      enrolledStudents.forEach(student => {
+         const chatId = student.profiles?.telegram_chat_id;
+         if (chatId) {
+            const msg = `📢 แจ้งเตือนงานใหม่!\nวิชา: ${courseName}\nเรื่อง: ${assignForm.title}\nคำชี้แจง: ${assignForm.description}\n\nอย่าลืมเข้าไปดูรายละเอียดและส่งงานในระบบนะครับ ✌️`;
+            sendTelegramNotify(chatId, msg);
+            notifyCount++;
+         }
+      });
+    }
+
+    setAssignForm({ course_id: "", module_id: "", title: "", description: "" }); 
+    fetchData(); 
+    Swal.fire('สำเร็จ!', `สั่งงานเรียบร้อย\nส่งแจ้งเตือนผ่าน Telegram ให้นักเรียน ${notifyCount} คน`, 'success'); 
   };
 
   const handleCloneAssignment = (e) => {
@@ -274,13 +300,13 @@ export default function TeacherDashboard({ session, handleLogout }) {
       if (questions[i].options.some((opt) => opt.trim() === "")) { Swal.fire('แจ้งเตือน', `กรุณากรอกตัวเลือกให้ครบในข้อที่ ${i + 1}`, 'warning'); return; }
     } 
     await supabase.from("quizzes").insert([{ course_id: quizForm.course_id, module_id: quizForm.module_id || null, title: quizForm.title, questions: questions }]); 
-    setQuizForm({ course_id: "", module_id: "", title: "" }); setQuestions([{ question: "", options: ["", "", "", ""], correctOption: 0 }]); 
+    setQuizForm({ course_id: "", module_id: "", title: "" }); setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); 
     fetchData(); Swal.fire('สำเร็จ!', 'สร้างแบบทดสอบเรียบร้อยแล้ว', 'success'); 
   };
 
   const handleCloneQuiz = (e) => {
     const id = e.target.value;
-    if (!id) { setQuizForm(prev => ({ ...prev, title: "" })); setQuestions([{ question: "", options: ["", "", "", ""], correctOption: 0 }]); return; }
+    if (!id) { setQuizForm(prev => ({ ...prev, title: "" })); setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]); return; }
     const target = quizzes.find(q => q.id === id);
     if (target) { setQuizForm(prev => ({ ...prev, title: target.title, module_id: target.module_id || "" })); setQuestions(JSON.parse(JSON.stringify(target.questions))); }
   };
@@ -315,7 +341,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     e.preventDefault(); 
     await supabase.from("submissions").update({ score: gradeForm.score, teacher_feedback: gradeForm.feedback }).eq("id", subId); 
     
-    // 🌟 แจ้งเตือน Telegram ไปหานักเรียนเมื่อตรวจงานเสร็จ
     const targetSub = submissions.find(s => s.id === subId);
     if (targetSub && targetSub.profiles?.telegram_chat_id) {
        const msg = `✅ ตรวจงานแล้ว!\nวิชา: ${targetSub.assignments?.courses?.course_name}\nงาน: ${targetSub.assignments?.title}\nได้คะแนน: ${gradeForm.score}\nคอมเมนต์: ${gradeForm.feedback || '-'}`;
@@ -336,7 +361,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     await supabase.from("submissions").update({ score: batchScore }).in("id", selectedSubIds);
     const count = selectedSubIds.length;
     
-    // 🌟 แจ้งเตือน Telegram ไปหานักเรียนเมื่อตรวจงานแบบกลุ่ม
     selectedSubIds.forEach(subId => {
        const targetSub = submissions.find(s => s.id === subId);
        if (targetSub && targetSub.profiles?.telegram_chat_id) {
@@ -381,9 +405,31 @@ export default function TeacherDashboard({ session, handleLogout }) {
     setEditingMaterial(null); fetchData(); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปเดตชื่อเอกสารสำเร็จ', showConfirmButton: false, timer: 1500 }); 
   };
 
-  const addQuestion = () => setQuestions([...questions, { question: "", options: ["", "", "", ""], correctOption: 0 }]);
+  const addQuestion = () => setQuestions([...questions, { question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
   const updateQuestion = (index, field, value) => { const newQs = [...questions]; newQs[index][field] = value; setQuestions(newQs); };
   const updateOption = (qIndex, optIndex, value) => { const newQs = [...questions]; newQs[qIndex].options[optIndex] = value; setQuestions(newQs); };
+
+  // 🌟 ฟังก์ชันอัปโหลดรูปภาพข้อสอบ
+  const handleQuestionImageUpload = async (qIndex, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `quiz_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage.from('quiz_images').upload(fileName, file);
+    if (uploadError) {
+      Swal.fire('ข้อผิดพลาด', `อัปโหลดรูปไม่สำเร็จ: ${uploadError.message}`, 'error');
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('quiz_images').getPublicUrl(fileName);
+    
+    const newQs = [...questions];
+    newQs[qIndex].imageUrl = publicUrl;
+    setQuestions(newQs);
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปโหลดรูปภาพสำเร็จ!', showConfirmButton: false, timer: 1500 });
+  };
 
   const loadAttendanceRecords = () => {
     if (!attCourse || !attDate) return;
@@ -782,6 +828,17 @@ export default function TeacherDashboard({ session, handleLogout }) {
                   <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
                     <div className="card-body p-4">
                       <h5 className="fw-bold mb-4 text-dark">สร้างคำสั่งงาน</h5>
+                      
+                      {assignments.length > 0 && (
+                        <div className="mb-3 p-3 bg-light rounded-4 border">
+                          <label className="form-label small fw-bold text-success mb-2">🔄 คัดลอกโจทย์จากงานเดิม</label>
+                          <select className="form-select border-0 shadow-sm rounded-3" onChange={handleCloneAssignment}>
+                            <option value="">-- เลือกงานที่เคยสร้างไว้ --</option>
+                            {assignments.map(a => <option key={a.id} value={a.id}>{a.courses?.course_name} : {a.title}</option>)}
+                          </select>
+                        </div>
+                      )}
+
                       <form onSubmit={handleCreateAssignment} className="d-flex flex-column gap-3">
                         <select className="form-select custom-input bg-light border-0 rounded-4 p-3 text-secondary fw-bold" value={assignForm.course_id} onChange={(e) => setAssignForm({ ...assignForm, course_id: e.target.value })} required>
                           <option value="">-- เลือกรายวิชา --</option>
@@ -834,6 +891,22 @@ export default function TeacherDashboard({ session, handleLogout }) {
                     </select>
                   </div>
 
+                  {gradeFilter && ungradedFiltered.length > 0 && (
+                    <div className="bg-success bg-opacity-10 border border-success border-opacity-25 rounded-4 p-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 slide-down">
+                      <div className="d-flex align-items-center gap-2">
+                        <button onClick={selectAllFiltered} className="btn btn-sm btn-white fw-bold text-success rounded-pill px-3 shadow-sm border border-success">
+                          {selectedSubIds.length === ungradedFiltered.length ? "ยกเลิกเลือกทั้งหมด" : "เลือกยังไม่ตรวจทั้งหมด"}
+                        </button>
+                        <span className="small text-muted fw-bold ms-2">เลือกแล้ว: {selectedSubIds.length} คน</span>
+                      </div>
+                      
+                      <form onSubmit={handleBatchGradeSubmit} className="d-flex gap-2">
+                        <input type="number" className="form-control border-0 rounded-pill px-3 fw-bold shadow-sm" placeholder="คะแนนที่จะให้" style={{ width: '130px' }} value={batchScore} onChange={(e) => setBatchScore(e.target.value)} required />
+                        <button type="submit" className="btn btn-success rounded-pill fw-bold px-4 shadow-sm custom-btn">ให้คะแนนกลุ่มนี้</button>
+                      </form>
+                    </div>
+                  )}
+
                   {filteredSubmissions.length === 0 ? (
                     <div className="text-center text-muted py-5"><span className="fs-1 d-block mb-3">📭</span>ไม่มีงานสำหรับวิชานี้</div>
                   ) : (
@@ -842,8 +915,14 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         const ytThumb = getYoutubeThumbnail(sub.link_url);
                         return (
                         <div key={sub.id} className="col-12 col-xl-6">
-                          <div className={`border rounded-4 p-4 h-100 d-flex flex-column transition-all position-relative ${sub.score !== null ? 'border-success bg-success bg-opacity-10' : 'border-warning bg-white shadow-sm hover-card'}`}>
+                          <div className={`border rounded-4 p-4 h-100 d-flex flex-column transition-all position-relative ${sub.score !== null ? 'border-success bg-success bg-opacity-10' : 'border-warning bg-white shadow-sm hover-card'} ${selectedSubIds.includes(sub.id) ? 'border-2 border-primary shadow-lg' : ''}`}>
                             
+                            {sub.score === null && (
+                               <div className="position-absolute top-0 end-0 p-3 z-2">
+                                  <input type="checkbox" className="form-check-input shadow-sm" style={{ width: '25px', height: '25px', cursor: 'pointer' }} checked={selectedSubIds.includes(sub.id)} onChange={() => toggleSubSelection(sub.id)} />
+                               </div>
+                            )}
+
                             <div className="d-flex justify-content-between align-items-start mb-3 pe-4">
                               <div>
                                 <span className="badge bg-dark text-white rounded-pill px-3 py-2 me-2">{sub.assignments?.courses?.section || "-"}</span>
@@ -903,7 +982,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* TAB 5: 📝 ข้อสอบ */}
+        {/* 🌟 TAB 5: 📝 ข้อสอบ (พร้อมฟีเจอร์แนบรูปภาพในโจทย์) */}
         {activeTab === "quizzes" && (
           <div className="fade-in">
              <div className="d-flex bg-white p-1 rounded-pill shadow-sm mb-4 mx-auto" style={{ maxWidth: "400px" }}>
@@ -912,9 +991,21 @@ export default function TeacherDashboard({ session, handleLogout }) {
             </div>
             
             {quizSubTab === "create" && (
-              <div className="card border-0 shadow-sm rounded-4 mb-5 bg-white">
+              <>
+                <div className="card border-0 shadow-sm rounded-4 mb-5 bg-white">
                   <div className="card-body p-4 p-md-5">
                     <h5 className="fw-bold mb-4 text-dark">✨ สร้างแบบทดสอบใหม่</h5>
+                    
+                    {quizzes.length > 0 && (
+                      <div className="mb-4 p-3 bg-light rounded-4 border">
+                        <label className="form-label small fw-bold text-success mb-2">🔄 คัดลอกชุดคำถามจากข้อสอบเดิม</label>
+                        <select className="form-select border-0 shadow-sm rounded-3" onChange={handleCloneQuiz}>
+                          <option value="">-- เลือกข้อสอบที่เคยสร้างไว้ --</option>
+                          {quizzes.map(q => <option key={q.id} value={q.id}>{q.courses?.course_name} : {q.title}</option>)}
+                        </select>
+                      </div>
+                    )}
+
                     <form onSubmit={handleCreateQuiz}>
                       <div className="row g-3 mb-4">
                         <div className="col-md-6">
@@ -934,13 +1025,25 @@ export default function TeacherDashboard({ session, handleLogout }) {
                         </div>
                       </div>
                       
+                      <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2"><span>📋</span> ชุดคำถาม</h6>
                       {questions.map((q, qIndex) => (
                         <div key={qIndex} className="bg-light p-4 rounded-4 mb-4 position-relative border slide-down">
                           <div className="d-flex justify-content-between align-items-center mb-3">
                             <span className="fw-bold text-success bg-white px-3 py-1 rounded-pill shadow-sm">ข้อที่ {qIndex + 1}</span>
                             {questions.length > 1 && (<button type="button" className="btn btn-white text-danger btn-sm rounded-pill shadow-sm px-3 fw-bold" onClick={() => setQuestions(questions.filter((_, i) => i !== qIndex))}>ลบข้อนี้</button>)}
                           </div>
-                          <input type="text" className="form-control custom-input border-0 rounded-4 p-3 mb-4 shadow-sm" placeholder="พิมพ์โจทย์คำถาม..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
+                          
+                          <input type="text" className="form-control custom-input border-0 rounded-4 p-3 mb-3 shadow-sm" placeholder="พิมพ์โจทย์คำถาม..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
+                          
+                          {/* 🌟 ส่วนอัปโหลดรูปภาพข้อสอบ */}
+                          <div className="mb-4">
+                            <label className="small fw-bold text-muted d-block mb-1">🖼️ แนบรูปภาพประกอบโจทย์ (ถ้ามี)</label>
+                            <div className="d-flex align-items-center gap-3">
+                              <input type="file" accept="image/*" className="form-control bg-white rounded-3 border-0 shadow-sm p-2 w-75" onChange={(e) => handleQuestionImageUpload(qIndex, e)} />
+                              {q.imageUrl && <img src={q.imageUrl} alt="preview" style={{ height: '40px', borderRadius: '5px' }} />}
+                            </div>
+                          </div>
+
                           <div className="row g-3">
                             {q.options.map((opt, optIndex) => (
                               <div key={optIndex} className="col-md-6">
@@ -960,8 +1063,23 @@ export default function TeacherDashboard({ session, handleLogout }) {
                     </form>
                   </div>
               </div>
+                
+              <h5 className="fw-bold mb-3 text-dark">แบบทดสอบที่สร้างไว้แล้ว</h5>
+              <div className="row g-3">
+                {quizzes.length === 0 && <p className="text-muted">ยังไม่มีแบบทดสอบ</p>}
+                {quizzes.map((q) => (
+                  <div key={q.id} className="col-md-6 col-lg-4">
+                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white hover-card">
+                      <strong className="text-success small mb-3 bg-success bg-opacity-10 d-inline-block px-3 py-2 rounded-pill align-self-start">{q.courses?.course_name || "-"} ({q.courses?.section || "-"})</strong>
+                      <span className="fw-bold fs-5 mb-2 text-dark">{q.title}</span>
+                      <span className="text-muted small mt-auto fw-bold">จำนวน {q.questions.length} ข้อ</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              </>
             )}
-            
+
             {quizSubTab === "scores" && (
                <div className="card border-0 shadow-sm rounded-4 bg-white slide-up">
                  <div className="card-body p-4 p-md-5">
@@ -1105,7 +1223,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
           </div>
         )}
 
-        {/* 🌟 TAB 8: บัญชีของฉัน (พร้อมการเชื่อมต่อ Telegram) */}
+        {/* TAB 8: บัญชีของฉัน */}
         {activeTab === "profile" && (
           <div className="fade-in d-flex flex-column align-items-center">
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white w-100" style={{ maxWidth: "500px" }}>
@@ -1129,7 +1247,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
                     <input type="file" accept="image/*" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-2" onChange={handleUploadAvatar} disabled={uploadingAvatar} />
                     {uploadingAvatar && <small className="text-success mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
                   </div>
-
                   <hr className="my-4 border-light" />
                   
                   {/* 🌟 ส่วนเชื่อมต่อ Telegram สำหรับคุณครู */}

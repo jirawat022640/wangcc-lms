@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import Swal from 'sweetalert2' 
@@ -22,13 +22,18 @@ export default function StudentDashboard({ session, handleLogout }) {
   const [submitForm, setSubmitForm] = useState({ assign_id: '', type: 'text', text: '', link: '', file: null })
   const [uploadingWork, setUploadingWork] = useState(false)
   
-  // 🌟 เพิ่ม telegram_chat_id ใน profileForm
   const [profileForm, setProfileForm] = useState({ 
     full_name: '', nickname: '', phone: '', avatar_url: '', 
     student_code: '', department: '', grade_level: '', telegram_chat_id: ''
   })
+  
   const [takingQuiz, setTakingQuiz] = useState(null)
   const [quizAnswers, setQuizAnswers] = useState({})
+
+  // 🌟 Ref สำหรับระบบ Anti-Cheat (ป้องกันดึงค่า State ผิดพลาดใน Event Listener)
+  const takingQuizRef = useRef(null)
+  const quizAnswersRef = useRef({})
+  const cheatWarningsRef = useRef(0)
 
   const getYoutubeThumbnail = (url) => {
     if (!url) return null;
@@ -36,7 +41,6 @@ export default function StudentDashboard({ session, handleLogout }) {
     return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
   };
 
-  // 🌟 ฟังก์ชันสำหรับยิงแจ้งเตือนเข้า Telegram
   const sendTelegramNotify = async (chatId, message) => {
     const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || "YOUR_BOT_TOKEN_HERE";
     if (!chatId || botToken === "YOUR_BOT_TOKEN_HERE") return;
@@ -52,6 +56,65 @@ export default function StudentDashboard({ session, handleLogout }) {
   useEffect(() => {
     if (session?.role === 'student') fetchData()
   }, [session])
+
+  // 🌟 ระบบจับการโกง (Anti-Cheat): ตรวจจับเมื่อนักเรียนสลับแอป หรือเปลี่ยนแท็บเบราว์เซอร์
+  useEffect(() => {
+    takingQuizRef.current = takingQuiz;
+    quizAnswersRef.current = quizAnswers;
+  }, [takingQuiz, quizAnswers]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && takingQuizRef.current) {
+        cheatWarningsRef.current += 1;
+        if (cheatWarningsRef.current >= 2) {
+          // ถ้าเตือนแล้วยังสลับแอปอีก ให้บังคับส่งข้อสอบทันที
+          Swal.fire({
+             title: 'หมดสิทธิ์สอบ!', 
+             text: 'คุณทำผิดกฎโดยการสลับหน้าจอเกินกำหนด ระบบได้ทำการส่งข้อสอบของคุณอัตโนมัติแล้ว', 
+             icon: 'error',
+             confirmButtonText: 'ตกลง',
+             allowOutsideClick: false
+          });
+          forceSubmitQuiz();
+        } else {
+          // เตือนครั้งแรก
+          Swal.fire({
+             title: '⚠️ คำเตือน!', 
+             text: 'ห้ามสลับหน้าจอ เปิดแท็บใหม่ หรือสลับแอปอื่นระหว่างทำข้อสอบ! หากตรวจพบอีกครั้งระบบจะยึดกระดาษคำตอบทันที', 
+             icon: 'warning',
+             confirmButtonText: 'รับทราบ',
+             allowOutsideClick: false
+          });
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  const forceSubmitQuiz = async () => {
+    const currentQuiz = takingQuizRef.current;
+    const currentAnswers = quizAnswersRef.current;
+    if (!currentQuiz) return;
+
+    let score = 0; 
+    currentQuiz.questions.forEach((q, index) => { 
+      if (currentAnswers[index] === q.correctOption) score++; 
+    });
+    
+    await supabase.from('quiz_submissions').insert([{ 
+      quiz_id: currentQuiz.id, 
+      student_id: session.user.id, 
+      score: score, 
+      total_score: currentQuiz.questions.length 
+    }]);
+    
+    setTakingQuiz(null); 
+    setQuizAnswers({}); 
+    cheatWarningsRef.current = 0;
+    fetchData();
+  };
 
   const fetchData = async () => {
     const { data: pData } = await supabase
@@ -69,7 +132,7 @@ export default function StudentDashboard({ session, handleLogout }) {
         student_code: pData.student_code || '',
         department: pData.department || '',
         grade_level: pData.grade_level || '',
-        telegram_chat_id: pData.telegram_chat_id || '' // 🌟 ดึงข้อมูล Telegram ID
+        telegram_chat_id: pData.telegram_chat_id || ''
       })
     }
 
@@ -83,14 +146,10 @@ export default function StudentDashboard({ session, handleLogout }) {
       const baseLevel = studentLevel.split('/')[0];
       const myClassCourses = cData.filter(course => {
         const section = course.section || '';
-        // ถ้านักเรียนไม่มีข้อมูลแผนก ก็ไม่ให้เห็น
         if (!studentDept) return false;
-        
-        // เช็คแค่ว่า ในชื่อกลุ่มเรียนที่ครูสร้าง มีคำว่า "ช่างซ่อมบำรุง" (หรือแผนกของเด็ก) อยู่ก็พอ
         const matchDept = section.includes(studentDept);
-        
-        // ส่งค่าผ่านเลย ไม่ต้องเช็คระดับชั้น (matchLevel) ให้จุกจิกอีกต่อไป
-        return matchDept; 
+        const matchLevel = baseLevel ? section.includes(baseLevel) : true;
+        return matchDept && matchLevel;
       });
       setAllCourses(myClassCourses)
     }
@@ -148,7 +207,7 @@ export default function StudentDashboard({ session, handleLogout }) {
       nickname: profileForm.nickname,
       phone: profileForm.phone,
       avatar_url: profileForm.avatar_url,
-      telegram_chat_id: profileForm.telegram_chat_id // 🌟 บันทึก Telegram ID
+      telegram_chat_id: profileForm.telegram_chat_id
     }).eq('id', session.user.id); 
     fetchData(); 
     Swal.fire('สำเร็จ!', 'บันทึกข้อมูลส่วนตัวเรียบร้อย!', 'success');
@@ -187,7 +246,6 @@ export default function StudentDashboard({ session, handleLogout }) {
         assignment_id: assignId, student_id: session.user.id, submitted_text: submitForm.text || '', link_url: submitForm.link || '', file_url: finalFileUrl
       }]); 
       
-      // 🌟 ส่งแจ้งเตือนหาคุณครู
       const targetAssign = assignments.find(a => a.id === assignId);
       if (targetAssign) {
         const { data: courseData } = await supabase.from('courses').select('teacher_id, profiles(telegram_chat_id)').eq('id', targetAssign.course_id).single();
@@ -218,19 +276,38 @@ export default function StudentDashboard({ session, handleLogout }) {
     } catch (error) { Swal.fire('เกิดข้อผิดพลาด', error.message, 'error'); }
   };
 
-  const handleStartQuiz = (quiz) => { setTakingQuiz(quiz); setQuizAnswers({}); }
+  // 🌟 ฟังก์ชันสุ่มโจทย์แบบอัตโนมัติ (Randomize)
+  const handleStartQuiz = (quiz) => { 
+    // ทำการสุ่มข้อสอบทุกครั้งที่กดเริ่มทำ
+    const shuffledQuestions = [...quiz.questions].sort(() => Math.random() - 0.5);
+    setTakingQuiz({ ...quiz, questions: shuffledQuestions }); 
+    setQuizAnswers({}); 
+    cheatWarningsRef.current = 0; // รีเซ็ตตัวนับการโกง
+  }
 
   const handleQuizSubmit = async () => {
     if (Object.keys(quizAnswers).length < takingQuiz.questions.length) { 
-      const result = await Swal.fire({ title: 'ทำข้อสอบยังไม่ครบ!', text: 'ต้องการส่งคำตอบเลยหรือไม่?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ส่งเลย', cancelButtonText: 'กลับไปทำต่อ' });
+      const result = await Swal.fire({ title: 'ทำข้อสอบยังไม่ครบ!', text: 'ต้องการส่งคำตอบเลยหรือไม่?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#0d6efd', cancelButtonColor: '#6c757d', confirmButtonText: 'ส่งเลย', cancelButtonText: 'กลับไปทำต่อ' });
       if (!result.isConfirmed) return;
     }
-    let score = 0; takingQuiz.questions.forEach((q, index) => { if (quizAnswers[index] === q.correctOption) score++; });
     
-    await supabase.from('quiz_submissions').insert([{ quiz_id: takingQuiz.id, student_id: session.user.id, score: score, total_score: takingQuiz.questions.length }]);
+    let score = 0; 
+    takingQuiz.questions.forEach((q, index) => { 
+      if (quizAnswers[index] === q.correctOption) score++; 
+    });
+    
+    await supabase.from('quiz_submissions').insert([{ 
+      quiz_id: takingQuiz.id, 
+      student_id: session.user.id, 
+      score: score, 
+      total_score: takingQuiz.questions.length 
+    }]);
     
     Swal.fire('ส่งข้อสอบสำเร็จ!', `คุณทำได้ ${score}/${takingQuiz.questions.length} คะแนน`, 'success'); 
-    setTakingQuiz(null); setQuizAnswers({}); fetchData(); 
+    setTakingQuiz(null); 
+    setQuizAnswers({}); 
+    cheatWarningsRef.current = 0;
+    fetchData(); 
   }
 
   const navigateToService = (tab, subTab) => { setActiveTab(tab); if (subTab) { tab === 'classroom' ? setClassSubTab(subTab) : setTaskSubTab(subTab); } }
@@ -255,22 +332,40 @@ export default function StudentDashboard({ session, handleLogout }) {
           
           {takingQuiz ? (
              <div className="card shadow-sm border-0 rounded-4 overflow-hidden mb-5 slide-up">
-                <div className="bg-primary text-white p-4"><h5 className="mb-0 fw-bold">📝 {takingQuiz.title}</h5></div>
+                <div className="bg-primary text-white p-4">
+                  <h5 className="mb-0 fw-bold">📝 {takingQuiz.title}</h5>
+                  <small className="text-white-50 mt-1 d-block">⚠️ ห้ามสลับหน้าจอหรือย่อแอปขณะสอบ</small>
+                </div>
                 <div className="card-body p-4">
                   {takingQuiz.questions.map((q, qIndex) => (
-                    <div key={qIndex} className="mb-5">
+                    <div key={qIndex} className="mb-5 border-bottom pb-4">
                       <h6 className="fw-bold mb-3 fs-5">{qIndex + 1}. {q.question}</h6>
+                      
+                      {/* 🌟 แสดงรูปภาพประกอบโจทย์ข้อสอบ (ถ้าครูอัปโหลดมา) */}
+                      {q.imageUrl && (
+                        <div className="mb-3 rounded-4 overflow-hidden shadow-sm border">
+                          <img src={q.imageUrl} alt="ภาพประกอบโจทย์" className="w-100 object-fit-contain" style={{ maxHeight: '200px' }} />
+                        </div>
+                      )}
+
                       <div className="d-flex flex-column gap-2">
                         {q.options.map((opt, optIndex) => (
                           <label key={optIndex} className={`d-flex align-items-center gap-3 border p-3 rounded-4 ${quizAnswers[qIndex] === optIndex ? 'border-primary bg-primary bg-opacity-10 fw-bold text-primary' : 'border-light bg-white'}`} style={{cursor: 'pointer', transition: '0.2s'}}>
-                            <input type="radio" name={`q-${qIndex}`} className="form-check-input mt-0" style={{width: '20px', height:'20px'}} checked={quizAnswers[qIndex] === optIndex} onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} />
+                            <input 
+                              type="radio" 
+                              name={`q-${qIndex}`} 
+                              className="form-check-input mt-0" 
+                              style={{width: '20px', height:'20px'}} 
+                              checked={quizAnswers[qIndex] === optIndex} 
+                              onChange={() => setQuizAnswers({...quizAnswers, [qIndex]: optIndex})} 
+                            />
                             <span>{opt}</span>
                           </label>
                         ))}
                       </div>
                     </div>
                   ))}
-                  <div className="d-flex gap-3 pt-4 border-top">
+                  <div className="d-flex gap-3 pt-2">
                     <button onClick={() => setTakingQuiz(null)} className="btn btn-light rounded-pill fw-bold px-4 py-3 text-secondary w-50">ยกเลิก</button>
                     <button onClick={handleQuizSubmit} className="btn btn-primary rounded-pill fw-bold py-3 shadow-sm w-50">ส่งคำตอบ</button>
                   </div>
@@ -495,7 +590,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                                     </div>
                                   </div>
                                   <button type="submit" className="btn btn-primary w-100 rounded-pill fw-bold py-3 shadow-sm" disabled={uploadingWork}>
-                                    {uploadingWork && isCurrentForm ? '⏳ กำลังส่งงาน...' : 'ส่งคำตอบ'}
+                                    {uploadingWork && isCurrentForm ? '⏳ กำลังอัปโหลด...' : 'ส่งคำตอบ'}
                                   </button>
                                 </form>
                               )}
@@ -531,7 +626,7 @@ export default function StudentDashboard({ session, handleLogout }) {
                 </div>
               )}
 
-              {/* 🌟 TAB 4: โปรไฟล์ (เพิ่มส่วนเชื่อมต่อ Telegram) */}
+              {/* TAB 4: โปรไฟล์ */}
               {activeTab === 'profile' && (
                 <div className="fade-in">
                   <h4 className="fw-bold text-dark mb-4">บัญชีผู้ใช้</h4>
@@ -568,10 +663,9 @@ export default function StudentDashboard({ session, handleLogout }) {
                           <input type="file" accept="image/*" className="form-control custom-input bg-light border-0 rounded-pill px-4 py-2" onChange={handleUploadAvatar} disabled={uploadingAvatar} />
                           {uploadingAvatar && <small className="text-primary mt-2 ms-2 d-block fw-bold">⏳ กำลังอัปโหลด...</small>}
                         </div>
-                        
+
                         <hr className="my-4 border-light" />
                         
-                        {/* 🌟 ส่วนเชื่อมต่อ Telegram */}
                         <h6 className="fw-bold mb-3 text-dark d-flex align-items-center gap-2"><span>✈️</span> การแจ้งเตือนผ่าน Telegram</h6>
                         <div className="bg-primary bg-opacity-10 p-3 rounded-4 mb-4 border border-primary border-opacity-25">
                            <p className="small text-dark mb-2">1. กดปุ่มด้านล่างเพื่อเปิด Telegram และรับรหัส Chat ID ของคุณจากบอท @getmyid_bot</p>
@@ -580,9 +674,8 @@ export default function StudentDashboard({ session, handleLogout }) {
                            <input type="text" className="form-control custom-input bg-white border-0 rounded-pill px-4 py-3" placeholder="ระบุ Telegram Chat ID" value={profileForm.telegram_chat_id || ''} onChange={e => setProfileForm({...profileForm, telegram_chat_id: e.target.value})} />
                            {profileForm.telegram_chat_id && <small className="text-success fw-bold d-block mt-2">✅ ข้อมูล Chat ID พร้อมใช้งานแล้ว</small>}
                         </div>
-
+                        
                         <hr className="my-4 border-light" />
-
                         <h6 className="fw-bold mb-3 text-dark">ข้อมูลของระบบ (แก้ไขไม่ได้)</h6>
                         
                         <div className="mb-3">
