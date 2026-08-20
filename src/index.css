@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
 
 :root {
   /* 🎨 โทนสีหลักของระบบ (Black / White / Red) */
@@ -6,15 +6,17 @@
   --theme-red-hover: #b90710;
   --theme-dark: #121212; 
   --theme-gray: #F5F6FA; 
-  --theme-text-main: #121212;
+  --theme-text-main: #111111; 
   --theme-text-muted: #6c757d;
 }
 
 body { 
   background-color: var(--theme-gray); 
-  font-family: 'Prompt', sans-serif;
+  /* 🌟 เปลี่ยนชื่อฟอนต์ตรงนี้ครับ */
+  font-family: 'Noto Sans Thai', sans-serif;
   margin: 0;
   padding: 0;
+  color: var(--theme-text-main);
 }
 
 /* =========================================
