@@ -58,6 +58,10 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   const [gradeSummaryCourse, setGradeSummaryCourse] = useState("");
 
+  // 🌟 State สำหรับระบบ Popup ประกาศข่าวสาร
+  const [showAnnPopup, setShowAnnPopup] = useState(false)
+  const [latestAnn, setLatestAnn] = useState(null)
+
   const getYoutubeThumbnail = (url) => {
     if (!url) return null;
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
@@ -92,7 +96,18 @@ export default function TeacherDashboard({ session, handleLogout }) {
       }
 
       const { data: annData } = await supabase.from('announcements').select('*').eq('is_active', true).order('created_at', { ascending: false });
-      if (annData) setAnnouncements(annData);
+      if (annData) {
+         setAnnouncements(annData);
+         // 🌟 เช็คประกาศล่าสุดเพื่อแสดง Popup ให้ครูเห็นด้วย
+         if (annData.length > 0) {
+           const latest = annData[0];
+           const isHidden = localStorage.getItem(`hide_ann_${latest.id}`);
+           if (!isHidden) {
+             setLatestAnn(latest);
+             setShowAnnPopup(true);
+           }
+         }
+      }
 
       const { data: sysData } = await supabase.from('system_settings').select('current_semester').eq('id', 1).single();
       if (sysData) setCourseForm(prev => ({ ...prev, semester: sysData.current_semester }));
@@ -190,6 +205,15 @@ export default function TeacherDashboard({ session, handleLogout }) {
     }
   };
 
+  // 🌟 ฟังก์ชันจัดการ Popup ประกาศ
+  const closeAnnPopup = () => setShowAnnPopup(false);
+  const hideAnnPopupForever = () => {
+    if (latestAnn) {
+      localStorage.setItem(`hide_ann_${latestAnn.id}`, 'true');
+    }
+    setShowAnnPopup(false);
+  };
+
   const handleTabChange = (tab) => { setActiveTab(tab); setIsMenuOpen(false); setViewingCourseStudents(null); };
   
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -247,7 +271,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
   };
 
   const handleDeleteModule = async (id) => {
-    const result = await Swal.fire({ title: 'ลบบทเรียน?', text: "เอกสารและงานในบทนี้จะถูกนำออกจากหมวดหมู่ (แต่ไม่ถูกลบ)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบทิ้ง' });
+    const result = await Swal.fire({ title: 'ลบบทเรียน?', text: "เอกสารและงานในบทนี้จะถูกนำออกจากหมวดหมู่ (แต่ไม่ถูกลบ)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบทิ้ง' });
     if (!result.isConfirmed) return;
     await supabase.from("modules").delete().eq("id", id);
     fetchData();
@@ -293,7 +317,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     if (target) setAssignForm(prev => ({ ...prev, title: target.title, description: target.description, module_id: target.module_id || "" }));
   };
 
-  // 🌟 ฟังก์ชันจัดการข้อสอบ (รองรับทั้งการสร้างใหม่ และ การแก้ไข)
   const handleSaveQuiz = async (e) => { 
     e.preventDefault(); 
     if (!quizForm.course_id) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
@@ -303,7 +326,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     } 
     
     if (editingQuiz) {
-       // โหมดแก้ไข
        await supabase.from("quizzes").update({ 
          course_id: quizForm.course_id, 
          module_id: quizForm.module_id || null, 
@@ -313,7 +335,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
        }).eq("id", editingQuiz.id); 
        Swal.fire('สำเร็จ!', 'อัปเดตแบบทดสอบเรียบร้อยแล้ว', 'success'); 
     } else {
-       // โหมดสร้างใหม่
        await supabase.from("quizzes").insert([{ 
          course_id: quizForm.course_id, 
          module_id: quizForm.module_id || null, 
@@ -330,7 +351,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
     fetchData(); 
   };
 
-  // 🌟 ดึงข้อมูลข้อสอบมาเตรียมแก้ไข
   const handleEditQuizClick = (quiz) => {
     setEditingQuiz(quiz);
     setQuizForm({
@@ -340,7 +360,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
       time_limit: quiz.time_limit || ""
     });
     setQuestions(JSON.parse(JSON.stringify(quiz.questions)));
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // เลื่อนหน้าจอขึ้นไปบนสุด
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEditQuiz = () => {
@@ -349,14 +369,13 @@ export default function TeacherDashboard({ session, handleLogout }) {
     setQuestions([{ question: "", imageUrl: "", options: ["", "", "", ""], correctOption: 0 }]);
   };
 
-  // 🌟 ฟังก์ชันลบข้อสอบ
   const handleDeleteQuiz = async (id) => {
     const result = await Swal.fire({ 
        title: 'ยืนยันการลบ', 
        text: "ลบแบบทดสอบนี้หรือไม่? คำเตือน: คะแนนสอบของนักเรียนจะถูกลบไปด้วย", 
        icon: 'warning', 
        showCancelButton: true, 
-       confirmButtonColor: '#d33', 
+       confirmButtonColor: '#e50914', 
        confirmButtonText: 'ลบทิ้ง' 
     });
     if (!result.isConfirmed) return;
@@ -437,19 +456,19 @@ export default function TeacherDashboard({ session, handleLogout }) {
   const toggleSubSelection = (id) => setSelectedSubIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
   const handleDeleteCourse = async (id) => { 
-    const result = await Swal.fire({ title: 'คำเตือน', text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบวิชา' });
+    const result = await Swal.fire({ title: 'คำเตือน', text: "ลบวิชานี้หรือไม่? ข้อมูลงานและเอกสารจะถูกลบไปด้วย", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบวิชา' });
     if (!result.isConfirmed) return; 
     await supabase.from("courses").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบวิชาเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteMaterial = async (id) => { 
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบเอกสารประกอบการสอนนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบเอกสาร' });
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบเอกสารประกอบการสอนนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบเอกสาร' });
     if (!result.isConfirmed) return; 
     await supabase.from("materials").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบเอกสารเรียบร้อยแล้ว', 'success');
   };
 
   const handleDeleteAssignment = async (id) => { 
-    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบคำสั่งงานนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบงาน' });
+    const result = await Swal.fire({ title: 'ยืนยันการลบ', text: "ลบคำสั่งงานนี้หรือไม่?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบงาน' });
     if (!result.isConfirmed) return; 
     await supabase.from("assignments").delete().eq("id", id); fetchData(); Swal.fire('ลบแล้ว!', 'ลบคำสั่งงานเรียบร้อยแล้ว', 'success');
   };
@@ -603,7 +622,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   if (!session || session.role !== "teacher") return <Navigate to="/" />;
 
-  // 🌟 แปลงเมนูเป็นภาษาไทย 100%
   const menuItems = [
     { id: 'analytics', icon: '📊', label: 'สถิติภาพรวม' }, 
     { id: 'courses', icon: '📚', label: 'จัดการวิชาเรียน' }, 
@@ -618,11 +636,31 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
   return (
     <div className="app-layout font-app">
+
+      {/* 🌟 Popup ประกาศข่าวสารตอนเข้าแอป */}
+      {showAnnPopup && latestAnn && (
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 1060, backdropFilter: 'blur(5px)' }}>
+          <div className="theme-card w-100 slide-down mx-3 p-0 overflow-hidden border-0 shadow-lg" style={{ maxWidth: '450px' }}>
+            <div className="bg-theme-red text-white p-4 d-flex justify-content-between align-items-center">
+              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span className="fs-3">📢</span> ประกาศใหม่!</h5>
+              <button onClick={closeAnnPopup} className="btn-close btn-close-white" aria-label="Close"></button>
+            </div>
+            <div className="p-4 bg-white text-center">
+              <h5 className="fw-bold text-theme-dark mb-3">{latestAnn.title}</h5>
+              <p className="text-theme-dark bg-theme-gray p-3 rounded-4 fw-bold mb-4 border border-light text-start">{latestAnn.content}</p>
+              
+              <div className="d-flex flex-column gap-2">
+                <button onClick={closeAnnPopup} className="btn btn-theme-red w-100 rounded-pill fw-bold shadow-sm py-3 fs-6">รับทราบ (ปิดหน้าต่าง)</button>
+                <button onClick={hideAnnPopupForever} className="btn btn-light text-muted w-100 rounded-pill fw-bold py-2 border border-light">ไม่ต้องแสดงประกาศนี้อีก</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* 🖥️ Desktop Sidebar */}
       <div className="sidebar shadow-sm">
         <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
-          {/* 🌟 แสดงโลโก้วิทยาลัยใน Sidebar คอมพิวเตอร์ */}
           <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'50px', height:'50px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
           <h4 className="fw-bold m-0 text-theme-dark">ครูผู้สอน</h4>
         </div>
@@ -670,7 +708,6 @@ export default function TeacherDashboard({ session, handleLogout }) {
             <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-circle p-2 fs-5 border-0">☰</button>
             <h5 className="fw-bold text-theme-dark m-0">ศูนย์ควบคุมครู</h5>
           </div>
-          {/* 🌟 แสดงโลโก้วิทยาลัยใน Header มือถือ */}
           <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'40px', height:'40px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
         </div>
 
@@ -693,8 +730,8 @@ export default function TeacherDashboard({ session, handleLogout }) {
                 <div className="row g-3">
                   <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-danger bg-opacity-10 text-danger border border-danger rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>📚</div><h2 className="fw-bold text-theme-dark mb-0">{courses.length}</h2><small className="text-muted fw-bold">วิชาที่สอน</small></div></div>
                   <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-theme-dark bg-opacity-10 text-theme-dark rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>📝</div><h2 className="fw-bold text-theme-dark mb-0">{assignments.length}</h2><small className="text-muted fw-bold">งานทั้งหมด</small></div></div>
-                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-success bg-opacity-10 text-success border border-success rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>✅</div><h2 className="fw-bold text-success mb-0">{gradedCount}</h2><small className="text-muted fw-bold">ตรวจแล้ว</small></div></div>
-                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100"><div className="bg-warning bg-opacity-10 text-warning border border-warning rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>⏳</div><h2 className="fw-bold text-warning mb-0">{ungradedCount}</h2><small className="text-warning fw-bold">รอตรวจ</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100 border border-success"><div className="bg-success bg-opacity-10 text-success border border-success rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>✅</div><h2 className="fw-bold text-success mb-0">{gradedCount}</h2><small className="text-muted fw-bold">ตรวจแล้ว</small></div></div>
+                  <div className="col-6 col-md-3"><div className="theme-card text-center h-100 border border-danger"><div className="bg-danger bg-opacity-10 text-danger border border-danger rounded-circle mx-auto mb-3 p-2 fs-4" style={{width:'50px', height:'50px'}}>⏳</div><h2 className="fw-bold text-danger mb-0">{ungradedCount}</h2><small className="text-danger fw-bold">รอตรวจ</small></div></div>
                 </div>
               </div>
 
@@ -1071,9 +1108,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
                       <h5 className="fw-bold mb-4 text-theme-dark">{editingQuiz ? '✏️ แก้ไขแบบทดสอบ' : '✨ สร้างแบบทดสอบใหม่'}</h5>
                       {!editingQuiz && quizzes.length > 0 && (
                         <div className="mb-4 p-3 bg-theme-gray rounded-4 border border-light">
-                          <label className="form-label small fw-bold text-theme-dark mb-2">🔄 คัดลอกชุดคำถามจากข้อสอบเดิม</label>
+                          <label className="form-label small fw-bold text-theme-dark mb-2">🔄 คัดลอกโจทย์จากข้อสอบเดิม</label>
                           <select className="form-select theme-input bg-white text-dark" onChange={handleCloneQuiz}>
-                            <option value="">-- เลือกข้อสอบที่เคยสร้างไว้ --</option>
+                            <option value="">-- เลือกแบบทดสอบ --</option>
                             {quizzes.map(q => <option key={q.id} value={q.id}>{q.courses?.course_name} : {q.title}</option>)}
                           </select>
                         </div>
@@ -1112,7 +1149,7 @@ export default function TeacherDashboard({ session, handleLogout }) {
                             <input type="text" className="form-control theme-input bg-white text-dark mb-3 shadow-sm" placeholder="พิมพ์โจทย์คำถาม..." value={q.question} onChange={(e) => updateQuestion(qIndex, "question", e.target.value)} required />
                             
                             <div className="mb-4">
-                              <label className="small fw-bold text-muted d-block mb-1">🖼️ แนบรูปภาพประกอบโจทย์ (ถ้ามี)</label>
+                              <label className="small fw-bold text-muted d-block mb-1">🖼️ แนบรูปภาพประกอบ (ถ้ามี)</label>
                               <div className="d-flex align-items-center gap-3">
                                 <input type="file" accept="image/*" className="form-control bg-white text-dark rounded-3 border-0 shadow-sm p-2 w-75" onChange={(e) => handleQuestionImageUpload(qIndex, e)} />
                                 {q.imageUrl && <img src={q.imageUrl} alt="preview" style={{ height: '40px', borderRadius: '5px' }} />}
@@ -1142,9 +1179,9 @@ export default function TeacherDashboard({ session, handleLogout }) {
                       </form>
                   </div>
                   
-                <h5 className="fw-bold mb-3 text-theme-dark">แบบทดสอบที่สร้างไว้แล้ว</h5>
+                <h5 className="fw-bold mb-3 text-theme-dark">แบบทดสอบทั้งหมด</h5>
                 <div className="row g-4">
-                  {quizzes.length === 0 && <p className="text-muted col-12 fw-bold">ยังไม่มีแบบทดสอบ</p>}
+                  {quizzes.length === 0 && <p className="text-muted col-12 fw-bold">ยังไม่ได้สร้างแบบทดสอบ</p>}
                   {quizzes.map((q) => (
                     <div key={q.id} className="col-md-6 col-lg-4">
                       <div className="theme-card h-100 d-flex flex-column border border-light">
@@ -1362,6 +1399,16 @@ export default function TeacherDashboard({ session, handleLogout }) {
 
         </div>
       </div>
+
+      {/* 📱 Mobile Bottom Nav */}
+      {!takingQuiz && (
+        <div className="bottom-nav d-md-none">
+          <button onClick={() => setActiveTab('home')} className={`bottom-nav-item ${activeTab === 'home' ? 'active' : ''}`}><span className="icon">🏠</span>หน้าหลัก</button>
+          <button onClick={() => setActiveTab('classroom')} className={`bottom-nav-item ${activeTab === 'classroom' ? 'active' : ''}`}><span className="icon">📚</span>ห้องเรียน</button>
+          <button onClick={() => setActiveTab('tasks')} className={`bottom-nav-item ${activeTab === 'tasks' ? 'active' : ''}`}><span className="icon">📝</span>งาน/สอบ</button>
+          <button onClick={() => setActiveTab('profile')} className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`}><span className="icon">👤</span>ฉัน</button>
+        </div>
+      )}
     </div>
-  );
+  )
 }
