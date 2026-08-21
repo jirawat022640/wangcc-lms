@@ -42,6 +42,9 @@ export default function AdminDashboard({ session, handleLogout }) {
   const [addStatus, setAddStatus] = useState({ type: '', message: '' })
   const [isAdding, setIsAdding] = useState(false)
 
+  // 🌟 State สำหรับระบบจัดกลุ่มนักเรียนเป็นรายห้อง
+  const [selectedDeptForStudents, setSelectedDeptForStudents] = useState(null)
+
   useEffect(() => {
     if (session?.role === 'admin') {
       fetchProfiles()
@@ -96,6 +99,7 @@ export default function AdminDashboard({ session, handleLogout }) {
     setActiveTab(tab)
     setIsMenuOpen(false)
     setShowAddTeacher(false)
+    setSelectedDeptForStudents(null) // รีเซ็ตการเลือกห้องเมื่อเปลี่ยนหน้า
   }
 
   const handleResetPassword = async (userId, name) => {
@@ -295,20 +299,22 @@ export default function AdminDashboard({ session, handleLogout }) {
              const name = row['ชื่อ-นามสกุล'] || row['full_name'];
              const dept = row['แผนกวิชา'] || row['department'];
              const level = row['ระดับชั้น'] || row['grade_level'];
+             const idCard = row['เลขประจำตัวประชาชน'] || row['id_card'];
 
              if (code && name) {
                insertData.push({
                  student_code: String(code).trim().replace(/"/g, ''),
                  full_name: String(name).trim().replace(/"/g, ''),
                  department: dept ? String(dept).trim().replace(/"/g, '') : '',
-                 grade_level: level ? String(level).trim().replace(/"/g, '') : ''
+                 grade_level: level ? String(level).trim().replace(/"/g, '') : '',
+                 id_card: idCard ? String(idCard).trim() : null
                });
              }
           });
         });
 
         if (insertData.length === 0) { 
-          Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบข้อมูลในไฟล์ หรือตั้งชื่อหัวคอลัมน์ไม่ถูกต้อง (รหัสประจำตัว, ชื่อ-นามสกุล, แผนกวิชา, ระดับชั้น)', 'error')
+          Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบข้อมูลในไฟล์ หรือตั้งชื่อหัวคอลัมน์ไม่ถูกต้อง (รหัสประจำตัว, ชื่อ-นามสกุล, แผนกวิชา, ระดับชั้น, เลขประจำตัวประชาชน)', 'error')
           setIsUploading(false)
           e.target.value = null 
           return 
@@ -405,6 +411,9 @@ export default function AdminDashboard({ session, handleLogout }) {
     (d.name || '').toLowerCase().includes(searchDept.toLowerCase())
   )
 
+  // 🌟 ดึงชื่อแผนกทั้งหมดที่มีนักเรียนอยู่ (ใช้สำหรับจัดกลุ่ม)
+  const studentDepts = [...new Set(students.map(s => s.department || 'ไม่ระบุแผนก'))].sort((a, b) => a.localeCompare(b));
+
   if (!session || session.role !== 'admin') return <Navigate to="/" />
 
   const menuItems = [
@@ -423,40 +432,40 @@ export default function AdminDashboard({ session, handleLogout }) {
       {/* ---------------- โมดอลสำหรับแก้ไขข้อมูล ---------------- */}
       {editingUser && (
         <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1050, backdropFilter: 'blur(5px)' }}>
-          <div className="theme-card w-100 slide-up mx-3 border border-light" style={{ maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h5 className="fw-bold mb-4 border-bottom border-light pb-3 text-theme-dark">✏️ แก้ไขข้อมูล {editingUser.role === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'}</h5>
+          <div className="theme-card w-100 slide-up mx-3 border border-light p-4" style={{ maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h5 className="fw-bold mb-3 border-bottom border-light pb-2 text-theme-dark">✏️ แก้ไขข้อมูล {editingUser.role === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'}</h5>
             <form onSubmit={handleSaveEdit}>
-              <div className="mb-3">
-                <label className="form-label small fw-bold text-muted px-2">ชื่อ - นามสกุล</label>
-                <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
+              <div className="mb-2">
+                <label className="form-label small fw-bold text-muted px-2 mb-1">ชื่อ - นามสกุล</label>
+                <input type="text" className="form-control theme-input bg-white text-dark py-2" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
               </div>
-              <div className="row mb-3">
+              <div className="row mb-2">
                 <div className="col-6">
-                  <label className="form-label small fw-bold text-muted px-2">ชื่อเล่น</label>
-                  <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.nickname} onChange={e => setEditForm({...editForm, nickname: e.target.value})} />
+                  <label className="form-label small fw-bold text-muted px-2 mb-1">ชื่อเล่น</label>
+                  <input type="text" className="form-control theme-input bg-white text-dark py-2" value={editForm.nickname} onChange={e => setEditForm({...editForm, nickname: e.target.value})} />
                 </div>
                 <div className="col-6">
-                  <label className="form-label small fw-bold text-muted px-2">เบอร์โทรศัพท์</label>
-                  <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                  <label className="form-label small fw-bold text-muted px-2 mb-1">เบอร์โทรศัพท์</label>
+                  <input type="text" className="form-control theme-input bg-white text-dark py-2" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                 </div>
               </div>
-              <div className="mb-3">
-                <label className="form-label small fw-bold text-muted px-2">แผนกวิชา</label>
-                <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} />
+              <div className="mb-2">
+                <label className="form-label small fw-bold text-muted px-2 mb-1">แผนกวิชา</label>
+                <input type="text" className="form-control theme-input bg-white text-dark py-2" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} />
               </div>
               {editingUser.role === 'student' && (
-                <div className="mb-3">
-                  <label className="form-label small fw-bold text-muted px-2">ระดับชั้น</label>
-                  <input type="text" className="form-control theme-input bg-white text-dark" value={editForm.grade_level} onChange={e => setEditForm({...editForm, grade_level: e.target.value})} />
+                <div className="mb-2">
+                  <label className="form-label small fw-bold text-muted px-2 mb-1">ระดับชั้น</label>
+                  <input type="text" className="form-control theme-input bg-white text-dark py-2" value={editForm.grade_level} onChange={e => setEditForm({...editForm, grade_level: e.target.value})} />
                 </div>
               )}
               <div className="mb-4">
-                <label className="form-label small fw-bold text-muted px-2">ลิงก์รูปโปรไฟล์ (URL)</label>
-                <input type="url" className="form-control theme-input bg-white text-dark" value={editForm.avatar_url} onChange={e => setEditForm({...editForm, avatar_url: e.target.value})} />
+                <label className="form-label small fw-bold text-muted px-2 mb-1">ลิงก์รูปโปรไฟล์ (URL)</label>
+                <input type="url" className="form-control theme-input bg-white text-dark py-2" value={editForm.avatar_url} onChange={e => setEditForm({...editForm, avatar_url: e.target.value})} />
               </div>
               <div className="d-flex gap-2">
-                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-light w-50 rounded-pill fw-bold py-3 text-muted border border-light">ยกเลิก</button>
-                <button type="submit" className="btn btn-theme-red w-50 rounded-pill fw-bold shadow-sm py-3">บันทึกข้อมูล</button>
+                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-light btn-sm w-50 rounded-pill fw-bold py-2 text-muted border border-light">ยกเลิก</button>
+                <button type="submit" className="btn btn-theme-red btn-sm w-50 rounded-pill fw-bold shadow-sm py-2">บันทึกข้อมูล</button>
               </div>
             </form>
           </div>
@@ -465,10 +474,9 @@ export default function AdminDashboard({ session, handleLogout }) {
 
       {/* 🖥️ Desktop Sidebar */}
       <div className="sidebar shadow-sm">
-        <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
-          {/* 🌟 แสดงโลโก้วิทยาลัยใน Sidebar คอมพิวเตอร์ */}
-          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'50px', height:'50px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
-          <h4 className="fw-bold m-0 text-theme-dark">ผู้ดูแลระบบ</h4>
+        <div className="d-flex align-items-center gap-3 mb-4 px-2 mt-2">
+          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'45px', height:'45px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
+          <h5 className="fw-bold m-0 text-theme-dark">ผู้ดูแลระบบ</h5>
         </div>
         <div className="d-flex flex-column gap-1 flex-grow-1" style={{overflowY: 'auto'}}>
           {menuItems.map(item => (
@@ -486,9 +494,9 @@ export default function AdminDashboard({ session, handleLogout }) {
       {isMenuOpen && (
         <>
           <div className="offcanvas-backdrop fade show d-lg-none" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
-          <div className="offcanvas offcanvas-start show shadow-lg border-0 d-lg-none" style={{ visibility: "visible", zIndex: 1045, width: "280px" }}>
+          <div className="offcanvas offcanvas-start show shadow-lg border-0 d-lg-none" style={{ visibility: "visible", zIndex: 1045, width: "260px" }}>
             <div className="offcanvas-header p-4 bg-theme-dark text-white">
-              <h5 className="fw-bold m-0 d-flex align-items-center gap-2"><span>🛡️</span> เมนูแอดมิน</h5>
+              <h5 className="fw-bold m-0 d-flex align-items-center gap-2">เมนูแอดมิน</h5>
               <button type="button" className="btn-close btn-close-white" onClick={() => setIsMenuOpen(false)}></button>
             </div>
             <div className="offcanvas-body d-flex flex-column p-3 bg-white gap-1" style={{ overflowY: 'auto' }}>
@@ -509,110 +517,114 @@ export default function AdminDashboard({ session, handleLogout }) {
       <div className="main-content">
         
         {/* Mobile Header */}
-        <div className="mobile-only d-flex justify-content-between align-items-center p-4 bg-white shadow-sm sticky-top z-3">
-          <div className="d-flex align-items-center gap-3">
-            <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-circle p-2 fs-5 border-0">☰</button>
-            <h5 className="fw-bold text-theme-dark m-0">ศูนย์ควบคุม (Admin)</h5>
+        <div className="mobile-only d-flex justify-content-between align-items-center p-3 bg-white shadow-sm sticky-top z-3">
+          <div className="d-flex align-items-center gap-2">
+            <button onClick={() => setIsMenuOpen(true)} className="btn btn-light text-theme-dark rounded-3 border" style={{width:'40px', height:'40px', padding:0, display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <span style={{fontSize: '1.2rem', lineHeight: 1}}>☰</span>
+            </button>
+            <h6 className="fw-bold text-theme-dark m-0 d-none d-sm-block">ศูนย์ควบคุม (Admin)</h6>
           </div>
-          {/* 🌟 แสดงโลโก้วิทยาลัยใน Header มือถือ */}
-          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'40px', height:'40px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
+          <div className="d-flex align-items-center gap-2">
+             <h6 className="fw-bold m-0 text-theme-dark text-truncate" style={{maxWidth: '120px', fontSize:'13px'}}>ผู้ดูแลระบบ</h6>
+             <button onClick={handleLogout} className="btn btn-outline-danger btn-sm rounded-pill fw-bold px-3 py-1">🚪 ออก</button>
+          </div>
         </div>
 
-        <div className="container-fluid p-4" style={{ maxWidth: '1200px' }}>
+        <div className="container-fluid p-3 p-md-4" style={{ maxWidth: '1200px' }}>
           
           {/* TAB 1: 📊 สถิติภาพรวม */}
           {activeTab === 'overview' && (
             <div className="fade-in">
-               <div className="hero-card mb-4">
+               <div className="hero-card mb-3 p-4">
                   <div className="position-relative z-2">
-                      <h3 className="fw-bold mb-2">ยินดีต้อนรับ, ผู้ดูแลระบบ 👋</h3>
-                      <p className="text-white-50 mb-0">ภาคเรียนปัจจุบัน: {sysSettings.current_semester}</p>
+                      <h4 className="fw-bold mb-1">ยินดีต้อนรับ, ผู้ดูแลระบบ 👋</h4>
+                      <p className="text-white-50 mb-0 small">ภาคเรียนปัจจุบัน: {sysSettings.current_semester}</p>
                   </div>
                </div>
-               <div className="row g-4">
+               <div className="row g-3">
                  <div className="col-6 col-md-3">
-                   <div className="theme-card text-center h-100 border border-light">
-                     <div className="bg-theme-dark bg-opacity-10 text-theme-dark rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>👨‍🏫</div>
-                     <h2 className="fw-bold text-theme-dark mb-0">{teachers.length}</h2>
-                     <small className="text-muted fw-bold">ครูผู้สอน</small>
+                   <div className="theme-card text-center p-3 h-100 border border-light">
+                     <div className="bg-theme-dark bg-opacity-10 text-theme-dark rounded-3 mx-auto mb-2 p-2 fs-4" style={{width:'40px', height:'40px'}}>👨‍🏫</div>
+                     <h3 className="fw-bold text-theme-dark mb-0">{teachers.length}</h3>
+                     <small className="text-muted fw-bold" style={{fontSize:'11px'}}>ครูผู้สอน</small>
                    </div>
                  </div>
                  <div className="col-6 col-md-3">
-                   <div className="theme-card text-center h-100 border border-light">
-                     <div className="bg-danger bg-opacity-10 text-danger border border-danger rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>👨‍🎓</div>
-                     <h2 className="fw-bold text-theme-dark mb-0">{students.length}</h2>
-                     <small className="text-muted fw-bold">นักเรียน</small>
+                   <div className="theme-card text-center p-3 h-100 border border-light">
+                     <div className="bg-danger bg-opacity-10 text-danger border border-danger rounded-3 mx-auto mb-2 p-2 fs-4" style={{width:'40px', height:'40px'}}>👨‍🎓</div>
+                     <h3 className="fw-bold text-theme-dark mb-0">{students.length}</h3>
+                     <small className="text-muted fw-bold" style={{fontSize:'11px'}}>นักเรียน</small>
                    </div>
                  </div>
                  <div className="col-6 col-md-3">
-                   <div className="theme-card text-center h-100 border border-light">
-                     <div className="bg-success bg-opacity-10 text-success border border-success rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>📚</div>
-                     <h2 className="fw-bold text-theme-dark mb-0">{stats.totalCourses}</h2>
-                     <small className="text-muted fw-bold">รายวิชา</small>
+                   <div className="theme-card text-center p-3 h-100 border border-light">
+                     <div className="bg-success bg-opacity-10 text-success border border-success rounded-3 mx-auto mb-2 p-2 fs-4" style={{width:'40px', height:'40px'}}>📚</div>
+                     <h3 className="fw-bold text-theme-dark mb-0">{stats.totalCourses}</h3>
+                     <small className="text-muted fw-bold" style={{fontSize:'11px'}}>รายวิชา</small>
                    </div>
                  </div>
                  <div className="col-6 col-md-3">
-                   <div className="theme-card text-center h-100 border border-light">
-                     <div className="bg-warning bg-opacity-10 text-warning border border-warning rounded-circle mx-auto mb-3 p-3 fs-3" style={{width:'60px', height:'60px'}}>📈</div>
-                     <h2 className="fw-bold text-theme-dark mb-0">{stats.submissionRate}%</h2>
-                     <small className="text-muted fw-bold">อัตราการส่งงาน</small>
+                   <div className="theme-card text-center p-3 h-100 border border-light">
+                     <div className="bg-warning bg-opacity-10 text-warning border border-warning rounded-3 mx-auto mb-2 p-2 fs-4" style={{width:'40px', height:'40px'}}>📈</div>
+                     <h3 className="fw-bold text-theme-dark mb-0">{stats.submissionRate}%</h3>
+                     <small className="text-muted fw-bold" style={{fontSize:'11px'}}>อัตราการส่งงาน</small>
                    </div>
                  </div>
                </div>
             </div>
           )}
 
-          {/* 🌟 TAB: 🏢 จัดการห้องเรียน */}
+          {/* TAB 2: 🏢 จัดการห้องเรียน (แก้ไข Input ไม่ให้ซ้อนทับ) */}
           {activeTab === 'classrooms' && (
-            <div className="fade-in row g-4">
+            <div className="fade-in row g-3">
               <div className="col-lg-5">
-                <div className="theme-card h-100 border border-light">
-                  <h5 className="fw-bold mb-4 text-theme-dark d-flex align-items-center gap-2"><span>➕</span> เพิ่มข้อมูลห้องเรียน</h5>
-                  <p className="text-muted small mb-4 fw-bold">เพิ่มกลุ่มเรียน/แผนก เพื่อให้ครูนำไปเลือกตอนเปิดรายวิชา</p>
+                <div className="theme-card h-100 p-4 border border-light">
+                  <h5 className="fw-bold mb-3 text-theme-dark d-flex align-items-center gap-2"><span>➕</span> เพิ่มข้อมูลห้องเรียน</h5>
+                  <p className="text-muted small mb-3 fw-bold" style={{fontSize:'12px'}}>เพิ่มกลุ่มเรียน/แผนก เพื่อให้ครูนำไปเลือกตอนเปิดรายวิชา</p>
                   
-                  <form onSubmit={handleCreateDepartment} className="d-flex flex-column gap-3">
-                    <div className="form-floating">
-                      <input type="text" className="form-control theme-input bg-white text-dark" id="deptName" placeholder="เช่น ช่างยนต์ ปวช.1/1" value={deptForm.name} onChange={(e) => setDeptForm({ name: e.target.value })} required />
-                      <label htmlFor="deptName" className="text-muted fw-bold px-4">เช่น ช่างยนต์ ปวช.1/1</label>
+                  <form onSubmit={handleCreateDepartment} className="d-flex flex-column gap-2">
+                    <div className="mb-2">
+                      <label htmlFor="deptName" className="form-label text-theme-dark fw-bold small px-2 mb-1">ชื่อกลุ่มเรียน / แผนก</label>
+                      <input type="text" className="form-control theme-input bg-white text-dark py-2" id="deptName" placeholder="เช่น ช่างยนต์ ปวช.1/1" value={deptForm.name} onChange={(e) => setDeptForm({ name: e.target.value })} required />
                     </div>
-                    <button type="submit" className="btn btn-theme-dark rounded-pill fw-bold py-3 mt-2 shadow-sm">บันทึกข้อมูล</button>
+                    <button type="submit" className="btn btn-sm btn-theme-dark rounded-pill fw-bold py-2 mt-2 shadow-sm">บันทึกข้อมูล</button>
                   </form>
                 </div>
               </div>
               
               <div className="col-lg-7">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h5 className="fw-bold text-theme-dark m-0">รายการห้องเรียน ({filteredDepts.length})</h5>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h6 className="fw-bold text-theme-dark m-0">รายการห้องเรียน ({filteredDepts.length})</h6>
                   <input 
                     type="text" 
-                    className="form-control theme-input bg-white py-2 text-dark shadow-sm" 
+                    className="form-control form-control-sm theme-input bg-white py-1 text-dark shadow-sm" 
                     placeholder="🔍 ค้นหาห้องเรียน..." 
-                    style={{ maxWidth: '250px' }}
+                    style={{ maxWidth: '200px' }}
                     value={searchDept}
                     onChange={(e) => setSearchDept(e.target.value)}
                   />
                 </div>
                 <div className="theme-card p-0 overflow-hidden border border-light">
                   <div className="table-responsive" style={{ maxHeight: '500px' }}>
-                    <table className="table table-hover align-middle mb-0 bg-white">
+                    <table className="table table-hover align-middle mb-0 bg-white" style={{fontSize:'13px'}}>
                       <thead className="table-light sticky-top">
                         <tr>
-                          <th className="px-4 py-3 text-secondary">ลำดับ</th>
-                          <th className="py-3 text-secondary">ชื่อกลุ่มเรียน / แผนก</th>
-                          <th className="py-3 text-secondary text-center">จัดการ</th>
+                          <th className="px-3 py-2 text-secondary">ลำดับ</th>
+                          <th className="py-2 text-secondary">ชื่อกลุ่มเรียน / แผนก</th>
+                          <th className="py-2 text-secondary text-center">จัดการ</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredDepts.length === 0 ? (
-                          <tr><td colSpan="3" className="text-center py-5 text-muted fw-bold">ไม่พบข้อมูล</td></tr>
+                          <tr><td colSpan="3" className="text-center py-4 text-muted fw-bold">ไม่พบข้อมูล</td></tr>
                         ) : (
                           filteredDepts.map((dept, index) => (
                             <tr key={dept.id}>
-                              <td className="px-4 text-muted fw-bold">{index + 1}</td>
+                              <td className="px-3 text-muted fw-bold">{index + 1}</td>
                               <td className="fw-bold text-theme-dark">{dept.name}</td>
                               <td className="text-center">
-                                <button onClick={() => handleDeleteDepartment(dept.id, dept.name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm hover-bg-gray">
-                                  <span style={{fontSize:'12px'}}>🗑️</span>
+                                <button onClick={() => handleDeleteDepartment(dept.id, dept.name)} className="btn btn-sm btn-light text-theme-red rounded-circle p-1 shadow-sm hover-bg-gray">
+                                  <span style={{fontSize:'11px'}}>🗑️</span>
                                 </button>
                               </td>
                             </tr>
@@ -626,131 +638,173 @@ export default function AdminDashboard({ session, handleLogout }) {
             </div>
           )}
 
-          {/* TAB: 👨‍🎓 จัดการนักเรียน */}
+          {/* 🌟 TAB 3: 👨‍🎓 จัดการนักเรียน (กู้คืนระบบแยกรายห้อง) */}
           {activeTab === 'students' && (
             <div className="fade-in">
-              <div className="theme-card mb-4 p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border border-light">
+              <div className="theme-card mb-3 p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 border border-light">
                 <div>
-                  <h5 className="fw-bold text-theme-dark m-0 d-flex align-items-center gap-2">
-                    <span className="fs-4">📥</span> นำเข้าฐานข้อมูลนักเรียน
-                  </h5>
-                  <p className="text-muted small mb-0 mt-1 fw-bold">
+                  <h6 className="fw-bold text-theme-dark m-0 d-flex align-items-center gap-2">
+                    <span className="fs-5">📥</span> นำเข้าฐานข้อมูลนักเรียน
+                  </h6>
+                  <p className="text-muted mb-0 mt-1 fw-bold" style={{fontSize:'11px'}}>
                     จำนวนรายชื่อในระบบ: <strong className="text-theme-red">{masterCount} คน</strong>
                   </p>
                 </div>
                 <div>
                   <input type="file" accept=".xlsx, .xls, .csv" id="excelUpload" className="d-none" onChange={handleFileUpload} disabled={isUploading} />
-                  <label htmlFor="excelUpload" className="btn btn-theme-dark rounded-pill fw-bold px-5 py-3 mb-0 shadow-sm" style={{cursor: 'pointer'}}>
+                  <label htmlFor="excelUpload" className="btn btn-sm btn-theme-dark rounded-pill fw-bold px-4 py-2 mb-0 shadow-sm" style={{cursor: 'pointer'}}>
                     {isUploading ? '⏳ กำลังนำเข้า...' : '📄 อัปโหลดไฟล์ Excel/CSV'}
                   </label>
                 </div>
               </div>
               
-              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
-                <h5 className="fw-bold text-theme-dark m-0">นักเรียนในระบบ ({filteredStudents.length})</h5>
-                <input 
-                  type="text" 
-                  className="form-control theme-input bg-white py-2 shadow-sm text-dark" 
-                  placeholder="🔍 ค้นหาชื่อ, รหัส..." 
-                  style={{ maxWidth: '300px' }}
-                  value={searchStudent}
-                  onChange={(e) => setSearchStudent(e.target.value)}
-                />
-              </div>
+              {!selectedDeptForStudents ? (
+                /* 🌟 แสดงแบบ "รายห้องเรียน" ก่อน */
+                <>
+                  <div className="d-flex justify-content-between align-items-center mb-3 px-2">
+                    <h6 className="fw-bold text-theme-dark m-0">เลือกห้องเรียนเพื่อดูรายชื่อนักเรียน</h6>
+                  </div>
+                  <div className="row g-3">
+                    {studentDepts.map(dept => {
+                       const count = students.filter(s => (s.department || 'ไม่ระบุแผนก') === dept).length;
+                       return (
+                         <div key={dept} className="col-12 col-md-6 col-lg-4">
+                           <div 
+                             className="theme-card p-4 h-100 hover-card border border-light d-flex align-items-center justify-content-between"
+                             onClick={() => setSelectedDeptForStudents(dept)}
+                             style={{ cursor: 'pointer' }}
+                           >
+                             <div>
+                               <h6 className="fw-bold text-theme-dark mb-1">{dept}</h6>
+                               <span className="text-muted small fw-bold">นักเรียน {count} คน</span>
+                             </div>
+                             <div className="bg-danger bg-opacity-10 text-danger rounded-circle p-2 d-flex align-items-center justify-content-center">
+                               ➔
+                             </div>
+                           </div>
+                         </div>
+                       )
+                    })}
+                  </div>
+                </>
+              ) : (
+                /* 🌟 แสดงแบบ "รายชื่อนักเรียนในห้องที่เลือก" */
+                <>
+                  <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 px-2 gap-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <button onClick={() => setSelectedDeptForStudents(null)} className="btn btn-sm btn-light rounded-circle shadow-sm p-1 text-theme-dark border" style={{width:'35px', height:'35px'}}>
+                        ⬅️
+                      </button>
+                      <div>
+                        <h6 className="fw-bold text-theme-dark m-0">{selectedDeptForStudents}</h6>
+                        <span className="text-muted" style={{fontSize:'11px'}}>นักเรียนทั้งหมด {students.filter(s => (s.department || 'ไม่ระบุแผนก') === selectedDeptForStudents).length} คน</span>
+                      </div>
+                    </div>
+                    <input 
+                      type="text" 
+                      className="form-control form-control-sm theme-input bg-white py-1 shadow-sm text-dark" 
+                      placeholder="🔍 ค้นหาชื่อ, รหัส..." 
+                      style={{ maxWidth: '250px' }}
+                      value={searchStudent}
+                      onChange={(e) => setSearchStudent(e.target.value)}
+                    />
+                  </div>
 
-              <div className="row g-4">
-                {filteredStudents.length === 0 && <p className="text-muted ps-3 fw-bold">ไม่พบข้อมูลนักเรียน</p>}
-                {filteredStudents.map(user => (
-                  <div key={user.id} className="col-md-6 col-xl-4">
-                    <div className="theme-card h-100 hover-card border border-light d-flex flex-column">
-                      <div className="d-flex gap-3 mb-3">
-                        <div className="bg-theme-red bg-opacity-10 text-theme-red rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👨‍🎓</div>
-                        <div className="flex-grow-1 overflow-hidden">
-                          <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{user.full_name || 'ไม่ระบุชื่อ'}</h6>
-                          <p className="mb-0 text-muted small fw-bold">รหัส: {user.student_code}</p>
-                          <span className="badge bg-theme-gray text-theme-dark border mt-2 text-truncate" style={{maxWidth: '100%'}}>{user.department || 'ไม่ระบุแผนก'}</span>
+                  <div className="row g-3">
+                    {filteredStudents.filter(s => (s.department || 'ไม่ระบุแผนก') === selectedDeptForStudents).length === 0 && <p className="text-muted ps-3 fw-bold small">ไม่พบข้อมูลนักเรียน</p>}
+                    {filteredStudents.filter(s => (s.department || 'ไม่ระบุแผนก') === selectedDeptForStudents).map(user => (
+                      <div key={user.id} className="col-md-6 col-xl-4">
+                        <div className="theme-card p-3 h-100 hover-card border border-light d-flex flex-column">
+                          <div className="d-flex gap-3 mb-2">
+                            <div className="bg-danger bg-opacity-10 text-danger border border-danger rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'45px', height:'45px', fontSize:'20px'}}>👨‍🎓</div>
+                            <div className="flex-grow-1 overflow-hidden">
+                              <h6 className="fw-bold mb-1 text-truncate text-theme-dark" style={{fontSize:'14px'}}>{user.full_name || 'ไม่ระบุชื่อ'}</h6>
+                              <p className="mb-0 text-muted fw-bold" style={{fontSize:'11px'}}>รหัส: {user.student_code}</p>
+                              <span className="badge bg-theme-gray text-theme-dark border mt-1 text-truncate" style={{maxWidth: '100%', fontSize:'10px'}}>{user.department || 'ไม่ระบุแผนก'}</span>
+                            </div>
+                          </div>
+                          <div className="d-flex gap-2 mt-auto pt-2 border-top border-light">
+                             <button onClick={() => openEditModal(user)} className="btn btn-sm btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-1 border" style={{fontSize:'11px'}}>✏️ แก้ไข</button>
+                             <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-sm btn-warning text-dark rounded-pill px-2 fw-bold shadow-sm" title="รีเซ็ตรหัสผ่าน">🔑</button>
+                             <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-sm btn-light text-theme-red rounded-circle p-1 shadow-sm border"><span style={{fontSize:'11px'}}>🗑️</span></button>
+                          </div>
+                          <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-theme-dark btn-sm w-100 rounded-pill fw-bold mt-2 py-1" style={{fontSize:'11px'}}>⬆️ อัปเกรดเป็นครู</button>
                         </div>
                       </div>
-                      <div className="d-flex gap-2 mt-auto pt-3 border-top border-light">
-                         <button onClick={() => openEditModal(user)} className="btn btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-2 border">✏️ แก้ไข</button>
-                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="รีเซ็ตรหัสผ่าน">🔑</button>
-                         <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm border">🗑️</button>
-                      </div>
-                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-theme-dark btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬆️ อัปเกรดเป็นครู</button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </div>
           )}
 
-          {/* TAB: 👨‍🏫 จัดการครูผู้สอน */}
+          {/* TAB 4: 👨‍🏫 จัดการครูผู้สอน */}
           {activeTab === 'teachers' && (
             <div className="fade-in">
-              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
-                <h5 className="fw-bold mb-0 text-theme-dark">ครูผู้สอน ({filteredTeachers.length})</h5>
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 px-2 gap-2">
+                <h6 className="fw-bold mb-0 text-theme-dark">ครูผู้สอน ({filteredTeachers.length})</h6>
                 <div className="d-flex gap-2">
                   <input 
                     type="text" 
-                    className="form-control theme-input bg-white py-2 shadow-sm text-dark" 
+                    className="form-control form-control-sm theme-input bg-white py-1 shadow-sm text-dark" 
                     placeholder="🔍 ค้นหาครูผู้สอน..." 
-                    style={{ maxWidth: '200px' }}
+                    style={{ maxWidth: '180px' }}
                     value={searchTeacher}
                     onChange={(e) => setSearchTeacher(e.target.value)}
                   />
-                  <button onClick={() => setShowAddTeacher(!showAddTeacher)} className={`btn fw-bold rounded-pill shadow-sm px-4 py-2 flex-shrink-0 ${showAddTeacher ? 'btn-light border text-theme-dark' : 'btn-theme-red'}`}>
+                  <button onClick={() => setShowAddTeacher(!showAddTeacher)} className={`btn btn-sm fw-bold rounded-pill shadow-sm px-3 py-1 flex-shrink-0 ${showAddTeacher ? 'btn-light border text-theme-dark' : 'btn-theme-red'}`}>
                     {showAddTeacher ? '✖ ปิดฟอร์ม' : '➕ เพิ่มบัญชีครู'}
                   </button>
                 </div>
               </div>
               
               {showAddTeacher && (
-                <div className="theme-card mb-5 border border-theme-red">
-                    <h5 className="fw-bold text-theme-dark mb-4">สร้างบัญชีครูผู้สอน</h5>
-                    <form onSubmit={handleCreateTeacher} className="row g-3">
+                <div className="theme-card mb-4 p-4 border border-theme-red">
+                    <h6 className="fw-bold text-theme-dark mb-3">สร้างบัญชีครูผู้สอน</h6>
+                    <form onSubmit={handleCreateTeacher} className="row g-2">
                         <div className="col-md-6">
-                          <input type="text" className="form-control theme-input bg-white text-dark" placeholder="รหัสบุคลากร" value={addTeacherForm.teacherId} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherId: e.target.value})} required />
+                          <input type="text" className="form-control theme-input bg-white text-dark py-2" placeholder="รหัสบุคลากร" value={addTeacherForm.teacherId} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherId: e.target.value})} required />
                         </div>
                         <div className="col-md-6">
-                          <input type="text" className="form-control theme-input bg-white text-dark" placeholder="ชื่อ-นามสกุล" value={addTeacherForm.teacherName} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherName: e.target.value})} required />
+                          <input type="text" className="form-control theme-input bg-white text-dark py-2" placeholder="ชื่อ-นามสกุล" value={addTeacherForm.teacherName} onChange={(e) => setAddTeacherForm({...addTeacherForm, teacherName: e.target.value})} required />
                         </div>
                         <div className="col-md-6">
-                          <input type="text" className="form-control theme-input bg-white text-dark" placeholder="แผนกวิชา" value={addTeacherForm.department} onChange={(e) => setAddTeacherForm({...addTeacherForm, department: e.target.value})} required />
+                          <input type="text" className="form-control theme-input bg-white text-dark py-2" placeholder="แผนกวิชา" value={addTeacherForm.department} onChange={(e) => setAddTeacherForm({...addTeacherForm, department: e.target.value})} required />
                         </div>
                         <div className="col-md-6">
-                          <input type="text" className="form-control theme-input bg-white text-dark" placeholder="รหัสผ่านชั่วคราว" value={addTeacherForm.password} onChange={(e) => setAddTeacherForm({...addTeacherForm, password: e.target.value})} required />
+                          <input type="text" className="form-control theme-input bg-white text-dark py-2" placeholder="รหัสผ่านชั่วคราว" value={addTeacherForm.password} onChange={(e) => setAddTeacherForm({...addTeacherForm, password: e.target.value})} required />
                         </div>
-                        <div className="col-12 mt-4 text-end">
-                          <button type="submit" className="btn btn-theme-red rounded-pill px-5 fw-bold py-3 w-100 w-md-auto" disabled={isAdding}>
+                        <div className="col-12 mt-3 text-end">
+                          <button type="submit" className="btn btn-sm btn-theme-red rounded-pill px-4 fw-bold py-2 w-100 w-md-auto" disabled={isAdding}>
                             {isAdding ? '⏳ กำลังดำเนินการ...' : 'สร้างบัญชี'}
                           </button>
                         </div>
                     </form>
                     {addStatus.message && (
-                      <div className={`mt-3 alert alert-${addStatus.type} fw-bold rounded-4`}>{addStatus.message}</div>
+                      <div className={`mt-2 alert alert-${addStatus.type} p-2 small fw-bold rounded-3`}>{addStatus.message}</div>
                     )}
                 </div>
               )}
 
-              <div className="row g-4">
-                {filteredTeachers.length === 0 && <p className="text-muted ps-3 fw-bold">ไม่พบรายชื่อครูที่ค้นหา</p>}
+              <div className="row g-3">
+                {filteredTeachers.length === 0 && <p className="text-muted ps-3 fw-bold small">ไม่พบรายชื่อครูที่ค้นหา</p>}
                 {filteredTeachers.map(user => (
                   <div key={user.id} className="col-md-6 col-xl-4">
-                    <div className="theme-card h-100 hover-card border border-light d-flex flex-column">
-                      <div className="d-flex gap-3 mb-3">
-                        <div className="bg-theme-dark text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'60px', height:'60px', fontSize:'24px'}}>👩‍🏫</div>
+                    <div className="theme-card p-3 h-100 hover-card border border-light d-flex flex-column">
+                      <div className="d-flex gap-3 mb-2">
+                        <div className="bg-theme-dark text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{width:'45px', height:'45px', fontSize:'20px'}}>👩‍🏫</div>
                         <div className="flex-grow-1 overflow-hidden">
-                          <h6 className="fw-bold mb-1 text-truncate text-theme-dark">{user.full_name}</h6>
-                          <p className="mb-0 text-muted small fw-bold">รหัส: {user.student_code}</p>
-                          <span className="badge bg-theme-gray text-theme-dark border mt-2 text-truncate" style={{maxWidth: '100%'}}>{user.department}</span>
+                          <h6 className="fw-bold mb-1 text-truncate text-theme-dark" style={{fontSize:'14px'}}>{user.full_name}</h6>
+                          <p className="mb-0 text-muted fw-bold" style={{fontSize:'11px'}}>รหัส: {user.student_code}</p>
+                          <span className="badge bg-theme-gray text-theme-dark border mt-1 text-truncate" style={{maxWidth: '100%', fontSize:'10px'}}>{user.department}</span>
                         </div>
                       </div>
-                      <div className="d-flex gap-2 mt-auto pt-3 border-top border-light">
-                         <button onClick={() => openEditModal(user)} className="btn btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-2 border">✏️ แก้ไข</button>
-                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" title="รีเซ็ตรหัสผ่าน">🔑</button>
-                         <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm border">🗑️</button>
+                      <div className="d-flex gap-2 mt-auto pt-2 border-top border-light">
+                         <button onClick={() => openEditModal(user)} className="btn btn-sm btn-light text-theme-dark flex-grow-1 rounded-pill fw-bold py-1 border" style={{fontSize:'11px'}}>✏️ แก้ไข</button>
+                         <button onClick={() => handleResetPassword(user.id, user.full_name)} className="btn btn-sm btn-warning text-dark rounded-pill px-2 fw-bold shadow-sm" title="รีเซ็ตรหัสผ่าน">🔑</button>
+                         <button onClick={() => handleDeleteUser(user.id, user.full_name)} className="btn btn-sm btn-light text-theme-red rounded-circle p-1 shadow-sm border"><span style={{fontSize:'11px'}}>🗑️</span></button>
                       </div>
-                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-outline-danger btn-sm w-100 rounded-pill fw-bold mt-2 py-2">⬇️ เปลี่ยนสิทธิ์เป็นนักเรียน</button>
+                      <button onClick={() => handleChangeRole(user.id, user.role)} className="btn btn-outline-danger btn-sm w-100 rounded-pill fw-bold mt-2 py-1" style={{fontSize:'11px'}}>⬇️ ลดสิทธิ์เป็นนักเรียน</button>
                     </div>
                   </div>
                 ))}
@@ -758,34 +812,34 @@ export default function AdminDashboard({ session, handleLogout }) {
             </div>
           )}
 
-          {/* TAB: 📚 จัดการรายวิชาทั้งหมด */}
+          {/* TAB 5: 📚 จัดการรายวิชาทั้งหมด */}
           {activeTab === 'courses' && (
             <div className="fade-in">
-               <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-2 gap-3">
-                  <h5 className="fw-bold m-0 text-theme-dark d-flex align-items-center gap-2">
-                    รายวิชาทั้งหมด <span className="badge bg-theme-dark rounded-pill fs-6 px-3">{filteredCourses.length} วิชา</span>
-                  </h5>
+               <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 px-2 gap-2">
+                  <h6 className="fw-bold m-0 text-theme-dark d-flex align-items-center gap-2">
+                    รายวิชาทั้งหมด <span className="badge bg-theme-dark rounded-pill px-2">{filteredCourses.length} วิชา</span>
+                  </h6>
                   <input 
                     type="text" 
-                    className="form-control theme-input bg-white py-2 shadow-sm text-dark" 
-                    placeholder="🔍 ค้นหารายวิชา, ผู้สอน..." 
-                    style={{ maxWidth: '350px' }}
+                    className="form-control form-control-sm theme-input bg-white py-1 shadow-sm text-dark" 
+                    placeholder="🔍 ค้นหารายวิชา..." 
+                    style={{ maxWidth: '250px' }}
                     value={searchCourse}
                     onChange={(e) => setSearchCourse(e.target.value)}
                   />
                </div>
-               <div className="row g-4">
-                  {filteredCourses.length === 0 && <p className="text-muted ps-3 fw-bold">ไม่พบรายวิชาที่ค้นหา</p>}
+               <div className="row g-3">
+                  {filteredCourses.length === 0 && <p className="text-muted ps-3 fw-bold small">ไม่พบรายวิชาที่ค้นหา</p>}
                   {filteredCourses.map(c => (
                      <div key={c.id} className="col-md-6 col-lg-4">
-                        <div className="theme-card h-100 hover-card border border-light">
-                           <div className="d-flex justify-content-between align-items-start mb-3">
-                              <span className="badge bg-theme-dark text-white rounded-pill px-3 py-2">{c.course_code}</span>
-                              <button onClick={() => handleDeleteCourseAdmin(c.id, c.course_name)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                        <div className="theme-card p-3 h-100 hover-card border border-light">
+                           <div className="d-flex justify-content-between align-items-start mb-2">
+                              <span className="badge bg-theme-dark text-white rounded-pill px-2 py-1" style={{fontSize:'10px'}}>{c.course_code}</span>
+                              <button onClick={() => handleDeleteCourseAdmin(c.id, c.course_name)} className="btn btn-sm btn-light text-theme-red rounded-circle p-1 shadow-sm"><span style={{fontSize:'11px'}}>🗑️</span></button>
                            </div>
-                           <h5 className="fw-bold mb-2 text-theme-dark text-truncate" title={c.course_name}>{c.course_name}</h5>
-                           <p className="text-muted small fw-bold mb-3 text-truncate">👨‍🏫 ผู้สอน: <span className="text-theme-dark">{c.profiles?.full_name}</span></p>
-                           <span className="badge bg-theme-gray text-theme-dark border w-100 text-start py-2 px-3 text-truncate fs-6">กลุ่ม: {c.section} | ภาคเรียน: {c.semester}</span>
+                           <h6 className="fw-bold mb-1 text-theme-dark text-truncate" style={{fontSize:'14px'}} title={c.course_name}>{c.course_name}</h6>
+                           <p className="text-muted fw-bold mb-2 text-truncate" style={{fontSize:'11px'}}>👨‍🏫 ผู้สอน: <span className="text-theme-dark">{c.profiles?.full_name}</span></p>
+                           <span className="badge bg-theme-gray text-theme-dark border w-100 text-start py-1 px-2 text-truncate" style={{fontSize:'10px'}}>กลุ่ม: {c.section} | ภาค: {c.semester}</span>
                         </div>
                      </div>
                   ))}
@@ -793,30 +847,30 @@ export default function AdminDashboard({ session, handleLogout }) {
             </div>
           )}
 
-          {/* TAB: 📢 ประกาศข่าวสาร */}
+          {/* TAB 6: 📢 ประกาศข่าวสาร */}
           {activeTab === 'announcements' && (
-            <div className="fade-in row g-4">
+            <div className="fade-in row g-3">
                <div className="col-lg-5">
-                  <div className="theme-card border border-light">
-                     <h5 className="fw-bold text-theme-dark mb-4">สร้างประกาศใหม่</h5>
-                     <form onSubmit={handleCreateAnnouncement} className="d-flex flex-column gap-3">
-                        <input type="text" className="form-control theme-input bg-white fw-bold text-dark" placeholder="หัวข้อประกาศ" value={annForm.title} onChange={e => setAnnForm({...annForm, title: e.target.value})} required />
-                        <textarea className="form-control theme-input bg-white text-dark" placeholder="รายละเอียดประกาศ..." rows="4" value={annForm.content} onChange={e => setAnnForm({...annForm, content: e.target.value})} required></textarea>
-                        <button type="submit" className="btn btn-theme-red rounded-pill py-3 fw-bold shadow-sm mt-2">แจ้งประกาศ</button>
+                  <div className="theme-card p-4 border border-light">
+                     <h6 className="fw-bold text-theme-dark mb-3">สร้างประกาศใหม่</h6>
+                     <form onSubmit={handleCreateAnnouncement} className="d-flex flex-column gap-2">
+                        <input type="text" className="form-control theme-input bg-white fw-bold text-dark py-2" placeholder="หัวข้อประกาศ" value={annForm.title} onChange={e => setAnnForm({...annForm, title: e.target.value})} required />
+                        <textarea className="form-control theme-input bg-white text-dark py-2" placeholder="รายละเอียดประกาศ..." rows="3" value={annForm.content} onChange={e => setAnnForm({...annForm, content: e.target.value})} required></textarea>
+                        <button type="submit" className="btn btn-sm btn-theme-red rounded-pill py-2 fw-bold shadow-sm mt-2">แจ้งประกาศ</button>
                      </form>
                   </div>
                </div>
                <div className="col-lg-7">
-                  <h5 className="fw-bold text-theme-dark mb-4">ประกาศที่ใช้งานอยู่</h5>
-                  <div className="d-flex flex-column gap-3">
-                     {announcements.length === 0 && <p className="text-muted fw-bold">ยังไม่มีประกาศ</p>}
+                  <h6 className="fw-bold text-theme-dark mb-3">ประกาศที่ใช้งานอยู่</h6>
+                  <div className="d-flex flex-column gap-2">
+                     {announcements.length === 0 && <p className="text-muted fw-bold small">ยังไม่มีประกาศ</p>}
                      {announcements.map(ann => (
-                        <div key={ann.id} className="theme-card p-4 border-start border-4 border-theme-dark d-flex justify-content-between align-items-start hover-card">
+                        <div key={ann.id} className="theme-card p-3 border-start border-4 border-theme-dark d-flex justify-content-between align-items-start hover-card">
                            <div>
-                              <h5 className="fw-bold text-theme-dark mb-2">{ann.title}</h5>
-                              <p className="text-muted small mb-0 bg-theme-gray p-3 rounded-4 fw-bold border">{ann.content}</p>
+                              <h6 className="fw-bold text-theme-dark mb-1" style={{fontSize:'14px'}}>{ann.title}</h6>
+                              <p className="text-muted mb-0 bg-theme-gray p-2 rounded-3 fw-bold border" style={{fontSize:'11px'}}>{ann.content}</p>
                            </div>
-                           <button onClick={() => handleDeleteAnnouncement(ann.id)} className="btn btn-light text-theme-red rounded-circle p-2 shadow-sm border"><span style={{fontSize:'12px'}}>🗑️</span></button>
+                           <button onClick={() => handleDeleteAnnouncement(ann.id)} className="btn btn-sm btn-light text-theme-red rounded-circle p-1 shadow-sm border"><span style={{fontSize:'11px'}}>🗑️</span></button>
                         </div>
                      ))}
                   </div>
@@ -824,20 +878,20 @@ export default function AdminDashboard({ session, handleLogout }) {
             </div>
           )}
 
-          {/* TAB: ⚙️ ตั้งค่าระบบ */}
+          {/* TAB 7: ⚙️ ตั้งค่าระบบ */}
           {activeTab === 'settings' && (
             <div className="fade-in">
-               <div className="theme-card mx-auto border border-light" style={{maxWidth: '600px'}}>
-                  <h4 className="fw-bold text-theme-dark mb-2 text-center">⚙️ ตั้งค่าระบบ</h4>
-                  <p className="text-muted text-center mb-4 fw-bold">ตั้งค่าการทำงานหลักของระบบ</p>
+               <div className="theme-card mx-auto border border-light p-4" style={{maxWidth: '500px'}}>
+                  <h5 className="fw-bold text-theme-dark mb-2 text-center">⚙️ ตั้งค่าระบบ</h5>
+                  <p className="text-muted text-center mb-4 fw-bold" style={{fontSize:'12px'}}>ตั้งค่าการทำงานหลักของระบบ</p>
                   
                   <form onSubmit={handleUpdateSettings}>
-                     <div className="bg-theme-gray p-4 rounded-4 mb-4 border border-light">
-                        <label className="form-label fw-bold text-theme-dark mb-2">ภาคเรียน / ปีการศึกษา ปัจจุบัน</label>
-                        <p className="small text-muted mb-3 fw-bold">ระบบจะนำค่านี้ไปใช้กับวิชาที่สร้างใหม่โดยอัตโนมัติ</p>
-                        <input type="text" className="form-control theme-input bg-white text-center fs-5 text-dark" value={semForm} onChange={e => setSemForm(e.target.value)} required placeholder="เช่น 1/2569" />
+                     <div className="bg-theme-gray p-3 rounded-4 mb-3 border border-light">
+                        <label className="form-label fw-bold text-theme-dark mb-1" style={{fontSize:'13px'}}>ภาคเรียน / ปีการศึกษา ปัจจุบัน</label>
+                        <p className="text-muted mb-2 fw-bold" style={{fontSize:'11px'}}>ระบบจะนำค่านี้ไปใช้กับวิชาที่สร้างใหม่โดยอัตโนมัติ</p>
+                        <input type="text" className="form-control theme-input bg-white text-center fs-6 text-dark py-2" value={semForm} onChange={e => setSemForm(e.target.value)} required placeholder="เช่น 1/2569" />
                      </div>
-                     <button type="submit" className="btn btn-theme-dark w-100 rounded-pill py-3 fw-bold shadow-sm fs-6">บันทึกการตั้งค่า</button>
+                     <button type="submit" className="btn btn-sm btn-theme-dark w-100 rounded-pill py-2 fw-bold shadow-sm">บันทึกการตั้งค่า</button>
                   </form>
                </div>
             </div>
