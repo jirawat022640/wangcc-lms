@@ -75,10 +75,10 @@ export default function StudentDashboard({ session, handleLogout }) {
       if (document.hidden && takingQuizRef.current) {
         cheatWarningsRef.current += 1;
         if (cheatWarningsRef.current >= 2) {
-          Swal.fire({ title: 'หมดสิทธิ์สอบ!', text: 'คุณทำผิดกฎโดยการสลับหน้าจอเกินกำหนด ระบบได้ทำการส่งข้อสอบของคุณอัตโนมัติแล้ว', icon: 'error', confirmButtonText: 'ตกลง', allowOutsideClick: false });
+          Swal.fire({ title: 'หมดสิทธิ์สอบ!', text: 'สลับหน้าจอเกินกำหนด ระบบส่งข้อสอบอัตโนมัติ', icon: 'error', confirmButtonText: 'ตกลง', allowOutsideClick: false });
           forceSubmitQuiz(true); 
         } else {
-          Swal.fire({ title: '⚠️ คำเตือน!', text: 'ห้ามสลับหน้าจอ เปิดแท็บใหม่ หรือสลับแอปอื่นระหว่างทำข้อสอบ! หากตรวจพบอีกครั้งระบบจะยึดกระดาษคำตอบทันที', icon: 'warning', confirmButtonText: 'รับทราบ', allowOutsideClick: false });
+          Swal.fire({ title: '⚠️ คำเตือน!', text: 'ห้ามสลับหน้าจอ หากตรวจพบอีกครั้งระบบจะยึดกระดาษคำตอบทันที', icon: 'warning', confirmButtonText: 'รับทราบ', allowOutsideClick: false });
         }
       }
     };
@@ -89,7 +89,7 @@ export default function StudentDashboard({ session, handleLogout }) {
   useEffect(() => {
     if (timeLeft === null || !takingQuiz) return;
     if (timeLeft <= 0) {
-      Swal.fire({ title: 'หมดเวลาทำข้อสอบ! ⏳', text: 'ระบบกำลังส่งกระดาษคำตอบของคุณอัตโนมัติ', icon: 'info', showConfirmButton: false, timer: 2500 });
+      Swal.fire({ title: 'หมดเวลาทำข้อสอบ! ⏳', text: 'ระบบกำลังส่งกระดาษคำตอบอัตโนมัติ', icon: 'info', showConfirmButton: false, timer: 2500 });
       forceSubmitQuiz(false); 
       return;
     }
@@ -134,13 +134,22 @@ export default function StudentDashboard({ session, handleLogout }) {
 
     const { data: cData } = await supabase.from('courses').select('*, profiles(full_name)').order('created_at', { ascending: false })
     if (cData && pData) {
+      // 🌟 อัปเดต: ปรับปรุงระบบคัดกรองวิชาเรียนของนักเรียนให้เป๊ะขึ้น ไม่ให้วิชาซ้อนกัน
       const studentDept = pData.department || '';
       const studentLevel = pData.grade_level || '';
-      const baseLevel = studentLevel.split('/')[0];
+      
       const myClassCourses = cData.filter(course => {
         const section = course.section || '';
         if (!studentDept) return false;
-        return section.includes(studentDept) && (baseLevel ? section.includes(baseLevel) : true);
+        
+        // 1. ตรวจสอบว่า แผนกวิชาที่ตั้งไว้ ตรงกับกลุ่มเรียน 100% เลยหรือไม่
+        if (section === studentDept) return true;
+        
+        // 2. ถ้าตั้งแผนกวิชา และ ระดับชั้นแยกกัน ให้บังคับหาทั้ง "แผนก" และ "ระดับชั้นแบบเต็มๆ (/1 หรือ /2)"
+        const hasDept = section.includes(studentDept);
+        const hasLevel = studentLevel ? section.includes(studentLevel) : true;
+        
+        return hasDept && hasLevel;
       });
       setAllCourses(myClassCourses)
     }
@@ -262,7 +271,6 @@ export default function StudentDashboard({ session, handleLogout }) {
   const avgScore = gradedCount > 0 ? (totalScore / (gradedCount * 10)) * 100 : 100; 
   const isAtRisk = missingCount >= 2 || avgScore < 50;
 
-  // 🌟 แยกระบบภาระงาน 3 สถานะ (Todo, Pending, Done)
   const mySubMap = {}; submissions.forEach(s => mySubMap[s.assignment_id] = s);
   const myQuizSubMap = {}; quizSubmissions.forEach(q => myQuizSubMap[q.quiz_id] = q);
 
@@ -296,7 +304,6 @@ export default function StudentDashboard({ session, handleLogout }) {
         </div>
       )}
 
-      {/* 🖥️ Desktop Sidebar */}
       <div className={`sidebar ${takingQuiz ? 'd-none' : ''} shadow-sm`}>
         <div className="d-flex align-items-center gap-3 mb-5 px-2 mt-2">
           <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'45px', height:'45px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
@@ -313,7 +320,6 @@ export default function StudentDashboard({ session, handleLogout }) {
         </div>
       </div>
 
-      {/* 📱 Mobile Menu (Offcanvas) */}
       {isMenuOpen && (
         <>
           <div className="offcanvas-backdrop fade show d-lg-none" style={{ zIndex: 1040 }} onClick={() => setIsMenuOpen(false)}></div>
@@ -335,7 +341,6 @@ export default function StudentDashboard({ session, handleLogout }) {
         </>
       )}
 
-      {/* 📱 Main Content Area */}
       <div className="main-content">
         {!takingQuiz && (
           <div className="mobile-only d-flex justify-content-between align-items-center p-3 bg-white shadow-sm sticky-top z-3">
@@ -392,7 +397,6 @@ export default function StudentDashboard({ session, handleLogout }) {
              </div>
           ) : (
             <>
-              {/* TAB 1: หน้าหลัก (Grid Layout) */}
               {activeTab === 'home' && (
                 <div className="fade-in row g-3">
                   <div className="col-12 col-xl-8">
@@ -460,7 +464,6 @@ export default function StudentDashboard({ session, handleLogout }) {
                 </div>
               )}
 
-              {/* 🌟 TAB 2: วิชาเรียน (ระบบเจาะลึกทีละวิชา) */}
               {activeTab === 'classroom' && (
                 <div className="fade-in">
                   {!selectedCourse ? (
@@ -484,7 +487,9 @@ export default function StudentDashboard({ session, handleLogout }) {
                                    <div className="bg-white p-2 rounded-3 border d-flex justify-content-between align-items-center">
                                      <div>
                                         <h6 className="fw-bold m-0 text-theme-dark" style={{fontSize:'13px'}}>{c.course_name}</h6>
-                                        <small className="text-muted" style={{fontSize:'11px'}}>{c.course_code} | {c.profiles?.full_name}</small>
+                                        <small className="text-muted d-block" style={{fontSize:'11px'}}>{c.course_code} | ครู{c.profiles?.full_name}</small>
+                                        {/* 🌟 แสดงป้ายบอกกลุ่มด้วย นักเรียนจะได้เช็กความถูกต้อง */}
+                                        <span className="badge bg-theme-gray text-theme-dark border mt-1" style={{fontSize:'9px'}}>กลุ่ม: {c.section}</span>
                                      </div>
                                      <button onClick={() => handleEnroll(c.id)} disabled={isEnrolled} className={`btn btn-sm rounded-pill fw-bold px-3 ${isEnrolled ? 'btn-light text-success' : 'btn-theme-red'}`} style={{fontSize:'11px'}}>
                                        {isEnrolled ? 'ลงแล้ว' : 'ลงทะเบียน'}
@@ -523,7 +528,6 @@ export default function StudentDashboard({ session, handleLogout }) {
                       </div>
                     </>
                   ) : (
-                    /* 🌟 หน้าต่างเจาะลึกเฉพาะวิชานั้นๆ (Deep Dive View) */
                     <div className="slide-up">
                       <button onClick={() => setSelectedCourse(null)} className="btn btn-sm btn-light rounded-pill fw-bold mb-3 border shadow-sm">⬅️ กลับหน้ารวมวิชา</button>
                       <div className="hero-card mb-3 p-4 bg-theme-dark">
@@ -629,7 +633,6 @@ export default function StudentDashboard({ session, handleLogout }) {
                 </div>
               )}
 
-              {/* 🌟 TAB 3: ภาระงาน (แยก 3 สถานะชัดเจน) */}
               {activeTab === 'tasks' && (
                 <div className="fade-in">
                   <h5 className="fw-bold text-theme-dark mb-3">ภาระงานทั้งหมด</h5>
@@ -697,7 +700,6 @@ export default function StudentDashboard({ session, handleLogout }) {
                 </div>
               )}
 
-              {/* TAB 4: โปรไฟล์ */}
               {activeTab === 'profile' && (
                 <div className="fade-in row justify-content-center">
                   <div className="col-12 col-md-8 col-xl-6">
