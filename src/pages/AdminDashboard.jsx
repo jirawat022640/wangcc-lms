@@ -17,10 +17,20 @@ export default function AdminDashboard({ session, handleLogout }) {
 
   const [allCourses, setAllCourses] = useState([])
   const [announcements, setAnnouncements] = useState([])
-  const [sysSettings, setSysSettings] = useState({ current_semester: '' })
+  
+  // 🌟 State สำหรับหน้าตั้งค่าระบบ (อัปเกรดใหม่ 5 ฟังก์ชัน)
+  const [sysSettings, setSysSettings] = useState({})
+  const [sysSettingsForm, setSysSettingsForm] = useState({
+    current_semester: '',
+    enrollment_open: true,
+    maintenance_mode: false,
+    school_name: 'สมาร์ท LMS',
+    logo_url: ''
+  })
+  const [storageSize, setStorageSize] = useState("คลิกเพื่อคำนวณ")
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   
   const [annForm, setAnnForm] = useState({ title: '', content: '' })
-  const [semForm, setSemForm] = useState('')
 
   const [departments, setDepartments] = useState([])
   const [deptForm, setDeptForm] = useState({ name: '' })
@@ -42,8 +52,7 @@ export default function AdminDashboard({ session, handleLogout }) {
   const [addStatus, setAddStatus] = useState({ type: '', message: '' })
   const [isAdding, setIsAdding] = useState(false)
 
-  // 🌟 State สำหรับระบบจัดกลุ่มนักเรียนเป็นรายห้อง
-  const [selectedDeptForStudents, setSelectedDeptForStudents] = useState(null)
+  const [selectedRoomForStudents, setSelectedRoomForStudents] = useState(null)
 
   useEffect(() => {
     if (session?.role === 'admin') {
@@ -86,7 +95,13 @@ export default function AdminDashboard({ session, handleLogout }) {
     const { data: sets } = await supabase.from('system_settings').select('*').eq('id', 1).single()
     if (sets) {
       setSysSettings(sets)
-      setSemForm(sets.current_semester)
+      setSysSettingsForm({
+        current_semester: sets.current_semester || '',
+        enrollment_open: sets.enrollment_open ?? true,
+        maintenance_mode: sets.maintenance_mode ?? false,
+        school_name: sets.school_name || 'สมาร์ท LMS',
+        logo_url: sets.logo_url || ''
+      })
     }
   }
 
@@ -99,7 +114,7 @@ export default function AdminDashboard({ session, handleLogout }) {
     setActiveTab(tab)
     setIsMenuOpen(false)
     setShowAddTeacher(false)
-    setSelectedDeptForStudents(null) // รีเซ็ตการเลือกห้องเมื่อเปลี่ยนหน้า
+    setSelectedRoomForStudents(null) 
   }
 
   const handleResetPassword = async (userId, name) => {
@@ -120,17 +135,14 @@ export default function AdminDashboard({ session, handleLogout }) {
     if (!newPass) return
 
     const { error } = await supabase.rpc('reset_user_password', { target_user_id: userId, new_password: newPass })
-    if (error) {
-      Swal.fire('รีเซ็ตไม่สำเร็จ', error.message, 'error')
-    } else {
-      Swal.fire('สำเร็จ!', `รีเซ็ตรหัสผ่านของ ${name} เป็น "${newPass}" สำเร็จ!`, 'success')
-    }
+    if (error) { Swal.fire('รีเซ็ตไม่สำเร็จ', error.message, 'error') } 
+    else { Swal.fire('สำเร็จ!', `รีเซ็ตรหัสผ่านของ ${name} เป็น "${newPass}" สำเร็จ!`, 'success') }
   }
 
-  const handleDeleteCourseAdmin = async (courseId, courseName) => {
+  const handleDeleteGroupedCourseAdmin = async (courseIds, courseName) => {
     const result = await Swal.fire({
       title: 'คำเตือน: ยืนยันการลบวิชา?',
-      text: `ต้องการลบวิชา "${courseName}" จริงหรือไม่? ข้อมูลการส่งงานของนักเรียนในวิชานี้จะหายไปด้วย`,
+      text: `ต้องการลบวิชา "${courseName}" ออกจากทุกกลุ่มเรียน ใช่หรือไม่? ข้อมูลการส่งงานของนักเรียนในวิชานี้จะหายไปด้วย`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#e50914',
@@ -141,9 +153,8 @@ export default function AdminDashboard({ session, handleLogout }) {
 
     if (!result.isConfirmed) return
 
-    await supabase.from('courses').delete().eq('id', courseId)
-    fetchAllData()
-    fetchAnalytics()
+    await supabase.from('courses').delete().in('id', courseIds)
+    fetchAllData(); fetchAnalytics();
     Swal.fire('ลบสำเร็จ!', 'ลบรายวิชาออกจากระบบเรียบร้อยแล้ว', 'success')
   }
 
@@ -156,43 +167,76 @@ export default function AdminDashboard({ session, handleLogout }) {
   }
 
   const handleDeleteAnnouncement = async (id) => {
-    const result = await Swal.fire({
-      title: 'ลบประกาศ?',
-      text: "คุณต้องการลบประกาศนี้หรือไม่?",
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#e50914',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'ใช่, ลบเลย'
-    })
-
+    const result = await Swal.fire({ title: 'ลบประกาศ?', text: "คุณต้องการลบประกาศนี้หรือไม่?", icon: 'question', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ใช่, ลบเลย' })
     if (!result.isConfirmed) return
     await supabase.from('announcements').delete().eq('id', id)
     fetchAllData()
     Swal.fire('ลบแล้ว!', 'ลบประกาศเรียบร้อยแล้ว', 'success')
   }
 
+  // 🌟 ฟังก์ชันจัดการหน้า "ตั้งค่าระบบ" ทั้งหมด
   const handleUpdateSettings = async (e) => {
     e.preventDefault()
-    await supabase.from('system_settings').update({ current_semester: semForm }).eq('id', 1)
+    await supabase.from('system_settings').update({ 
+      current_semester: sysSettingsForm.current_semester,
+      enrollment_open: sysSettingsForm.enrollment_open,
+      maintenance_mode: sysSettingsForm.maintenance_mode,
+      school_name: sysSettingsForm.school_name,
+      logo_url: sysSettingsForm.logo_url
+    }).eq('id', 1)
     fetchAllData()
-    Swal.fire('บันทึกสำเร็จ!', 'อัปเดตภาคเรียนสำเร็จ! วิชาที่ครูสร้างใหม่จะใช้ค่านี้', 'success')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปเดตการตั้งค่าระบบเรียบร้อย!', showConfirmButton: false, timer: 2000 })
+  }
+
+  const handleUploadLogo = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    setIsUploadingLogo(true);
+    try {
+      const fileExt = file.name.split('.').pop(); const fileName = `logo_${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      setSysSettingsForm({ ...sysSettingsForm, logo_url: publicUrl });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'อัปโหลดโลโก้สำเร็จ!', showConfirmButton: false, timer: 2000 });
+    } catch (err) { Swal.fire('ข้อผิดพลาด', err.message, 'error'); } finally { setIsUploadingLogo(false); }
+  }
+
+  const handleCalculateStorage = async () => {
+    setStorageSize("กำลังคำนวณ...");
+    try {
+      let totalBytes = 0;
+      const buckets = ['avatars', 'course_materials', 'student_submissions', 'quiz_images'];
+      for (const bucket of buckets) {
+        const { data } = await supabase.storage.from(bucket).list();
+        if (data) { data.forEach(file => totalBytes += (file.metadata?.size || 0)); }
+      }
+      const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+      setStorageSize(`${mb} MB (ประมาณการ)`);
+    } catch (error) { setStorageSize("ไม่สามารถคำนวณได้"); }
+  }
+
+  const handleClearStudentsMaster = async () => {
+    const res = await Swal.fire({ title: 'ล้างข้อมูลนักเรียน?', text: 'รายชื่อนักเรียนจากไฟล์ Excel จะถูกลบออกทั้งหมด (บัญชีผู้ใช้จริงจะไม่ถูกลบ)', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ยืนยันการลบ' });
+    if(res.isConfirmed) {
+      const { error } = await supabase.from('student_master').delete().not('student_code', 'is', null);
+      if(error) { Swal.fire('Error', error.message, 'error'); }
+      else { Swal.fire('สำเร็จ', 'ล้างข้อมูลรายชื่อนักเรียนเรียบร้อยแล้ว', 'success'); fetchMasterCount(); }
+    }
+  }
+
+  const handleClearSystemInfo = () => {
+    Swal.fire({
+      title: 'การล้างข้อมูลทั้งระบบ',
+      html: 'เนื่องจากมีข้อมูลผูกกันหลายส่วน (วิชา, งาน, คะแนน) <br><b>เพื่อความปลอดภัย 100%</b><br> กรุณาใช้คำสั่ง SQL <code>TRUNCATE</code> ในหน้าเว็บ Supabase > SQL Editor ครับ',
+      icon: 'info'
+    });
   }
 
   const handleChangeRole = async (userId, currentRole) => {
     const newRole = currentRole === 'student' ? 'teacher' : 'student'
     const roleText = newRole === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'
     
-    const result = await Swal.fire({
-      title: `เปลี่ยนสิทธิ์เป็น ${roleText}?`,
-      text: `ต้องการเปลี่ยนสิทธิ์ผู้ใช้นี้เป็น ${roleText} หรือไม่?`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#121212',
-      cancelButtonColor: '#e50914',
-      confirmButtonText: 'ยืนยันการเปลี่ยน'
-    })
-
+    const result = await Swal.fire({ title: `เปลี่ยนสิทธิ์เป็น ${roleText}?`, text: `ต้องการเปลี่ยนสิทธิ์ผู้ใช้นี้เป็น ${roleText} หรือไม่?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#121212', cancelButtonColor: '#e50914', confirmButtonText: 'ยืนยันการเปลี่ยน' })
     if (!result.isConfirmed) return
     await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
     fetchProfiles()
@@ -200,17 +244,7 @@ export default function AdminDashboard({ session, handleLogout }) {
   }
 
   const handleDeleteUser = async (userId, name) => {
-    const result = await Swal.fire({
-      title: 'คำเตือนร้ายแรง',
-      text: `ต้องการลบ "${name}" ออกจากระบบจริงหรือไม่? ข้อมูลทั้งหมดที่เกี่ยวข้องจะถูกลบถาวร`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e50914',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'ลบถาวร',
-      cancelButtonText: 'ยกเลิก'
-    })
-
+    const result = await Swal.fire({ title: 'คำเตือนร้ายแรง', text: `ต้องการลบ "${name}" ออกจากระบบจริงหรือไม่? ข้อมูลทั้งหมดที่เกี่ยวข้องจะถูกลบถาวร`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบถาวร', cancelButtonText: 'ยกเลิก' })
     if (!result.isConfirmed) return
     await supabase.from('profiles').delete().eq('id', userId)
     fetchProfiles()
@@ -265,35 +299,19 @@ export default function AdminDashboard({ session, handleLogout }) {
     const file = e.target.files[0]
     if (!file) return
 
-    const result = await Swal.fire({
-      title: 'นำเข้าข้อมูล?',
-      text: `ยืนยันการนำเข้าข้อมูลนักเรียนจากไฟล์ ${file.name} (ระบบจะดึงข้อมูลจากทุกชีตโดยอัตโนมัติ)`,
-      icon: 'info',
-      showCancelButton: true,
-      confirmButtonText: 'นำเข้าเลย',
-      cancelButtonText: 'ยกเลิก',
-      confirmButtonColor: '#E50914'
-    })
-
-    if (!result.isConfirmed) {
-      e.target.value = null
-      return
-    }
+    const result = await Swal.fire({ title: 'นำเข้าข้อมูล?', text: `ยืนยันการนำเข้าข้อมูลนักเรียนจากไฟล์ ${file.name} (ระบบจะดึงข้อมูลจากทุกชีตโดยอัตโนมัติ)`, icon: 'info', showCancelButton: true, confirmButtonText: 'นำเข้าเลย', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#E50914' })
+    if (!result.isConfirmed) { e.target.value = null; return; }
 
     setIsUploading(true)
     const reader = new FileReader()
     
     reader.onload = async (event) => {
       try {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        
+        const data = new Uint8Array(event.target.result); const workbook = XLSX.read(data, { type: 'array' });
         let insertData = [];
 
         workbook.SheetNames.forEach(sheetName => {
-          const worksheet = workbook.Sheets[sheetName];
-          const sheetData = XLSX.utils.sheet_to_json(worksheet);
-          
+          const worksheet = workbook.Sheets[sheetName]; const sheetData = XLSX.utils.sheet_to_json(worksheet);
           sheetData.forEach(row => {
              const code = row['รหัสประจำตัว'] || row['student_code'];
              const name = row['ชื่อ-นามสกุล'] || row['full_name'];
@@ -315,13 +333,10 @@ export default function AdminDashboard({ session, handleLogout }) {
 
         if (insertData.length === 0) { 
           Swal.fire('เกิดข้อผิดพลาด', 'ไม่พบข้อมูลในไฟล์ หรือตั้งชื่อหัวคอลัมน์ไม่ถูกต้อง (รหัสประจำตัว, ชื่อ-นามสกุล, แผนกวิชา, ระดับชั้น, เลขประจำตัวประชาชน)', 'error')
-          setIsUploading(false)
-          e.target.value = null 
-          return 
+          setIsUploading(false); e.target.value = null; return; 
         }
 
-        const chunkSize = 200; 
-        let successCount = 0
+        const chunkSize = 200; let successCount = 0
         for (let i = 0; i < insertData.length; i += chunkSize) {
           const chunk = insertData.slice(i, i + chunkSize)
           await supabase.from('student_master').upsert(chunk, { onConflict: 'student_code' })
@@ -330,59 +345,26 @@ export default function AdminDashboard({ session, handleLogout }) {
         
         Swal.fire('เสร็จสิ้น!', `อ่านข้อมูลทั้งหมด ${workbook.SheetNames.length} ชีต\nนำเข้านักเรียนสำเร็จ ${successCount} คน!`, 'success')
         fetchMasterCount()
-      } catch (error) { 
-        Swal.fire('Error', `รูปแบบไฟล์ไม่ถูกต้อง หรือเกิดข้อผิดพลาด: ${error.message}`, 'error')
-      } finally { 
-        setIsUploading(false); e.target.value = null 
-      }
+      } catch (error) { Swal.fire('Error', `รูปแบบไฟล์ไม่ถูกต้อง หรือเกิดข้อผิดพลาด: ${error.message}`, 'error') } 
+      finally { setIsUploading(false); e.target.value = null; }
     }
-    
     reader.readAsArrayBuffer(file) 
   }
 
   const handleCreateDepartment = async (e) => {
     e.preventDefault()
     if (!deptForm.name.trim()) return
-
     const { error } = await supabase.from("departments").insert([{ name: deptForm.name.trim() }])
-    
-    if (error) {
-       Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
-       console.error(error)
-    } else {
-       setDeptForm({ name: "" })
-       fetchClassroomData()
-       Swal.fire({
-         toast: true,
-         position: 'top-end',
-         icon: 'success',
-         title: 'บันทึกข้อมูลกลุ่มเรียนสำเร็จ!',
-         showConfirmButton: false,
-         timer: 2000
-       })
-    }
+    if (error) { Swal.fire('เกิดข้อผิดพลาด', error.message, 'error') } 
+    else { setDeptForm({ name: "" }); fetchClassroomData(); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'บันทึกข้อมูลสำเร็จ!', showConfirmButton: false, timer: 2000 }) }
   }
 
   const handleDeleteDepartment = async (id, name) => {
-    const result = await Swal.fire({
-      title: 'ยืนยันการลบ?',
-      text: `ต้องการลบข้อมูลกลุ่มเรียน/แผนก: "${name}" หรือไม่?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e50914',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'ลบข้อมูล'
-    })
-
+    const result = await Swal.fire({ title: 'ยืนยันการลบ?', text: `ต้องการลบข้อมูลกลุ่มเรียน/แผนก: "${name}" หรือไม่?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e50914', confirmButtonText: 'ลบข้อมูล' })
     if (!result.isConfirmed) return
-    
     const { error } = await supabase.from("departments").delete().eq("id", id)
-    if (error) {
-       Swal.fire('ลบไม่สำเร็จ', error.message, 'error')
-    } else {
-       fetchClassroomData()
-       Swal.fire('ลบสำเร็จ!', 'ข้อมูลกลุ่มเรียนถูกลบออกแล้ว', 'success')
-    }
+    if (error) { Swal.fire('ลบไม่สำเร็จ', error.message, 'error') } 
+    else { fetchClassroomData(); Swal.fire('ลบสำเร็จ!', 'ข้อมูลกลุ่มเรียนถูกลบออกแล้ว', 'success') }
   }
 
   const teachers = profiles.filter(p => p.role === 'teacher')
@@ -391,7 +373,8 @@ export default function AdminDashboard({ session, handleLogout }) {
   const filteredStudents = students.filter(s => 
     (s.full_name || '').toLowerCase().includes(searchStudent.toLowerCase()) || 
     (s.student_code || '').toLowerCase().includes(searchStudent.toLowerCase()) ||
-    (s.department || '').toLowerCase().includes(searchStudent.toLowerCase())
+    (s.department || '').toLowerCase().includes(searchStudent.toLowerCase()) ||
+    (s.grade_level || '').toLowerCase().includes(searchStudent.toLowerCase())
   )
 
   const filteredTeachers = teachers.filter(t => 
@@ -407,12 +390,32 @@ export default function AdminDashboard({ session, handleLogout }) {
     (c.profiles?.full_name || '').toLowerCase().includes(searchCourse.toLowerCase())
   )
 
-  const filteredDepts = departments.filter(d => 
-    (d.name || '').toLowerCase().includes(searchDept.toLowerCase())
-  )
+  const filteredDepts = departments.filter(d => (d.name || '').toLowerCase().includes(searchDept.toLowerCase()))
 
-  // 🌟 ดึงชื่อแผนกทั้งหมดที่มีนักเรียนอยู่ (ใช้สำหรับจัดกลุ่ม)
-  const studentDepts = [...new Set(students.map(s => s.department || 'ไม่ระบุแผนก'))].sort((a, b) => a.localeCompare(b));
+  const getRoomName = (user) => {
+    const dept = user.department ? user.department.trim() : '';
+    const level = user.grade_level ? user.grade_level.trim() : '';
+    if (!dept && !level) return 'ไม่ระบุห้องเรียน';
+    if (dept.includes(level)) return dept;
+    if (level.includes(dept)) return level;
+    return `${dept} ${level}`.trim();
+  };
+
+  const studentRooms = [...new Set(students.map(getRoomName))].sort((a, b) => a.localeCompare(b));
+
+  const groupedCoursesObj = {};
+  filteredCourses.forEach(c => {
+     const key = `${c.course_code}_${c.course_name}`;
+     if (!groupedCoursesObj[key]) {
+        groupedCoursesObj[key] = { ...c, sections: [c.section], teachers: [c.profiles?.full_name || 'ไม่ระบุ'], course_ids: [c.id] };
+     } else {
+        if (!groupedCoursesObj[key].sections.includes(c.section)) { groupedCoursesObj[key].sections.push(c.section); }
+        const teacherName = c.profiles?.full_name || 'ไม่ระบุ';
+        if (!groupedCoursesObj[key].teachers.includes(teacherName)) { groupedCoursesObj[key].teachers.push(teacherName); }
+        groupedCoursesObj[key].course_ids.push(c.id);
+     }
+  });
+  const displayCourses = Object.values(groupedCoursesObj);
 
   if (!session || session.role !== 'admin') return <Navigate to="/" />
 
@@ -475,7 +478,7 @@ export default function AdminDashboard({ session, handleLogout }) {
       {/* 🖥️ Desktop Sidebar */}
       <div className="sidebar shadow-sm">
         <div className="d-flex align-items-center gap-3 mb-4 px-2 mt-2">
-          <img src="/LOGO-Wangcc.png" alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'45px', height:'45px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
+          <img src={sysSettingsForm.logo_url || "/LOGO-Wangcc.png"} alt="Logo" className="rounded-circle shadow-sm bg-white" style={{width:'45px', height:'45px', objectFit:'cover', border:'2px solid var(--theme-red)'}} />
           <h5 className="fw-bold m-0 text-theme-dark">ผู้ดูแลระบบ</h5>
         </div>
         <div className="d-flex flex-column gap-1 flex-grow-1" style={{overflowY: 'auto'}}>
@@ -574,7 +577,7 @@ export default function AdminDashboard({ session, handleLogout }) {
             </div>
           )}
 
-          {/* TAB 2: 🏢 จัดการห้องเรียน (แก้ไข Input ไม่ให้ซ้อนทับ) */}
+          {/* TAB 2: 🏢 จัดการห้องเรียน */}
           {activeTab === 'classrooms' && (
             <div className="fade-in row g-3">
               <div className="col-lg-5">
@@ -638,7 +641,7 @@ export default function AdminDashboard({ session, handleLogout }) {
             </div>
           )}
 
-          {/* 🌟 TAB 3: 👨‍🎓 จัดการนักเรียน (กู้คืนระบบแยกรายห้อง) */}
+          {/* TAB 3: 👨‍🎓 จัดการนักเรียน */}
           {activeTab === 'students' && (
             <div className="fade-in">
               <div className="theme-card mb-3 p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 border border-light">
@@ -658,24 +661,23 @@ export default function AdminDashboard({ session, handleLogout }) {
                 </div>
               </div>
               
-              {!selectedDeptForStudents ? (
-                /* 🌟 แสดงแบบ "รายห้องเรียน" ก่อน */
+              {!selectedRoomForStudents ? (
                 <>
                   <div className="d-flex justify-content-between align-items-center mb-3 px-2">
                     <h6 className="fw-bold text-theme-dark m-0">เลือกห้องเรียนเพื่อดูรายชื่อนักเรียน</h6>
                   </div>
                   <div className="row g-3">
-                    {studentDepts.map(dept => {
-                       const count = students.filter(s => (s.department || 'ไม่ระบุแผนก') === dept).length;
+                    {studentRooms.map(room => {
+                       const count = students.filter(s => getRoomName(s) === room).length;
                        return (
-                         <div key={dept} className="col-12 col-md-6 col-lg-4">
+                         <div key={room} className="col-12 col-md-6 col-lg-4">
                            <div 
                              className="theme-card p-4 h-100 hover-card border border-light d-flex align-items-center justify-content-between"
-                             onClick={() => setSelectedDeptForStudents(dept)}
+                             onClick={() => setSelectedRoomForStudents(room)}
                              style={{ cursor: 'pointer' }}
                            >
                              <div>
-                               <h6 className="fw-bold text-theme-dark mb-1">{dept}</h6>
+                               <h6 className="fw-bold text-theme-dark mb-1">{room}</h6>
                                <span className="text-muted small fw-bold">นักเรียน {count} คน</span>
                              </div>
                              <div className="bg-danger bg-opacity-10 text-danger rounded-circle p-2 d-flex align-items-center justify-content-center">
@@ -688,16 +690,15 @@ export default function AdminDashboard({ session, handleLogout }) {
                   </div>
                 </>
               ) : (
-                /* 🌟 แสดงแบบ "รายชื่อนักเรียนในห้องที่เลือก" */
                 <>
                   <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 px-2 gap-2">
                     <div className="d-flex align-items-center gap-2">
-                      <button onClick={() => setSelectedDeptForStudents(null)} className="btn btn-sm btn-light rounded-circle shadow-sm p-1 text-theme-dark border" style={{width:'35px', height:'35px'}}>
+                      <button onClick={() => setSelectedRoomForStudents(null)} className="btn btn-sm btn-light rounded-circle shadow-sm p-1 text-theme-dark border" style={{width:'35px', height:'35px'}}>
                         ⬅️
                       </button>
                       <div>
-                        <h6 className="fw-bold text-theme-dark m-0">{selectedDeptForStudents}</h6>
-                        <span className="text-muted" style={{fontSize:'11px'}}>นักเรียนทั้งหมด {students.filter(s => (s.department || 'ไม่ระบุแผนก') === selectedDeptForStudents).length} คน</span>
+                        <h6 className="fw-bold text-theme-dark m-0">{selectedRoomForStudents}</h6>
+                        <span className="text-muted" style={{fontSize:'11px'}}>นักเรียนทั้งหมด {students.filter(s => getRoomName(s) === selectedRoomForStudents).length} คน</span>
                       </div>
                     </div>
                     <input 
@@ -711,8 +712,8 @@ export default function AdminDashboard({ session, handleLogout }) {
                   </div>
 
                   <div className="row g-3">
-                    {filteredStudents.filter(s => (s.department || 'ไม่ระบุแผนก') === selectedDeptForStudents).length === 0 && <p className="text-muted ps-3 fw-bold small">ไม่พบข้อมูลนักเรียน</p>}
-                    {filteredStudents.filter(s => (s.department || 'ไม่ระบุแผนก') === selectedDeptForStudents).map(user => (
+                    {filteredStudents.filter(s => getRoomName(s) === selectedRoomForStudents).length === 0 && <p className="text-muted ps-3 fw-bold small">ไม่พบข้อมูลนักเรียน</p>}
+                    {filteredStudents.filter(s => getRoomName(s) === selectedRoomForStudents).map(user => (
                       <div key={user.id} className="col-md-6 col-xl-4">
                         <div className="theme-card p-3 h-100 hover-card border border-light d-flex flex-column">
                           <div className="d-flex gap-3 mb-2">
@@ -720,7 +721,6 @@ export default function AdminDashboard({ session, handleLogout }) {
                             <div className="flex-grow-1 overflow-hidden">
                               <h6 className="fw-bold mb-1 text-truncate text-theme-dark" style={{fontSize:'14px'}}>{user.full_name || 'ไม่ระบุชื่อ'}</h6>
                               <p className="mb-0 text-muted fw-bold" style={{fontSize:'11px'}}>รหัส: {user.student_code}</p>
-                              <span className="badge bg-theme-gray text-theme-dark border mt-1 text-truncate" style={{maxWidth: '100%', fontSize:'10px'}}>{user.department || 'ไม่ระบุแผนก'}</span>
                             </div>
                           </div>
                           <div className="d-flex gap-2 mt-auto pt-2 border-top border-light">
@@ -817,7 +817,7 @@ export default function AdminDashboard({ session, handleLogout }) {
             <div className="fade-in">
                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 px-2 gap-2">
                   <h6 className="fw-bold m-0 text-theme-dark d-flex align-items-center gap-2">
-                    รายวิชาทั้งหมด <span className="badge bg-theme-dark rounded-pill px-2">{filteredCourses.length} วิชา</span>
+                    รายวิชาทั้งหมด <span className="badge bg-theme-dark rounded-pill px-2">{displayCourses.length} รายวิชาหลัก</span>
                   </h6>
                   <input 
                     type="text" 
@@ -829,17 +829,19 @@ export default function AdminDashboard({ session, handleLogout }) {
                   />
                </div>
                <div className="row g-3">
-                  {filteredCourses.length === 0 && <p className="text-muted ps-3 fw-bold small">ไม่พบรายวิชาที่ค้นหา</p>}
-                  {filteredCourses.map(c => (
-                     <div key={c.id} className="col-md-6 col-lg-4">
+                  {displayCourses.length === 0 && <p className="text-muted ps-3 fw-bold small">ไม่พบรายวิชาที่ค้นหา</p>}
+                  {displayCourses.map((c, index) => (
+                     <div key={index} className="col-md-6 col-lg-4">
                         <div className="theme-card p-3 h-100 hover-card border border-light">
                            <div className="d-flex justify-content-between align-items-start mb-2">
                               <span className="badge bg-theme-dark text-white rounded-pill px-2 py-1" style={{fontSize:'10px'}}>{c.course_code}</span>
-                              <button onClick={() => handleDeleteCourseAdmin(c.id, c.course_name)} className="btn btn-sm btn-light text-theme-red rounded-circle p-1 shadow-sm"><span style={{fontSize:'11px'}}>🗑️</span></button>
+                              <button onClick={() => handleDeleteGroupedCourseAdmin(c.course_ids, c.course_name)} className="btn btn-sm btn-light text-theme-red rounded-circle p-1 shadow-sm"><span style={{fontSize:'11px'}}>🗑️</span></button>
                            </div>
                            <h6 className="fw-bold mb-1 text-theme-dark text-truncate" style={{fontSize:'14px'}} title={c.course_name}>{c.course_name}</h6>
-                           <p className="text-muted fw-bold mb-2 text-truncate" style={{fontSize:'11px'}}>👨‍🏫 ผู้สอน: <span className="text-theme-dark">{c.profiles?.full_name}</span></p>
-                           <span className="badge bg-theme-gray text-theme-dark border w-100 text-start py-1 px-2 text-truncate" style={{fontSize:'10px'}}>กลุ่ม: {c.section} | ภาค: {c.semester}</span>
+                           <p className="text-muted fw-bold mb-2 text-truncate" style={{fontSize:'11px'}}>👨‍🏫 ผู้สอน: <span className="text-theme-dark">{c.teachers.join(', ')}</span></p>
+                           <span className="badge bg-theme-gray text-theme-dark border w-100 text-start py-1 px-2 text-wrap lh-sm" style={{fontSize:'10px'}}>
+                             กลุ่ม: <span className="text-theme-red">{c.sections.join(', ')}</span><br/>ภาคเรียน: {c.semester}
+                           </span>
                         </div>
                      </div>
                   ))}
@@ -878,22 +880,95 @@ export default function AdminDashboard({ session, handleLogout }) {
             </div>
           )}
 
-          {/* TAB 7: ⚙️ ตั้งค่าระบบ */}
+          {/* 🌟 TAB 7: ⚙️ ตั้งค่าระบบ (อัปเกรดใหม่ 5 ฟังก์ชัน) */}
           {activeTab === 'settings' && (
-            <div className="fade-in">
-               <div className="theme-card mx-auto border border-light p-4" style={{maxWidth: '500px'}}>
-                  <h5 className="fw-bold text-theme-dark mb-2 text-center">⚙️ ตั้งค่าระบบ</h5>
-                  <p className="text-muted text-center mb-4 fw-bold" style={{fontSize:'12px'}}>ตั้งค่าการทำงานหลักของระบบ</p>
-                  
-                  <form onSubmit={handleUpdateSettings}>
-                     <div className="bg-theme-gray p-3 rounded-4 mb-3 border border-light">
-                        <label className="form-label fw-bold text-theme-dark mb-1" style={{fontSize:'13px'}}>ภาคเรียน / ปีการศึกษา ปัจจุบัน</label>
-                        <p className="text-muted mb-2 fw-bold" style={{fontSize:'11px'}}>ระบบจะนำค่านี้ไปใช้กับวิชาที่สร้างใหม่โดยอัตโนมัติ</p>
-                        <input type="text" className="form-control theme-input bg-white text-center fs-6 text-dark py-2" value={semForm} onChange={e => setSemForm(e.target.value)} required placeholder="เช่น 1/2569" />
+            <div className="fade-in row g-3">
+               
+               {/* ส่วนที่ 1: การตั้งค่าทั่วไป */}
+               <div className="col-lg-6">
+                 <div className="theme-card p-4 h-100 border border-light">
+                   <h6 className="fw-bold text-theme-dark mb-3 d-flex align-items-center gap-2"><span>⚙️</span> การตั้งค่าทั่วไป</h6>
+                   <form onSubmit={handleUpdateSettings}>
+                     <div className="mb-3">
+                        <label className="form-label fw-bold text-muted small mb-1">ภาคเรียน / ปีการศึกษา ปัจจุบัน</label>
+                        <input type="text" className="form-control theme-input bg-theme-gray text-dark py-2" value={sysSettingsForm.current_semester} onChange={e => setSysSettingsForm({...sysSettingsForm, current_semester: e.target.value})} required placeholder="เช่น 1/2569" />
                      </div>
-                     <button type="submit" className="btn btn-sm btn-theme-dark w-100 rounded-pill py-2 fw-bold shadow-sm">บันทึกการตั้งค่า</button>
-                  </form>
+                     <div className="mb-3 p-3 bg-theme-gray border rounded-3 d-flex justify-content-between align-items-center">
+                        <div>
+                          <h6 className="fw-bold text-theme-dark mb-0" style={{fontSize:'13px'}}>เปิดระบบลงทะเบียนเรียน</h6>
+                          <small className="text-muted" style={{fontSize:'10px'}}>อนุญาตให้นักเรียนกดลงทะเบียนวิชาเองได้</small>
+                        </div>
+                        <div className="form-check form-switch fs-4 m-0">
+                          <input className="form-check-input" type="checkbox" role="switch" checked={sysSettingsForm.enrollment_open} onChange={e => setSysSettingsForm({...sysSettingsForm, enrollment_open: e.target.checked})} style={{cursor:'pointer'}} />
+                        </div>
+                     </div>
+                     <div className="mb-4 p-3 bg-danger bg-opacity-10 border border-danger rounded-3 d-flex justify-content-between align-items-center">
+                        <div>
+                          <h6 className="fw-bold text-danger mb-0" style={{fontSize:'13px'}}>โหมดปิดปรับปรุงระบบ</h6>
+                          <small className="text-danger opacity-75" style={{fontSize:'10px'}}>ระบบจะใช้งานไม่ได้ชั่วคราว (เฉพาะแอดมินเข้าได้)</small>
+                        </div>
+                        <div className="form-check form-switch fs-4 m-0">
+                          <input className="form-check-input" type="checkbox" role="switch" checked={sysSettingsForm.maintenance_mode} onChange={e => setSysSettingsForm({...sysSettingsForm, maintenance_mode: e.target.checked})} style={{cursor:'pointer'}} />
+                        </div>
+                     </div>
+                     <button type="submit" className="btn btn-sm btn-theme-dark w-100 rounded-pill py-2 fw-bold shadow-sm">💾 บันทึกการตั้งค่า</button>
+                   </form>
+                 </div>
                </div>
+
+               {/* ส่วนที่ 2: ตกแต่งระบบ (Branding) */}
+               <div className="col-lg-6">
+                 <div className="theme-card p-4 h-100 border border-light">
+                   <h6 className="fw-bold text-theme-dark mb-3 d-flex align-items-center gap-2"><span>🖼️</span> ตกแต่งหน้าตาระบบ</h6>
+                   <div className="text-center mb-3">
+                     <div className="bg-theme-gray rounded-circle border d-inline-flex justify-content-center align-items-center mb-2 overflow-hidden shadow-sm" style={{width:'80px', height:'80px'}}>
+                        {sysSettingsForm.logo_url ? <img src={sysSettingsForm.logo_url} alt="Logo" className="w-100 h-100 object-fit-cover" /> : <span className="fs-3">🏫</span>}
+                     </div>
+                   </div>
+                   <form onSubmit={handleUpdateSettings}>
+                     <div className="mb-3">
+                        <label className="form-label fw-bold text-muted small mb-1">ชื่อระบบ / วิทยาลัย</label>
+                        <input type="text" className="form-control theme-input bg-theme-gray text-dark py-2" value={sysSettingsForm.school_name} onChange={e => setSysSettingsForm({...sysSettingsForm, school_name: e.target.value})} required placeholder="สมาร์ท LMS" />
+                     </div>
+                     <div className="mb-4">
+                        <label className="form-label fw-bold text-muted small mb-1">เปลี่ยนโลโก้ระบบ</label>
+                        <input type="file" accept="image/*" className="form-control theme-input bg-theme-gray text-dark py-1" onChange={handleUploadLogo} disabled={isUploadingLogo} />
+                        {isUploadingLogo && <small className="text-danger mt-1 fw-bold d-block" style={{fontSize:'10px'}}>⏳ กำลังอัปโหลดโลโก้...</small>}
+                     </div>
+                     <button type="submit" className="btn btn-sm btn-theme-dark w-100 rounded-pill py-2 fw-bold shadow-sm">💾 บันทึกข้อมูลวิทยาลัย</button>
+                   </form>
+                 </div>
+               </div>
+
+               {/* ส่วนที่ 3: พื้นที่จัดเก็บข้อมูล */}
+               <div className="col-lg-6">
+                 <div className="theme-card p-4 h-100 border border-light d-flex flex-column">
+                   <h6 className="fw-bold text-theme-dark mb-3 d-flex align-items-center gap-2"><span>📊</span> พื้นที่จัดเก็บข้อมูลไฟล์</h6>
+                   <p className="text-muted small fw-bold">ตรวจสอบขนาดไฟล์ทั้งหมดที่ถูกอัปโหลดเข้าระบบ (รูปภาพ, เอกสาร, งานนักเรียน)</p>
+                   <div className="bg-theme-gray p-4 rounded-4 text-center mt-auto border mb-3">
+                      <span className="d-block text-theme-red fw-bold fs-4 mb-1">{storageSize}</span>
+                   </div>
+                   <button onClick={handleCalculateStorage} className="btn btn-sm btn-outline-dark w-100 rounded-pill py-2 fw-bold">🔄 คำนวณพื้นที่จัดเก็บ</button>
+                 </div>
+               </div>
+
+               {/* ส่วนที่ 4: โซนอันตราย (Danger Zone) */}
+               <div className="col-lg-6">
+                 <div className="theme-card p-4 h-100 border border-danger bg-danger bg-opacity-10 d-flex flex-column">
+                   <h6 className="fw-bold text-danger mb-3 d-flex align-items-center gap-2"><span>⚠️</span> โซนล้างข้อมูล (Danger Zone)</h6>
+                   <p className="text-danger small fw-bold mb-4 opacity-75">คำเตือน: ข้อมูลที่ถูกลบในส่วนนี้จะไม่สามารถกู้คืนกลับมาได้ กรุณาใช้งานด้วยความระมัดระวัง</p>
+                   
+                   <div className="mt-auto d-flex flex-column gap-2">
+                     <button onClick={handleClearStudentsMaster} className="btn btn-sm btn-danger rounded-pill py-2 fw-bold shadow-sm text-start px-3">
+                        1. ล้างรายชื่อนักเรียนจาก Excel (เริ่มรับรุ่นใหม่)
+                     </button>
+                     <button onClick={handleClearSystemInfo} className="btn btn-sm btn-outline-danger bg-white rounded-pill py-2 fw-bold text-start px-3">
+                        2. ล้างข้อมูลวิชาเรียนและคะแนน (ล้างทั้งระบบ)
+                     </button>
+                   </div>
+                 </div>
+               </div>
+
             </div>
           )}
 
